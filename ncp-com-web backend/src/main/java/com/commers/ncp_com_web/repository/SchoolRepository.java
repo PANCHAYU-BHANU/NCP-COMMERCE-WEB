@@ -8,6 +8,7 @@ import java.util.List;
 @Repository
 public interface SchoolRepository extends JpaRepository<School, Long> {
     List<School> findByDivisionId(Long divisionId);
+    long countByDivisionId(Long divisionId);
     long countByDivisionZoneDistrictProvinceId(Long provinceId);
     long countByDivisionZoneDistrictId(Long districtId);
     long countByDivisionZoneId(Long zoneId);

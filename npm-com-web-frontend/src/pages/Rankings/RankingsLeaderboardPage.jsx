@@ -194,161 +194,20 @@ const RankingsLeaderboardPage = () => {
         return res.json();
       })
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setRawRankings(data);
         } else {
-          setRawRankings(getFallbackDataset());
+          setRawRankings([]);
         }
       })
       .catch(err => {
-        console.warn("Backend rankings endpoint error or offline, using live simulated dataset:", err);
-        setRawRankings(getFallbackDataset());
+        console.warn("Backend rankings endpoint error or offline:", err);
+        setRawRankings([]);
       })
       .finally(() => setLoading(false));
   };
 
-  // Fallback high-fidelity dataset with all 11 zones and schools
-  // Strictly respects:
-  // 1. In A/L: Grades (A, B, C) + Z-Score (NO raw marks or Total / 300)
-  // 2. In Term/Unit: Raw Marks + Total / 300
-  // 3. Exactly 3 subjects per student: ACC + BS + (either ECO or ICT, NEVER all 4!)
-  const getFallbackDataset = () => {
-    const sinhalaNames = [
-      "Kavindya Dilshani Bandara", "Sachintha Mihiran Jayawardena", "Tharushi Nimanthika Senanayake",
-      "Hasitha Madushan Ratnayake", "Dinuki Oshadi Abeykoon", "Prabhashara Nethmina Silva",
-      "Methmi Hansika Karunaratne", "Sithum Sanjula Dissanayake", "Sandali Imasha Weerasinghe",
-      "Chamathka Navod Wickramasinghe", "Oshani Maleesha Perera", "Akila Dananjaya Herath",
-      "Chamodya Nisansala Kumari", "Isuru Lakshan Senarathne", "Hiruni Rashmika Wickramasinghe",
-      "Kasun Sampath Alahakoon", "Nadeesha Sewwandi Jayalath", "Ravindu Kaushalya Ekanayake",
-      "Nethmi Bhagya Weerakoon", "Chathura Maduranga Ilangasinghe", "Janani Hansamali Jayakodi",
-      "Thisara Nirmal Kulathunga", "Shalani Upeksha Somarathne", "Dineth Sandaruwan Wijesinghe",
-      "Manawaduge Panchayu Bhanu", "Kavinda Bandara", "Ashka Senanayake"
-    ];
-
-    const schoolPool = [
-      { id: 27248, name: "Anuradhapura Central College", div: "Nuwaragam Palatha East", zone: "Anuradhapura", dist: "Anuradhapura", distId: 1, zoneId: 1 },
-      { id: 27250, name: "Niwaththakachethiya M . V", div: "Nuwaragam Palatha East", zone: "Anuradhapura", dist: "Anuradhapura", distId: 1, zoneId: 1 },
-      { id: 27249, name: "A/ Swarnapali Balika Maha Vidyalaya", div: "Nuwaragam Palatha East", zone: "Anuradhapura", dist: "Anuradhapura", distId: 1, zoneId: 1 },
-      { id: 27251, name: "A/ Walisinghe Harischandra Maha Vidyalaya", div: "Nuwaragam Palatha East", zone: "Anuradhapura", dist: "Anuradhapura", distId: 1, zoneId: 1 },
-      { id: 27252, name: "PL/ Royal Central College Polonnaruwa", div: "Thamankaduwa", zone: "Polonnaruwa", dist: "Polonnaruwa", distId: 2, zoneId: 9 },
-      { id: 27253, name: "PL/ Siripura Madhya Maha Vidyalaya", div: "Dimbulagala", zone: "Dimbulagala", dist: "Polonnaruwa", distId: 2, zoneId: 11 },
-      { id: 27254, name: "A/ Kebithigollewa National College", div: "Kebithigollewa", zone: "Kebithigollewa", dist: "Anuradhapura", distId: 1, zoneId: 5 },
-      { id: 27255, name: "PL/ Medirigiriya National School", div: "Medirigiriya", zone: "Hingurakgoda", dist: "Polonnaruwa", distId: 2, zoneId: 10 },
-      { id: 27256, name: "A/ Medawachchiya Maithripala Senanayake Central", div: "Medawachchiya", zone: "Medawachchiya", dist: "Anuradhapura", distId: 1, zoneId: 6 },
-      { id: 27257, name: "A/ Thambuttegama Central College", div: "Thambuttegama", zone: "Thambuttegama", dist: "Anuradhapura", distId: 1, zoneId: 3 },
-      { id: 27258, name: "PL/ Minneriya Maha Vidyalaya", div: "Hingurakgoda", zone: "Hingurakgoda", dist: "Polonnaruwa", distId: 2, zoneId: 10 },
-      { id: 27259, name: "A/ Kekirawa Central College", div: "Kekirawa", zone: "Kekirawa", dist: "Anuradhapura", distId: 1, zoneId: 2 },
-      { id: 27260, name: "A/ Galenbindunuwewa Central College", div: "Galenbindunuwewa", zone: "Galenbindunuwewa", dist: "Anuradhapura", distId: 1, zoneId: 4 },
-      { id: 27261, name: "PL/ Veheragala Maha Vidyalaya", div: "Dimbulagala", zone: "Dimbulagala", dist: "Polonnaruwa", distId: 2, zoneId: 11 },
-      { id: 27262, name: "A/ Nochchiyagama Maha Vidyalaya", div: "Nochchiyagama", zone: "Nochchiyagama", dist: "Anuradhapura", distId: 1, zoneId: 7 },
-      { id: 27263, name: "A/ Horowpothana Central College", div: "Horowpothana", zone: "Horowpothana", dist: "Anuradhapura", distId: 1, zoneId: 8 }
-    ];
-
-    const list = [];
-    const isAl = examType === 'al';
-    const yearInt = parseInt(selectedYear, 10) || 2025;
-    const yearShift = (yearInt * 7) % sinhalaNames.length;
-
-    for (let i = 1; i <= 100; i++) {
-      const nameIndex = (i - 1 + yearShift) % sinhalaNames.length;
-      const schoolIndex = (i - 1 + (yearInt % 5)) % schoolPool.length;
-      const sch = schoolPool[schoolIndex];
-      const isFemale = nameIndex % 2 === 0;
-
-      // In Commerce: Accounting and Business Studies are taken by all.
-      // 1 out of 5 students (~20%) takes ICT, the rest (~80%) take Economics. Never both!
-      const takesIct = (i % 5 === 0);
-
-      const z = Math.round((2.35 - (i * 0.015) + (((i * 3) + yearInt) % 5) * 0.002) * 1000) / 1000;
-
-      if (isAl) {
-        // A/L Mode: Letter Grades & Z-Score only (No raw marks!)
-        const seed = (i * 7 + yearInt) % 10;
-        const accGrade = i <= 20 ? 'A' : (i <= 60 ? (seed < 7 ? 'A' : 'B') : (seed < 4 ? 'A' : (seed < 8 ? 'B' : 'C')));
-        const bsGrade = i <= 15 ? 'A' : (i <= 55 ? (seed < 6 ? 'A' : 'B') : (seed < 5 ? 'A' : (seed < 8 ? 'B' : 'C')));
-        const thirdGrade = i <= 25 ? 'A' : (i <= 70 ? (seed < 6 ? 'A' : 'B') : (seed < 4 ? 'A' : (seed < 7 ? 'B' : 'C')));
-
-        const ecoGrade = takesIct ? null : thirdGrade;
-        const ictGrade = takesIct ? thirdGrade : null;
-
-        let aCount = 0, bCount = 0, cCount = 0;
-        [accGrade, bsGrade, thirdGrade].forEach(g => {
-          if (g === 'A') aCount++;
-          else if (g === 'B') bCount++;
-          else if (g === 'C') cCount++;
-        });
-
-        const summary = aCount === 3 ? "3A (A-A-A)" : aCount === 2 && bCount === 1 ? "2A 1B" : aCount === 1 && bCount === 2 ? "1A 2B" : bCount === 3 ? "3B" : "A/L Qualified";
-
-        list.push({
-          studentId: 1000 + i,
-          name: sinhalaNames[nameIndex],
-          indexNumber: `COM-${selectedYear}-${String(i).padStart(3, '0')}`,
-          gender: isFemale ? 'FEMALE' : 'MALE',
-          schoolId: sch.id,
-          schoolName: sch.name,
-          divisionName: sch.div,
-          zoneName: sch.zone,
-          districtName: sch.dist,
-          districtId: sch.distId,
-          zoneId: sch.zoneId,
-          accountingGrade: accGrade,
-          businessStudiesGrade: bsGrade,
-          economicsGrade: ecoGrade,
-          ictGrade: ictGrade,
-          gradeSummary: summary,
-          accounting: null,
-          businessStudies: null,
-          economics: null,
-          ict: null,
-          totalMarks: null,
-          averageMarks: null,
-          zScore: z
-        });
-      } else {
-        // Term / Unit Test Mode: Raw marks out of 100 for 3 subjects
-        let examOffset = examType === 'unit' ? 3.5 : 1.5;
-        let yearMarkShift = ((yearInt * 3) % 7) - 3;
-        let acc = Math.min(100, Math.max(50, Math.round((99.0 - (i * 0.35) + ((i * 7 + yearInt) % 7) - 3 + examOffset + yearMarkShift) * 10) / 10));
-        let bs = Math.min(100, Math.max(50, Math.round((98.5 - (i * 0.37) + ((i * 11 + yearInt) % 7) - 3 + examOffset - yearMarkShift) * 10) / 10));
-        let thirdMark = Math.min(100, Math.max(50, Math.round((99.2 - (i * 0.36) + ((i * 13 + yearInt) % 7) - 3 + examOffset + (yearMarkShift / 2)) * 10) / 10));
-
-        let eco = takesIct ? null : thirdMark;
-        let ict = takesIct ? thirdMark : null;
-
-        const tot = Math.round((acc + bs + thirdMark) * 10) / 10;
-        const avg = Math.round((tot / 3) * 10) / 10;
-
-        list.push({
-          studentId: 1000 + i,
-          name: sinhalaNames[nameIndex],
-          indexNumber: `COM-${selectedYear}-${String(i).padStart(3, '0')}`,
-          gender: isFemale ? 'FEMALE' : 'MALE',
-          schoolId: sch.id,
-          schoolName: sch.name,
-          divisionName: sch.div,
-          zoneName: sch.zone,
-          districtName: sch.dist,
-          districtId: sch.distId,
-          zoneId: sch.zoneId,
-          accounting: acc,
-          businessStudies: bs,
-          economics: eco,
-          ict: ict,
-          totalMarks: tot,
-          averageMarks: avg,
-          zScore: z,
-          accountingGrade: null,
-          businessStudiesGrade: null,
-          economicsGrade: null,
-          ictGrade: null,
-          gradeSummary: null
-        });
-      }
-    }
-
-    return list;
-  };
+  const getFallbackDataset = () => [];
 
   useEffect(() => {
     fetchRankings();
@@ -639,117 +498,107 @@ const RankingsLeaderboardPage = () => {
         </div>
       </section>
 
-      {/* ── 2. DYNAMIC CONTROLS & FILTER SYSTEM ── */}
-      <div className="max-w-7xl mx-auto px-6 -mt-8 relative z-20">
-        <div className="bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200/90 space-y-6">
+      {/* ── 2. DYNAMIC CONTROLS & FILTER SYSTEM (CLEAN MOBILE APP CONTROLS) ── */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 -mt-8 relative z-20">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-7 shadow-xl border border-slate-200/90 space-y-3.5 sm:space-y-6">
 
-          {/* Exam Type & Year Selector Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-slate-100">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-400 mr-2 flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5" />
+          {/* Exam Type & Year Selector Bar (Sleek Mobile App Layout) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 pb-3 sm:pb-4 border-b border-slate-100">
+            {/* Exam Type Segmented Switcher */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Filter className="w-3 h-3 text-blue-500" />
                 <span>{lang === 'si' ? 'විභාග වර්ගය:' : 'Exam Type:'}</span>
               </span>
 
-              <button
-                onClick={() => handleExamTypeChange('al')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
-                  examType === 'al'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-black scale-105'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                <span>🎓 {lang === 'si' ? 'උසස් පෙළ ඇගයීම්' : 'A/L Benchmark'}</span>
-              </button>
+              <div className="grid grid-cols-3 sm:flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                <button
+                  onClick={() => handleExamTypeChange('al')}
+                  className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
+                    examType === 'al'
+                      ? 'bg-blue-600 text-white shadow-xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  🎓 {lang === 'si' ? 'උසස් පෙළ' : 'A/L Benchmark'}
+                </button>
 
-              <button
-                onClick={() => handleExamTypeChange('term')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
-                  examType === 'term'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-black scale-105'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                <span>📝 {lang === 'si' ? 'වාර විභාග (Term Tests)' : 'Term Evaluations'}</span>
-              </button>
+                <button
+                  onClick={() => handleExamTypeChange('term')}
+                  className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
+                    examType === 'term'
+                      ? 'bg-blue-600 text-white shadow-xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  📝 {lang === 'si' ? 'වාර විභාග' : 'Term Tests'}
+                </button>
 
-              <button
-                onClick={() => handleExamTypeChange('unit')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
-                  examType === 'unit'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-black scale-105'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                <span>📋 {lang === 'si' ? 'ඒකක ඇගයීම් (Unit Tests)' : 'Unit Tests'}</span>
-              </button>
+                <button
+                  onClick={() => handleExamTypeChange('unit')}
+                  className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
+                    examType === 'unit'
+                      ? 'bg-blue-600 text-white shadow-xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  📋 {lang === 'si' ? 'ඒකක ඇගයීම්' : 'Unit Tests'}
+                </button>
+              </div>
+            </div>
 
-              {/* Exam Year Filter Dropdown */}
-              <div className="flex items-center space-x-1.5 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 ml-1">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+            {/* Year Selector & Live Sync in Single Clean Row */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex-1 sm:flex-initial flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                <span className="text-[10px] sm:text-[11px] font-black uppercase text-slate-500 shrink-0">
                   {lang === 'si' ? 'වර්ෂය:' : 'Year:'}
                 </span>
                 <select
                   value={selectedYear}
                   onChange={e => setSelectedYear(e.target.value)}
-                  className="bg-white px-2.5 py-1 rounded-lg text-xs font-black text-blue-700 border border-slate-200 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 shadow-sm"
+                  className="bg-transparent text-xs font-black text-blue-700 outline-none cursor-pointer w-full"
                 >
-                  {availableYears.map(yr => {
-                    let tag = '';
-                    if (examType === 'al') {
-                      if (yr === '2025') tag = lang === 'si' ? ' (නවතම ප්‍රතිඵල)' : ' (Latest Results)';
-                    } else {
-                      if (yr === '2027') tag = lang === 'si' ? ' (2027 සක්‍රීය කණ්ඩායම)' : ' (Active 2027 Batch)';
-                      else if (yr === '2026') tag = lang === 'si' ? ' (2026 සක්‍රීය කණ්ඩායම)' : ' (Active 2026 Batch)';
-                      else if (yr === '2025') tag = lang === 'si' ? ' (2025 කණ්ඩායම)' : ' (2025 Batch)';
-                    }
-                    return (
-                      <option key={yr} value={yr}>
-                        {yr}{tag}
-                      </option>
-                    );
-                  })}
+                  {availableYears.map(yr => (
+                    <option key={yr} value={yr}>
+                      {yr}
+                    </option>
+                  ))}
                 </select>
               </div>
-            </div>
 
-            {/* Quick Live Sync Action (Refreshes real-time CMS database marks) */}
-            <div className="flex items-center space-x-3">
               <button
                 onClick={fetchRankings}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs rounded-xl flex items-center space-x-2 transition-all shadow-md shadow-blue-500/25 active:scale-95 cursor-pointer"
-                title={lang === 'si' ? 'CMS දත්ත පද්ධතියෙන් නවතම ලකුණු සහ ප්‍රතිඵල සජීවීව ලබාගන්න' : 'Fetch live updated marks & results directly from CMS'}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center space-x-1.5 shadow-xs active:scale-95 cursor-pointer shrink-0"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                <span>{lang === 'si' ? 'සජීවී දත්ත Sync' : 'Live Data Sync'}</span>
+                <span>Sync</span>
               </button>
             </div>
           </div>
 
-          {/* Subject Filter & Scope Tabs */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
-            
+          {/* Subject Filter & Scope Tabs (Responsive & Overflow-safe) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-5 items-center">
             {/* Subject Selector (7 Cols) */}
-            <div className="lg:col-span-7 space-y-2">
-              <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 block flex items-center gap-1.5">
+            <div className="lg:col-span-7 space-y-1.5">
+              <label className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
                 <Trophy className="w-3 h-3 text-amber-500" />
-                <span>{lang === 'si' ? 'විෂය තෝරාගැනීම (Subject-Wise Sorting & Leaderboard):' : 'Subject Filter (Individual Subject Toppers):'}</span>
+                <span>{lang === 'si' ? 'විෂය තෝරාගැනීම:' : 'Subject Filter:'}</span>
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex overflow-x-auto no-scrollbar gap-1.5 pb-1">
                 {[
-                  { id: 'all', label: examType === 'al' ? (lang === 'si' ? 'විෂයයන් 3ම & Z-Score' : 'All 3 Subjects & Z-Score') : (lang === 'si' ? 'විෂයයන් 3ම (Total / 300)' : 'All 3 (Total / 300)') },
-                  { id: 'accounting', label: lang === 'si' ? 'ගිණුම්කරණය (ACC)' : 'Accounting' },
-                  { id: 'business', label: lang === 'si' ? 'ව්‍යාපාර අධ්‍යයනය (BS)' : 'Business Studies' },
-                  { id: 'economics', label: lang === 'si' ? 'ආර්ථික විද්‍යාව (ECO)' : 'Economics' },
-                  { id: 'ict', label: lang === 'si' ? 'තොරතුරු තාක්ෂණය (ICT)' : 'ICT' },
+                  { id: 'all', label: examType === 'al' ? (lang === 'si' ? 'සියල්ල (3ම)' : 'All 3 & Z-Score') : (lang === 'si' ? 'සියල්ල (300)' : 'All 3 (300)') },
+                  { id: 'accounting', label: lang === 'si' ? 'ගිණුම්කරණය' : 'Accounting' },
+                  { id: 'business', label: lang === 'si' ? 'ව්‍යාපාර' : 'Business Studies' },
+                  { id: 'economics', label: lang === 'si' ? 'ආර්ථික' : 'Economics' },
+                  { id: 'ict', label: 'ICT' },
                 ].map(sub => (
                   <button
                     key={sub.id}
                     onClick={() => setSelectedSubject(sub.id)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                       selectedSubject === sub.id
-                        ? 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/30 scale-105'
-                        : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100'
                     }`}
                   >
                     {sub.label}
@@ -758,26 +607,26 @@ const RankingsLeaderboardPage = () => {
               </div>
             </div>
 
-            {/* Scope / Geography Selector (5 Cols) */}
-            <div className="lg:col-span-5 space-y-2">
-              <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 block flex items-center gap-1.5">
+            {/* Scope / Geography Selector (5 Cols) - Perfectly Balanced 5-Col Grid */}
+            <div className="lg:col-span-5 space-y-1.5">
+              <label className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-blue-500" />
-                <span>{lang === 'si' ? 'ශ්‍රේණිගත කිරීම් සීමාව (Geographic Scope):' : 'Geographic Scope:'}</span>
+                <span>{lang === 'si' ? 'සීමාව (Geographic Scope):' : 'Geographic Scope:'}</span>
               </label>
-              <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200/80">
+              <div className="grid grid-cols-5 p-1 bg-slate-100 rounded-xl border border-slate-200/80 gap-0.5">
                 {[
                   { id: 'province', label: lang === 'si' ? 'පළාත' : 'Province' },
-                  { id: 'district', label: lang === 'si' ? 'දිස්ත්‍රික්කය' : 'District' },
-                  { id: 'zone', label: lang === 'si' ? 'කලාපය' : 'Zone' },
-                  { id: 'division', label: lang === 'si' ? 'කොට්ඨාසය' : 'Division' },
+                  { id: 'district', label: lang === 'si' ? 'දිස්ත්‍රික්' : 'District' },
+                  { id: 'zone', label: lang === 'si' ? 'කලාප' : 'Zone' },
+                  { id: 'division', label: lang === 'si' ? 'කොට්ඨාස' : 'Division' },
                   { id: 'school', label: lang === 'si' ? 'පාසල' : 'School' },
                 ].map(sc => (
                   <button
                     key={sc.id}
                     onClick={() => handleScopeChange(sc.id)}
-                    className={`flex-1 min-w-[65px] py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
+                    className={`py-1.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all text-center cursor-pointer ${
                       scope === sc.id
-                        ? 'bg-white text-blue-600 shadow-md font-extrabold scale-102'
+                        ? 'bg-white text-blue-600 shadow-xs font-black'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -786,7 +635,6 @@ const RankingsLeaderboardPage = () => {
                 ))}
               </div>
             </div>
-
           </div>
 
           {/* Conditional Drilldown Dropdowns based on Scope */}
@@ -930,7 +778,7 @@ const RankingsLeaderboardPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="bg-white rounded-3xl p-6 shadow-xl border-2 border-slate-300 relative overflow-hidden flex flex-col justify-between order-2 md:order-1 min-h-[440px]"
+                className="bg-white rounded-3xl p-6 shadow-xl border-2 border-slate-300 relative overflow-hidden flex flex-col justify-between order-2 md:order-1 min-h-0 md:min-h-[440px]"
               >
                 <div className="absolute top-0 left-0 right-0 h-3 bg-gradient-to-r from-slate-300 via-slate-400 to-slate-200" />
                 <div>
@@ -1026,7 +874,7 @@ const RankingsLeaderboardPage = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5 }}
-                className="bg-gradient-to-b from-amber-500/15 via-white to-amber-500/10 rounded-3xl p-7 shadow-2xl border-2 border-amber-400 relative overflow-hidden flex flex-col justify-between order-1 md:order-2 min-h-[480px] ring-4 ring-amber-400/25"
+                className="bg-gradient-to-b from-amber-500/15 via-white to-amber-500/10 rounded-3xl p-7 shadow-2xl border-2 border-amber-400 relative overflow-hidden flex flex-col justify-between order-1 md:order-2 min-h-0 md:min-h-[480px] ring-4 ring-amber-400/25"
               >
                 <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 animate-pulse" />
                 <div>
@@ -1127,7 +975,7 @@ const RankingsLeaderboardPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="bg-white rounded-3xl p-6 shadow-xl border-2 border-amber-700/30 relative overflow-hidden flex flex-col justify-between order-3 md:order-3 min-h-[440px]"
+                className="bg-white rounded-3xl p-6 shadow-xl border-2 border-amber-700/30 relative overflow-hidden flex flex-col justify-between order-3 md:order-3 min-h-0 md:min-h-[440px]"
               >
                 <div className="absolute top-0 left-0 right-0 h-3 bg-gradient-to-r from-amber-700 via-amber-600 to-amber-800" />
                 <div>
@@ -1305,7 +1153,10 @@ const RankingsLeaderboardPage = () => {
 
           {/* Table Container */}
           <div className="overflow-x-auto mt-6">
-            <table className="w-full text-left text-xs">
+            <div className="sm:hidden text-[10px] text-slate-400 font-semibold mb-2 flex items-center gap-1">
+              <span>👉 Swipe horizontally to view all subjects, marks & ranks</span>
+            </div>
+            <table className="w-full min-w-[760px] text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-black uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="py-3.5 px-4 text-center">Rank</th>
@@ -1526,6 +1377,22 @@ const RankingsLeaderboardPage = () => {
                 })}
               </tbody>
             </table>
+
+            {processedRankings.length === 0 && (
+              <div className="py-16 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
+                  <Trophy size={32} />
+                </div>
+                <h3 className="text-base font-black text-slate-800">
+                  {lang === 'si' ? 'මෙම නිර්ණායකය සඳහා ශ්‍රේණිගත කිරීම් දත්ත තවමත් ඇතුළත් කර නොමැත' : 'No Rankings Recorded Yet for this Criteria'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                  {lang === 'si' 
+                    ? 'විභාග ලකුණු ඇතුළත් කළ පසු ශිෂ්‍ය ශ්‍රේණිගත කිරීම් ස්වයංක්‍රීයව මෙහි දිස්වනු ඇත.' 
+                    : 'Once marks are entered through the Results Entry console, students will be automatically ranked and featured here.'}
+                </p>
+              </div>
+            )}
           </div>
 
         </div>

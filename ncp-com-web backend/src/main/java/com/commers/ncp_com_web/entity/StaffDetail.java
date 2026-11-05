@@ -28,5 +28,6 @@ public class StaffDetail {
     private String address;
     private String phone;
     private String whatsapp;
+    private String email;
     private Integer yearsOfService;
 }

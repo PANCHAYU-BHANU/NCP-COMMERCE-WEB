@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface DivisionRepository extends JpaRepository<Division, Long> {
     List<Division> findByZoneId(Long zoneId);
+    long countByZoneId(Long zoneId);
 }

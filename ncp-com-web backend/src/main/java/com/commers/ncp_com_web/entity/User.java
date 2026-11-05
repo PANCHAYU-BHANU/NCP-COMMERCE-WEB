@@ -22,6 +22,8 @@ public class User {
     @Column(nullable = false, unique = true)
     private String username;
 
+    private String name;
+
     private String email;
 
     @com.fasterxml.jackson.annotation.JsonIgnore
@@ -54,6 +56,9 @@ public class User {
 
     @Column(name = "exam_level")
     private String examLevel; // AL, OL, BOTH
+
+    @Column(name = "is_section_head")
+    private Boolean isSectionHead = false;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

@@ -14,7 +14,7 @@ export const DataTable = ({ columns, data, isLoading }) => {
 
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-      <table className="min-w-full divide-y divide-slate-200">
+      <table className="min-w-full min-w-[640px] divide-y divide-slate-200">
         <thead className="bg-slate-50">
           <tr>
             {columns.map((col, i) => (
@@ -40,7 +40,13 @@ export const DataTable = ({ columns, data, isLoading }) => {
               <tr key={i} className="hover:bg-slate-50 transition-colors">
                 {columns.map((col, j) => (
                   <td key={j} className={`px-6 py-4 whitespace-nowrap text-sm text-slate-700 ${col.cellClassName || ''}`}>
-                    {col.accessor ? row[col.accessor] : col.render(row)}
+                    {col.render
+                      ? col.render(row)
+                      : typeof col.accessor === 'function'
+                      ? col.accessor(row)
+                      : col.accessor
+                      ? row[col.accessor]
+                      : null}
                   </td>
                 ))}
               </tr>

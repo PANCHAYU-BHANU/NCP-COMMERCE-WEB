@@ -120,23 +120,60 @@ const ResultsEntry = () => {
   };
 
   const tabs = [
-    { id: 'term', label: '📝 Term Test Evaluations (1st, 2nd & 3rd Terms)' },
-    { id: 'unit', label: '📋 Unit Test Modular Marks' },
-    { id: 'national', label: '🎓 A/L National Benchmark Results' }
+    { 
+      id: 'term', 
+      icon: '📝', 
+      title: 'Term Test Marks', 
+      subtitle: '1st, 2nd & 3rd Terms' 
+    },
+    { 
+      id: 'unit', 
+      icon: '📋', 
+      title: 'Unit Assessments', 
+      subtitle: 'Modular Topic Marks' 
+    },
+    { 
+      id: 'national', 
+      icon: '🎓', 
+      title: 'School A/L Results', 
+      subtitle: 'Official Examination Grades' 
+    }
   ];
 
-  // Only PROVINCIAL_DIRECTOR or ADMIN can enter/update provincial aggregate stats
+  // Only PROVINCIAL_DIRECTOR or ADMIN can enter/update provincial & national aggregate benchmark targets
   if (isProvincialAdmin) {
-    tabs.push({ id: 'national_stats', label: '🏛️ Provincial Aggregate Summary (Admin)' });
+    tabs.push({ 
+      id: 'national_stats', 
+      icon: '🏛️', 
+      title: 'Annual Benchmarks', 
+      subtitle: 'Provincial & National Targets' 
+    });
   }
+
+  // Commerce Subjects for Unit Modular Testing & Term Tests
+  const COMMERCE_SUBJECTS = [
+    { value: 'acc', label: 'Accounting (ගිණුම්කරණය)', shortName: 'Accounting', colName: 'Accounting' },
+    { value: 'bs', label: 'Business Studies (ව්‍යාපාර අධ්‍යයනය)', shortName: 'Biz Studies', colName: 'Business Studies' },
+    { value: 'eco', label: 'Economics (ආර්ථික විද්‍යාව)', shortName: 'Economics', colName: 'Economics' },
+    { value: 'it', label: 'Information & Communication Technology (තොරතුරු තාක්ෂණය)', shortName: 'IT', colName: 'IT' }
+  ];
+
+  const TERM_SUBJECT_OPTIONS = [
+    ...COMMERCE_SUBJECTS,
+    { value: 'all', label: 'All Subjects (Combined Sheet)', shortName: 'All Subjects', colName: 'All' }
+  ];
+
+  const [selectedTermSubject, setSelectedTermSubject] = useState('acc');
+  const [selectedUnitSubject, setSelectedUnitSubject] = useState('acc');
 
   // Generate dynamic years covering extensive future and past ranges (2035 to 2018)
   const yearOptions = [];
   for (let y = 2035; y >= 2018; y--) {
-    let label = `${y}`;
-    if (y === 2027) label += ' (Active 2027 Batch)';
-    else if (y === 2026) label += ' (Active 2026 Batch)';
-    else if (y === 2025) label += ' (2025 Batch)';
+    let label = `${y} A/L`;
+    if (y === 2027) label = '2027 A/L (Active Candidate Batch)';
+    else if (y === 2026) label = '2026 A/L (Senior Candidate Batch)';
+    else if (y === 2025) label = '2025 A/L (Graduated Batch)';
+    else label = `${y} A/L Examination`;
     yearOptions.push({ value: y.toString(), label });
   }
 
@@ -160,17 +197,34 @@ const ResultsEntry = () => {
   }, []);
 
   const openUnitConfig = () => {
-    const list = [];
-    for (let i = 1; i <= 10; i++) {
-      const found = unitDefinitions.find(u => u.unitNumber === i);
-      list.push({
-        unitNumber: i,
-        unitName: found ? found.unitName : `Unit ${i}: Curriculum Topic`,
-        description: found ? (found.description || '') : ''
-      });
+    if (!isProvincialAdmin) return;
+    let list = [];
+    if (unitDefinitions && unitDefinitions.length > 0) {
+      list = [...unitDefinitions].sort((a, b) => a.unitNumber - b.unitNumber).map(u => ({
+        unitNumber: u.unitNumber,
+        unitName: u.unitName,
+        description: u.description || ''
+      }));
+    } else {
+      for (let i = 1; i <= 10; i++) {
+        list.push({
+          unitNumber: i,
+          unitName: `Unit ${i}: Curriculum Topic`,
+          description: ''
+        });
+      }
     }
     setUnitFormList(list);
     setIsConfiguringUnits(true);
+  };
+
+  const handleAddNewUnit = () => {
+    const nextNum = unitFormList.length > 0 ? Math.max(...unitFormList.map(u => u.unitNumber)) + 1 : 1;
+    setUnitFormList(prev => [...prev, { unitNumber: nextNum, unitName: `Unit ${nextNum}: Curriculum Module`, description: '' }]);
+  };
+
+  const handleRemoveUnit = (unitNum) => {
+    setUnitFormList(prev => prev.filter(u => u.unitNumber !== unitNum));
   };
 
   const handleUnitNameChange = (unitNum, newName) => {
@@ -189,7 +243,7 @@ const ResultsEntry = () => {
       Swal.fire({
         icon: 'success',
         title: 'Official Unit Curriculum Saved!',
-        text: 'All provincial schools and educators will now see these updated unit topics.',
+        text: 'All provincial schools, principals, and educators will now see these updated unit topics.',
         timer: 2500,
         showConfirmButton: false
       });
@@ -201,22 +255,77 @@ const ResultsEntry = () => {
     }
   };
 
-  const unitOptions = Array.from({length: 10}, (_, i) => {
-    const num = i + 1;
-    const def = unitDefinitions.find(u => u.unitNumber === num);
-    const label = def ? `Unit ${num} — ${def.unitName}` : `Unit ${num}`;
-    return { value: num.toString(), label };
-  });
+  const sortedUnitDefs = [...unitDefinitions].sort((a, b) => a.unitNumber - b.unitNumber);
+  const unitOptions = sortedUnitDefs.length > 0
+    ? sortedUnitDefs.map(u => ({
+        value: u.unitNumber.toString(),
+        label: `Unit ${u.unitNumber} — ${u.unitName}`
+      }))
+    : Array.from({length: 10}, (_, i) => ({
+        value: (i + 1).toString(),
+        label: `Unit ${i + 1}`
+      }));
 
-  const activeUnitDef = unitDefinitions.find(u => String(u.unitNumber) === String(bulkConfig.termOrUnit));
+  const activeUnitDef = sortedUnitDefs.find(u => String(u.unitNumber) === String(bulkConfig.termOrUnit));
   const activeUnitName = activeUnitDef ? activeUnitDef.unitName : `Unit ${bulkConfig.termOrUnit}`;
+  const activeSubjectObj = COMMERCE_SUBJECTS.find(s => s.value === selectedUnitSubject) || COMMERCE_SUBJECTS[0];
+  const activeTermSubjectObj = TERM_SUBJECT_OPTIONS.find(s => s.value === selectedTermSubject) || TERM_SUBJECT_OPTIONS[0];
 
   const [nationalStats, setNationalStats] = useState({
     year: '2025', totalSchools: '', totalStudents: '', totalTeachers: '', passRate: ''
   });
+  const [allNationalStats, setAllNationalStats] = useState([]);
+
+  const fetchNationalStats = () => {
+    api.get('/public/national-statistics')
+      .then(res => {
+        if (res.data && Array.isArray(res.data)) {
+          setAllNationalStats(res.data);
+          const current = res.data.find(s => String(s.year) === String(nationalStats.year));
+          if (current) {
+            setNationalStats({
+              year: String(current.year),
+              totalSchools: current.totalSchools || '',
+              totalStudents: current.totalStudents || '',
+              totalTeachers: current.totalTeachers || '',
+              passRate: current.passRate || ''
+            });
+          }
+        }
+      })
+      .catch(console.error);
+  };
+
+  React.useEffect(() => {
+    if (isProvincialAdmin) {
+      fetchNationalStats();
+    }
+  }, [isProvincialAdmin]);
 
   const handleNatStatChange = (e) => {
-    setNationalStats({ ...nationalStats, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'year') {
+      const match = allNationalStats.find(s => String(s.year) === String(value));
+      setNationalStats({
+        year: value,
+        totalSchools: match ? (match.totalSchools || '') : '',
+        totalStudents: match ? (match.totalStudents || '') : '',
+        totalTeachers: match ? (match.totalTeachers || '') : '',
+        passRate: match ? (match.passRate || '') : ''
+      });
+    } else {
+      setNationalStats(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSelectStatRow = (stat) => {
+    setNationalStats({
+      year: String(stat.year),
+      totalSchools: stat.totalSchools || '',
+      totalStudents: stat.totalStudents || '',
+      totalTeachers: stat.totalTeachers || '',
+      passRate: stat.passRate || ''
+    });
   };
 
   const handleNatStatSubmit = async () => {
@@ -229,10 +338,11 @@ const ResultsEntry = () => {
         passRate: parseFloat(nationalStats.passRate || 0)
       };
       await api.post('/public/national-statistics', payload);
-      Swal.fire({ icon: "info", title: "National Statistics saved successfully!", timer: 2000, showConfirmButton: false })
+      Swal.fire({ icon: "success", title: "Provincial & National Statistics saved successfully!", timer: 2000, showConfirmButton: false });
+      fetchNationalStats();
     } catch (err) {
       console.error(err);
-      Swal.fire({ icon: "info", title: "Failed to save National Statistics.", timer: 2000, showConfirmButton: false })
+      Swal.fire({ icon: "error", title: "Failed to save statistics.", timer: 2000, showConfirmButton: false });
     }
   };
 
@@ -271,8 +381,25 @@ const ResultsEntry = () => {
               acc: acc || '', eco: eco || '', bs: bs || '', it: it || '',
               zScore: zScore || '', districtRank: districtRank || '', islandRank: islandRank || ''
             };
+          } else if (activeTab === 'unit' || (activeTab === 'term' && selectedTermSubject !== 'all')) {
+            // Unit Modular Test or Single-Subject Term Test: Single subject mark
+            const currentSubj = activeTab === 'unit' ? selectedUnitSubject : selectedTermSubject;
+            let indexNum = '', name = '', gender = 'MALE', whatsapp = '', markVal = '';
+            if (parts.length >= 5) {
+              [indexNum, name, gender, whatsapp, markVal] = parts;
+            } else if (parts.length === 2) {
+              [indexNum, markVal] = parts;
+            } else {
+              [indexNum, name, markVal] = parts;
+            }
+            const rowObj = {
+              id: index, indexNumber: indexNum || '', name: name || '', gender: gender || 'MALE', whatsapp: whatsapp || '',
+              acc: '', eco: '', bs: '', it: '', zScore: '', districtRank: '', islandRank: ''
+            };
+            rowObj[currentSubj] = markVal || '';
+            return rowObj;
           } else {
-            // Check if 8 columns (with Index No) or 7 columns (legacy)
+            // Term Test: 8 columns (all subjects)
             let indexNum = '', name = '', gender = 'MALE', whatsapp = '', acc = '', eco = '', bs = '', it = '';
             if (parts.length >= 8) {
               [indexNum, name, gender, whatsapp, acc, eco, bs, it] = parts;
@@ -294,20 +421,45 @@ const ResultsEntry = () => {
         const worksheet = workbook.Sheets[sheetName];
         const json = XLSX.utils.sheet_to_json(worksheet);
         
-        const parsed = json.map((row, index) => ({
-          id: index,
-          indexNumber: String(row['Index No'] || row['IndexNo'] || row['Index'] || row['Admission No'] || row['AdmissionNo'] || '').trim(),
-          name: String(row['Name'] || row['Student Name'] || '').trim(),
-          gender: row['Gender'] || 'MALE',
-          whatsapp: row['WhatsApp'] || '',
-          acc: row['Accounting'] || '',
-          eco: row['Economics'] || '',
-          bs: row['Business Studies'] || '',
-          it: row['IT'] || '',
-          zScore: row['Z-Score'] || '',
-          districtRank: row['District Rank'] || '',
-          islandRank: row['Island Rank'] || ''
-        }));
+        const parsed = json.map((row, index) => {
+          const indexNum = String(row['Index No'] || row['IndexNo'] || row['Index'] || row['Admission No'] || row['AdmissionNo'] || '').trim();
+          const name = String(row['Name'] || row['Student Name'] || '').trim();
+          const gender = row['Gender'] || 'MALE';
+          const whatsapp = row['WhatsApp'] || row['Whatsapp'] || '';
+
+          if (activeTab === 'unit' || (activeTab === 'term' && selectedTermSubject !== 'all')) {
+            const curSubjKey = activeTab === 'unit' ? selectedUnitSubject : selectedTermSubject;
+            const curSubjObj = activeTab === 'unit' ? activeSubjectObj : activeTermSubjectObj;
+            // Find score from active subject column or general marks column
+            const markVal = row[`${curSubjObj.shortName} (Marks / 100)`]
+              || row[curSubjObj.shortName]
+              || row[curSubjObj.colName]
+              || row['Marks'] || row['Mark'] || row['Score']
+              || row['Accounting'] || row['Economics'] || row['Business Studies'] || row['IT']
+              || '';
+            const rowObj = {
+              id: index, indexNumber: indexNum, name, gender, whatsapp,
+              acc: '', eco: '', bs: '', it: '', zScore: '', districtRank: '', islandRank: ''
+            };
+            rowObj[curSubjKey] = String(markVal || '').trim();
+            return rowObj;
+          }
+
+          return {
+            id: index,
+            indexNumber: indexNum,
+            name,
+            gender,
+            whatsapp,
+            acc: row['Accounting'] || '',
+            eco: row['Economics'] || '',
+            bs: row['Business Studies'] || '',
+            it: row['IT'] || '',
+            zScore: row['Z-Score'] || '',
+            districtRank: row['District Rank'] || '',
+            islandRank: row['Island Rank'] || ''
+          };
+        });
         setParsedMarks(parsed);
       } else if (fileName.endsWith('.pdf')) {
         const arrayBuffer = await file.arrayBuffer();
@@ -322,6 +474,20 @@ const ResultsEntry = () => {
         const lines = fullText.split('\n').filter(line => line.trim() !== '');
         const parsed = lines.slice(1).map((line, index) => {
           const parts = line.split(/\s+/);
+          if (activeTab === 'unit' || (activeTab === 'term' && selectedTermSubject !== 'all')) {
+            const curSubjKey = activeTab === 'unit' ? selectedUnitSubject : selectedTermSubject;
+            const markVal = parts[parts.length - 1] || '';
+            const rowObj = {
+              id: index,
+              indexNumber: parts[0] || '',
+              name: parts.slice(1, parts.length - 1).join(' ') || '',
+              gender: 'MALE',
+              whatsapp: '',
+              acc: '', eco: '', bs: '', it: '', zScore: '', districtRank: '', islandRank: ''
+            };
+            rowObj[curSubjKey] = markVal;
+            return rowObj;
+          }
           return {
             id: index,
             indexNumber: '',
@@ -349,15 +515,26 @@ const ResultsEntry = () => {
 
   const handleDownloadTemplate = () => {
     let ws_data = [];
+    let fileName = '';
     if (activeTab === 'national') {
       ws_data = [['Index No', 'Name', 'Gender', 'Accounting', 'Economics', 'Business Studies', 'IT', 'Z-Score', 'District Rank', 'Island Rank']];
+      fileName = `AL_Results_${bulkConfig.year}_Template.xlsx`;
+    } else if (activeTab === 'unit') {
+      ws_data = [['Index No', 'Name', 'Gender', 'WhatsApp', `${activeSubjectObj.shortName} (Marks / 100)`]];
+      fileName = `Unit_${bulkConfig.termOrUnit}_${activeSubjectObj.shortName}_Template.xlsx`;
     } else {
-      ws_data = [['Index No', 'Name', 'Gender', 'WhatsApp', 'Accounting', 'Economics', 'Business Studies', 'IT']];
+      if (selectedTermSubject === 'all') {
+        ws_data = [['Index No', 'Name', 'Gender', 'WhatsApp', 'Accounting', 'Economics', 'Business Studies', 'IT']];
+        fileName = `Term_${bulkConfig.termOrUnit}_All_Subjects_Template.xlsx`;
+      } else {
+        ws_data = [['Index No', 'Name', 'Gender', 'WhatsApp', `${activeTermSubjectObj.shortName} (Marks / 100)`]];
+        fileName = `Term_${bulkConfig.termOrUnit}_${activeTermSubjectObj.shortName}_Template.xlsx`;
+      }
     }
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, activeTab === 'national' ? "AL_Results_Template.xlsx" : "Test_Marks_Template.xlsx");
+    XLSX.writeFile(wb, fileName);
   };
 
   const handleBulkSubmit = async (type) => {
@@ -366,7 +543,16 @@ const ResultsEntry = () => {
       return;
     }
 
-    const validRows = parsedMarks.filter(r => (r.name && r.name.trim()) || (r.indexNumber && r.indexNumber.trim()) || r.acc || r.eco || r.bs || r.it);
+    const validRows = parsedMarks.filter(r => {
+      const hasId = (r.name && r.name.trim()) || (r.indexNumber && r.indexNumber.trim());
+      if (activeTab === 'unit') {
+        return hasId || (r[selectedUnitSubject] && String(r[selectedUnitSubject]).trim() !== '');
+      }
+      if (activeTab === 'term' && selectedTermSubject !== 'all') {
+        return hasId || (r[selectedTermSubject] && String(r[selectedTermSubject]).trim() !== '');
+      }
+      return hasId || r.acc || r.eco || r.bs || r.it;
+    });
     if (validRows.length === 0) {
       Swal.fire({ icon: "warning", title: "No Data", text: "Please enter or upload student marks." });
       return;
@@ -404,25 +590,28 @@ const ResultsEntry = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      {/* ── PRESTIGIOUS HEADER BANNER ── */}
-      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 rounded-3xl p-6 sm:p-7 text-white shadow-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="max-w-5xl mx-auto space-y-3 sm:space-y-6 w-full">
+      {/* ── PRESTIGIOUS HEADER BANNER (MOBILE-APP COMPACT) ── */}
+      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 text-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 border border-slate-800 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
         <div>
-          <div className="inline-flex items-center space-x-2 bg-blue-500/20 text-blue-300 border border-blue-400/30 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider mb-2">
-            <span>📝 Official Exam Marks Studio</span>
+          <div className="inline-flex items-center space-x-1.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 px-2 sm:px-2.5 py-0.5 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1 sm:mb-1.5">
+            <FileText size={12} className="text-blue-400" />
+            <span>Official Exam Studio</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Examination Results Entry & Management</h1>
-          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl font-medium leading-relaxed">
+          <h1 className="text-base sm:text-2xl font-black text-white tracking-tight leading-snug">
+            Examination Results Entry & Management
+          </h1>
+          <p className="text-xs text-slate-300 mt-0.5 max-w-xl font-medium leading-relaxed hidden sm:block">
             Enter or bulk upload term tests, unit assessments, and national A/L results for automatic provincial leaderboard calculation.
           </p>
         </div>
 
-        <div className="flex flex-col sm:items-end gap-2 text-xs font-bold text-slate-300">
-          <span className="bg-white/10 px-3.5 py-1.5 rounded-xl border border-white/10 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Leaderboard Auto-Calculation Active</span>
+        <div className="flex items-center sm:flex-col sm:items-end gap-1.5 text-[11px] font-bold text-slate-300 shrink-0">
+          <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-1 rounded-lg flex items-center gap-1.5 text-[10px] sm:text-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Leaderboard Auto-Calculation</span>
           </span>
-          <span className="text-amber-300 text-[11px] font-bold">Active Evaluation Batches: 2027 & 2026</span>
+          <span className="text-slate-400 text-[10px] font-semibold hidden sm:inline">Active Batches: 2027 & 2026</span>
         </div>
       </div>
 
@@ -457,7 +646,7 @@ const ResultsEntry = () => {
 
       {/* ── SCOPED SCHOOL SELECTOR FOR DIRECTORS & ADMINS ── */}
       {showSchoolSelector && (
-        <Card className="mb-6 border-blue-200 bg-blue-50/40 rounded-3xl shadow-sm">
+        <Card className="mb-6 border-blue-200 bg-blue-50/40 rounded-3xl shadow-sm overflow-hidden w-full">
           <CardHeader 
             title={
               isZonalUser 
@@ -474,7 +663,7 @@ const ResultsEntry = () => {
                   : "Select which school in North Central Province you are entering results for."
             } 
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4 pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-5 pt-0">
             {isProvincialAdmin && (
               <Select 
                 label="District" 
@@ -524,34 +713,46 @@ const ResultsEntry = () => {
         </Card>
       )}
 
-      {/* Modern Tabs Bar */}
-      <div className="flex flex-wrap gap-2 p-1.5 bg-slate-200/80 rounded-2xl border border-slate-300 w-full sm:w-max shadow-inner">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center space-x-2 ${
-              activeTab === tab.id
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-102'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-white/70'
-            }`}
-          >
-            <span>{tab.label}</span>
-          </button>
-        ))}
+      {/* ── RESPONSIVE SEGMENTED CATEGORY TABS ── */}
+      <div className="w-full bg-slate-200/80 p-1.5 rounded-2xl border border-slate-300 shadow-inner">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${isProvincialAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-2`}>
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex flex-col items-center justify-center py-2.5 px-3 rounded-xl transition-all duration-200 cursor-pointer text-center relative ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold scale-[1.01]'
+                    : 'bg-white/80 text-slate-700 hover:bg-white hover:text-slate-900 border border-slate-200/60 font-medium'
+                }`}
+              >
+                <div className="flex items-center space-x-1.5 text-xs font-black">
+                  <span>{tab.icon}</span>
+                  <span className="truncate">{tab.title}</span>
+                </div>
+                <span className={`text-[10px] mt-0.5 truncate font-medium ${isActive ? 'text-blue-100' : 'text-slate-500'}`}>
+                  {tab.subtitle}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {activeTab === 'national' && (
-        <Card>
+        <Card className="border-slate-200">
           <CardHeader 
-            title="A/L National Results (Bulk Upload)" 
-            description="Upload or enter A/L results for students. Use A, B, C, S, F for grades." 
+            title="School G.C.E. A/L Examination Results (Bulk Upload)" 
+            description="Upload or enter official A/L examination results for school candidates. Enter grades A, B, C, S, F." 
           />
           
           <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-200">
             <div className="w-full sm:w-64">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-bold text-slate-700">A/L Year</label>
+                <label className="text-xs font-bold text-slate-700">A/L Examination Year</label>
                 <button
                   type="button"
                   onClick={() => setIsCustomYear(!isCustomYear)}
@@ -579,16 +780,17 @@ const ResultsEntry = () => {
       )}
 
       {activeTab === 'term' && (
-        <Card>
+        <Card className="border-slate-200">
           <CardHeader 
-            title="Term Test Marks (Bulk Upload)" 
-            description="Upload or enter term test marks for students." 
+            title="School Term Test Marks (Bulk Upload)" 
+            description="Upload or enter term evaluation marks (1st, 2nd & 3rd Terms) by subject or combined sheet." 
           />
           
-          <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-            <div className="w-full sm:w-64">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5 mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 items-end">
+            {/* 1. A/L Cohort Year */}
+            <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-bold text-slate-700">A/L Year</label>
+                <label className="text-xs font-bold text-slate-700">A/L Cohort Year</label>
                 <button
                   type="button"
                   onClick={() => setIsCustomYear(!isCustomYear)}
@@ -611,18 +813,67 @@ const ResultsEntry = () => {
                 <Select name="year" value={bulkConfig.year} onChange={handleBulkConfigChange} options={yearOptions} />
               )}
             </div>
-            <div className="w-full sm:w-56">
+
+            {/* 2. Commerce Subject Selection */}
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Commerce Subject <span className="text-rose-500">*</span>
+              </label>
+              <Select 
+                value={selectedTermSubject} 
+                onChange={(e) => setSelectedTermSubject(e.target.value)} 
+                options={TERM_SUBJECT_OPTIONS.map(s => ({ value: s.value, label: s.label }))}
+              />
+            </div>
+
+            {/* 3. Evaluation Term */}
+            <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">Evaluation Term</label>
-              <Select name="termOrUnit" value={bulkConfig.termOrUnit} onChange={handleBulkConfigChange} options={[{value: '1', label: '1st Term Examination'}, {value: '2', label: '2nd Term Examination'}, {value: '3', label: '3rd Term Examination'}]} />
+              <Select 
+                name="termOrUnit" 
+                value={bulkConfig.termOrUnit} 
+                onChange={handleBulkConfigChange} 
+                options={[
+                  {value: '1', label: '1st Term Examination'}, 
+                  {value: '2', label: '2nd Term Examination'}, 
+                  {value: '3', label: '3rd Term Examination'}
+                ]} 
+              />
+            </div>
+          </div>
+
+          {/* Active Term Evaluation Info Card */}
+          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-slate-50 border border-blue-200/80 rounded-2xl p-4.5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center space-x-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-blue-600/25 flex-shrink-0">
+                T{bulkConfig.termOrUnit}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 bg-blue-100/80 px-2.5 py-0.5 rounded-full">
+                    {activeTermSubjectObj.shortName}
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    {bulkConfig.year} A/L Cohort Evaluation
+                  </span>
+                </div>
+                <h4 className="text-sm sm:text-base font-black text-slate-900 mt-0.5">
+                  {bulkConfig.termOrUnit === '1' ? '1st Term Examination' : bulkConfig.termOrUnit === '2' ? '2nd Term Examination' : '3rd Term Examination'} — {activeTermSubjectObj.label}
+                </h4>
+              </div>
+            </div>
+
+            <div className="inline-flex items-center space-x-1.5 text-[11px] font-bold text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs self-start sm:self-auto">
+              <span>📊 Standard Term Test (Out of 100 Marks)</span>
             </div>
           </div>
         </Card>
       )}
 
       {activeTab === 'unit' && (
-        <Card>
+        <Card className="border-slate-200">
           <CardHeader 
-            title="Unit Test Modular Marks (Bulk Upload)" 
+            title="Modular Unit Assessments (Subject Specific)" 
             description="Upload and record unit test modular assessments aligned with provincial commerce syllabus." 
             action={
               isProvincialAdmin && (
@@ -637,10 +888,11 @@ const ResultsEntry = () => {
             }
           />
 
-          <div className="flex flex-col md:flex-row gap-4 mb-5 mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-            <div className="w-full md:w-64">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5 mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 items-end">
+            {/* 1. A/L Year */}
+            <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-bold text-slate-700">A/L Year</label>
+                <label className="text-xs font-bold text-slate-700">A/L Cohort Year</label>
                 <button
                   type="button"
                   onClick={() => setIsCustomYear(!isCustomYear)}
@@ -664,7 +916,20 @@ const ResultsEntry = () => {
               )}
             </div>
 
-            <div className="flex-1">
+            {/* 2. Mandatory Subject Selection */}
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Commerce Subject <span className="text-rose-500">*</span>
+              </label>
+              <Select 
+                value={selectedUnitSubject} 
+                onChange={(e) => setSelectedUnitSubject(e.target.value)} 
+                options={UNIT_SUBJECTS.map(s => ({ value: s.value, label: s.label }))}
+              />
+            </div>
+
+            {/* 3. Unit Assessment Module */}
+            <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">Select Unit Assessment Module</label>
               <Select 
                 name="termOrUnit" 
@@ -684,7 +949,7 @@ const ResultsEntry = () => {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-100/80 px-2.5 py-0.5 rounded-full">
-                    Official Syllabus Topic
+                    {activeSubjectObj.shortName}
                   </span>
                   <span className="text-[11px] text-slate-500 font-medium">
                     Module Unit {bulkConfig.termOrUnit}
@@ -707,7 +972,7 @@ const ResultsEntry = () => {
               </Button>
             ) : (
               <div className="inline-flex items-center space-x-1.5 text-[11px] font-bold text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs self-start sm:self-auto">
-                <span>🔒 Topic Defined by Provincial Dept</span>
+                <span>🔒 Topic Configured by Provincial Education Dept</span>
               </div>
             )}
           </div>
@@ -718,7 +983,13 @@ const ResultsEntry = () => {
         <Card className="border-slate-200">
           <CardHeader 
             title="Bulk Upload CSV / Excel / PDF" 
-            description="Upload a file with student marks. Ensure columns map to the subjects."
+            description={
+              activeTab === 'unit' 
+                ? `Upload a file with student marks for ${activeSubjectObj.shortName}. Ensure marks map to ${activeSubjectObj.shortName}.`
+                : (activeTab === 'term' && selectedTermSubject !== 'all')
+                  ? `Upload a file with student marks for ${activeTermSubjectObj.shortName}. Ensure marks map to ${activeTermSubjectObj.shortName}.`
+                  : "Upload a file with student marks. Ensure columns map to the subjects."
+            }
             action={
               <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
                 Download Excel Template
@@ -740,148 +1011,343 @@ const ResultsEntry = () => {
                 </div>
                 <h3 className="text-lg font-medium text-slate-900 mb-1">Click to upload or drag and drop</h3>
                 <p className="text-sm text-slate-500 max-w-md mx-auto">
-                  Upload a .csv, .xlsx, or .pdf file containing student marks.
+                  {activeTab === 'unit' 
+                    ? `Upload a .csv, .xlsx, or .pdf containing ${activeSubjectObj.shortName} marks.`
+                    : (activeTab === 'term' && selectedTermSubject !== 'all')
+                      ? `Upload a .csv, .xlsx, or .pdf containing ${activeTermSubjectObj.shortName} marks.`
+                      : "Upload a .csv, .xlsx, or .pdf file containing student marks."}
                 </p>
               </div>
             </div>
 
             <div className="mt-8">
-              <div className="flex justify-between items-end mb-4">
-              <div>
-                <h4 className="text-md font-semibold text-slate-800">Preview & Edit Marks</h4>
-                <p className="text-xs text-slate-500">Combine School ID + Index No to uniquely identify and track each student.</p>
-              </div>
-              <button 
-                onClick={() => setParsedMarks([...parsedMarks, { id: Date.now(), indexNumber: '', name: '', gender: 'MALE', whatsapp: '', acc: '', eco: '', bs: '', it: '', zScore: '', districtRank: '', islandRank: '' }])}
-                className="text-sm font-bold text-blue-600 hover:text-blue-700"
-              >
-                + Add Empty Row
-              </button>
-            </div>
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-blue-700 uppercase">Index / Adm No <span className="text-red-500">*</span></th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Student Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Gender</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">{activeTab === 'national' ? 'Status' : 'WhatsApp'}</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Accounting</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Economics</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Biz Studies</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">IT</th>
-                    {activeTab === 'national' && (
-                      <>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Z-Score</th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Dist Rank</th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Isl Rank</th>
-                      </>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <div>
+                  <h4 className="text-md font-semibold text-slate-800">
+                    Preview & Edit Marks
+                    {activeTab === 'unit' && (
+                      <span className="ml-2 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+                        {activeSubjectObj.shortName} Only
+                      </span>
                     )}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
-                  {parsedMarks.length > 0 ? (
-                    parsedMarks.map((mark, i) => {
-                      // Calculate pass/fail for A/L
-                      let status = '';
-                      let isPass = false;
-                      if (activeTab === 'national') {
-                        const grades = [mark.acc, mark.eco, mark.bs, mark.it].map(g => (g || '').toUpperCase().trim());
-                        const passedCount = grades.filter(g => ['A', 'B', 'C', 'S'].includes(g)).length;
-                        isPass = passedCount >= 3;
-                        status = isPass ? 'PASS' : 'FAIL';
-                      }
-
-                      return (
-                      <tr key={mark.id} className="hover:bg-slate-50">
-                        <td className="p-2">
-                          <input 
-                            value={mark.indexNumber || ''} 
-                            onChange={(e) => handleMarkChange(i, 'indexNumber', e.target.value)} 
-                            placeholder="e.g. 2025/101" 
-                            className="w-28 border border-blue-200 hover:border-blue-400 focus:border-blue-600 rounded-md p-1.5 transition-all text-sm font-semibold text-blue-700 bg-blue-50/30" 
-                            type="text" 
-                          />
-                        </td>
-                        <td className="p-2"><input value={mark.name} onChange={(e) => handleMarkChange(i, 'name', e.target.value)} placeholder="Full Name" className="w-full border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-medium text-slate-700" type="text" /></td>
-                        <td className="p-2">
-                          <select value={mark.gender} onChange={(e) => handleMarkChange(i, 'gender', e.target.value)} className="w-full border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-medium text-slate-700 bg-transparent">
-                            <option value="MALE">Male</option>
-                            <option value="FEMALE">Female</option>
-                          </select>
-                        </td>
-                        <td className="p-2">
-                          {activeTab === 'national' ? (
-                            <div className={`font-bold text-sm px-2 py-1 rounded-md text-center ${isPass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                              {status}
-                            </div>
-                          ) : (
-                            <input value={mark.whatsapp} onChange={(e) => handleMarkChange(i, 'whatsapp', e.target.value)} className="w-full border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-medium text-slate-700" type="text" />
-                          )}
-                        </td>
-                        <td className="p-2"><input value={mark.acc} onChange={(e) => handleMarkChange(i, 'acc', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="text" /></td>
-                        <td className="p-2"><input value={mark.eco} onChange={(e) => handleMarkChange(i, 'eco', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="text" /></td>
-                        <td className="p-2"><input value={mark.bs} onChange={(e) => handleMarkChange(i, 'bs', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="text" /></td>
-                        <td className="p-2"><input value={mark.it} onChange={(e) => handleMarkChange(i, 'it', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="text" /></td>
-                        {activeTab === 'national' && (
-                          <>
-                            <td className="p-2"><input value={mark.zScore || ''} onChange={(e) => handleMarkChange(i, 'zScore', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="text" placeholder="0.00" /></td>
-                            <td className="p-2"><input value={mark.districtRank || ''} onChange={(e) => handleMarkChange(i, 'districtRank', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="number" placeholder="1" /></td>
-                            <td className="p-2"><input value={mark.islandRank || ''} onChange={(e) => handleMarkChange(i, 'islandRank', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="number" placeholder="10" /></td>
-                          </>
-                        )}
-                      </tr>
-                    );
-                  })
-                  ) : (
-                    <tr>
-                      <td colSpan="11" className="p-8 text-center text-slate-400 font-medium">
-                        Upload a CSV / Excel file or add an empty row to start entering marks.
-                      </td>
-                    </tr>
+                    {activeTab === 'term' && selectedTermSubject !== 'all' && (
+                      <span className="ml-2 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">
+                        {activeTermSubjectObj.shortName} Only
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-xs text-slate-500">Combine School ID + Index No to uniquely identify and track each student.</p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  {parsedMarks.length > 0 && (
+                    <button 
+                      onClick={() => setParsedMarks([])}
+                      className="text-xs font-bold text-rose-600 hover:text-rose-700 cursor-pointer"
+                    >
+                      Clear All
+                    </button>
                   )}
-                </tbody>
-              </table>
+                  <button 
+                    onClick={() => {
+                      const newRow = { 
+                        id: Date.now(), 
+                        indexNumber: '', 
+                        name: '', 
+                        gender: 'MALE', 
+                        whatsapp: '', 
+                        acc: '', 
+                        eco: '', 
+                        bs: '', 
+                        it: '', 
+                        zScore: '', 
+                        districtRank: '', 
+                        islandRank: '' 
+                      };
+                      setParsedMarks([...parsedMarks, newRow]);
+                    }}
+                    className="text-sm font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+                  >
+                    + Add Empty Row
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="min-w-full min-w-[720px] divide-y divide-slate-200">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-blue-700 uppercase">Index / Adm No <span className="text-red-500">*</span></th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Student Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Gender</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">{activeTab === 'national' ? 'Status' : 'WhatsApp'}</th>
+                      
+                      {/* For Unit Test or Single-Subject Term Test: Only render single selected subject column */}
+                      {activeTab === 'unit' ? (
+                        <th className="px-4 py-3 text-center text-xs font-black text-indigo-700 uppercase bg-indigo-50/70 border-x border-indigo-200">
+                          {activeSubjectObj.shortName} (Marks / 100)
+                        </th>
+                      ) : (activeTab === 'term' && selectedTermSubject !== 'all') ? (
+                        <th className="px-4 py-3 text-center text-xs font-black text-blue-700 uppercase bg-blue-50/70 border-x border-blue-200">
+                          {activeTermSubjectObj.shortName} (Marks / 100)
+                        </th>
+                      ) : (
+                        <>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Accounting</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Economics</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Biz Studies</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">IT</th>
+                        </>
+                      )}
+
+                      {activeTab === 'national' && (
+                        <>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Z-Score</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Dist Rank</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">Isl Rank</th>
+                        </>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {parsedMarks.length > 0 ? (
+                      parsedMarks.map((mark, i) => {
+                        // Calculate pass/fail for A/L
+                        let status = '';
+                        let isPass = false;
+                        if (activeTab === 'national') {
+                          const grades = [mark.acc, mark.eco, mark.bs, mark.it].map(g => (g || '').toUpperCase().trim());
+                          const passedCount = grades.filter(g => ['A', 'B', 'C', 'S'].includes(g)).length;
+                          isPass = passedCount >= 3;
+                          status = isPass ? 'PASS' : 'FAIL';
+                        }
+
+                        return (
+                        <tr key={mark.id} className="hover:bg-slate-50">
+                          <td className="p-2">
+                            <input 
+                              value={mark.indexNumber || ''} 
+                              onChange={(e) => handleMarkChange(i, 'indexNumber', e.target.value)} 
+                              placeholder="e.g. 2025/101" 
+                              className="w-28 border border-blue-200 hover:border-blue-400 focus:border-blue-600 rounded-md p-1.5 transition-all text-sm font-semibold text-blue-700 bg-blue-50/30" 
+                              type="text" 
+                            />
+                          </td>
+                          <td className="p-2"><input value={mark.name} onChange={(e) => handleMarkChange(i, 'name', e.target.value)} placeholder="Full Name" className="w-full border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-medium text-slate-700" type="text" /></td>
+                          <td className="p-2">
+                            <select value={mark.gender} onChange={(e) => handleMarkChange(i, 'gender', e.target.value)} className="w-full border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-medium text-slate-700 bg-transparent">
+                              <option value="MALE">Male</option>
+                              <option value="FEMALE">Female</option>
+                            </select>
+                          </td>
+                          <td className="p-2">
+                            {activeTab === 'national' ? (
+                              <div className={`font-bold text-sm px-2 py-1 rounded-md text-center ${isPass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {status}
+                              </div>
+                            ) : (
+                              <input value={mark.whatsapp} onChange={(e) => handleMarkChange(i, 'whatsapp', e.target.value)} className="w-full border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-medium text-slate-700" type="text" />
+                            )}
+                          </td>
+
+                          {/* Unit Test / Single-Subject Term Test: Single subject mark input */}
+                          {activeTab === 'unit' ? (
+                            <td className="p-2 text-center bg-indigo-50/20 border-x border-indigo-100">
+                              <input 
+                                value={mark[selectedUnitSubject] || ''} 
+                                onChange={(e) => handleMarkChange(i, selectedUnitSubject, e.target.value)} 
+                                className="w-24 border border-indigo-300 hover:border-indigo-400 focus:border-indigo-600 rounded-md p-1.5 transition-all text-sm font-black text-indigo-700 text-center mx-auto" 
+                                type="number" 
+                                min="0" 
+                                max="100" 
+                                placeholder="0 - 100" 
+                              />
+                            </td>
+                          ) : (activeTab === 'term' && selectedTermSubject !== 'all') ? (
+                            <td className="p-2 text-center bg-blue-50/20 border-x border-blue-100">
+                              <input 
+                                value={mark[selectedTermSubject] || ''} 
+                                onChange={(e) => handleMarkChange(i, selectedTermSubject, e.target.value)} 
+                                className="w-24 border border-blue-300 hover:border-blue-400 focus:border-blue-600 rounded-md p-1.5 transition-all text-sm font-black text-blue-700 text-center mx-auto" 
+                                type="number" 
+                                min="0" 
+                                max="100" 
+                                placeholder="0 - 100" 
+                              />
+                            </td>
+                          ) : (
+                            <>
+                              <td className="p-2"><input value={mark.acc} onChange={(e) => handleMarkChange(i, 'acc', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="text" /></td>
+                              <td className="p-2"><input value={mark.eco} onChange={(e) => handleMarkChange(i, 'eco', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="text" /></td>
+                              <td className="p-2"><input value={mark.bs} onChange={(e) => handleMarkChange(i, 'bs', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="text" /></td>
+                              <td className="p-2"><input value={mark.it} onChange={(e) => handleMarkChange(i, 'it', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="text" /></td>
+                            </>
+                          )}
+
+                          {activeTab === 'national' && (
+                            <>
+                              <td className="p-2"><input value={mark.zScore || ''} onChange={(e) => handleMarkChange(i, 'zScore', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="text" placeholder="0.00" /></td>
+                              <td className="p-2"><input value={mark.districtRank || ''} onChange={(e) => handleMarkChange(i, 'districtRank', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="number" placeholder="1" /></td>
+                              <td className="p-2"><input value={mark.islandRank || ''} onChange={(e) => handleMarkChange(i, 'islandRank', e.target.value)} className="w-20 border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-bold text-slate-700 text-center" type="number" placeholder="10" /></td>
+                            </>
+                          )}
+                        </tr>
+                      );
+                    })
+                    ) : (
+                      <tr>
+                        <td colSpan={(activeTab === 'unit' || (activeTab === 'term' && selectedTermSubject !== 'all')) ? 5 : (activeTab === 'national' ? 11 : 8)} className="p-8 text-center text-slate-400 font-medium">
+                          Upload a CSV / Excel file or add an empty row to start entering marks.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <Button leftIcon={Save} disabled={parsedMarks.length === 0 || isUploading} onClick={() => {
+                  if (activeTab === 'national') handleBulkSubmit('AL_RESULTS');
+                  else if (activeTab === 'term') handleBulkSubmit('TERM_TEST');
+                  else if (activeTab === 'unit') handleBulkSubmit('UNIT_TEST');
+                }}>
+                  {isUploading ? 'Saving...' : `Save ${parsedMarks.length > 0 ? parsedMarks.length : ''} Records`}
+                </Button>
+              </div>
             </div>
-            <div className="mt-6 flex justify-end">
-              <Button leftIcon={Save} disabled={parsedMarks.length === 0 || isUploading} onClick={() => {
-                if (activeTab === 'national') handleBulkSubmit('AL_RESULTS');
-                else if (activeTab === 'term') handleBulkSubmit('TERM_TEST');
-                else if (activeTab === 'unit') handleBulkSubmit('UNIT_TEST');
-              }}>
-                {isUploading ? 'Saving...' : `Save ${parsedMarks.length > 0 ? parsedMarks.length : ''} Records`}
-              </Button>
-            </div>
-          </div>
           </div>
         </Card>
       )}
 
-      {activeTab === 'national_stats' && isAdmin && (
-        <Card>
-          <CardHeader 
-            title="National Statistics (Soft Data)" 
-            description="Enter the true national level totals to be displayed on the website banner and statistics section." 
-          />
-          <div className="space-y-6">
-            <div className="flex gap-4 mb-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="w-48">
-                <Select label="Reporting Year" name="year" value={nationalStats.year} onChange={handleNatStatChange} options={yearOptions} />
+      {activeTab === 'national_stats' && isProvincialAdmin && (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader 
+              title="Provincial Aggregate Summary & Annual Benchmarks" 
+              description="Configure and record official annual benchmark totals for North Central Province & national comparisons." 
+            />
+            <div className="space-y-6 p-1">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="w-full sm:w-72">
+                  <Select 
+                    label="A/L Examination Year" 
+                    name="year" 
+                    value={nationalStats.year} 
+                    onChange={handleNatStatChange} 
+                    options={yearOptions} 
+                  />
+                </div>
+                <div className="text-xs text-slate-500 font-medium">
+                  Selecting a year automatically loads its existing recorded benchmark figures.
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <Input 
+                  label="Total Commerce Schools" 
+                  name="totalSchools" 
+                  type="number" 
+                  placeholder="e.g. 118"
+                  value={nationalStats.totalSchools} 
+                  onChange={handleNatStatChange} 
+                />
+                <Input 
+                  label="Total Commerce Students" 
+                  name="totalStudents" 
+                  type="number" 
+                  placeholder="e.g. 12540"
+                  value={nationalStats.totalStudents} 
+                  onChange={handleNatStatChange} 
+                />
+                <Input 
+                  label="Total Commerce Teachers" 
+                  name="totalTeachers" 
+                  type="number" 
+                  placeholder="e.g. 462"
+                  value={nationalStats.totalTeachers} 
+                  onChange={handleNatStatChange} 
+                />
+                <Input 
+                  label="Benchmark Pass Rate (%)" 
+                  name="passRate" 
+                  type="number" 
+                  step="0.1"
+                  placeholder="e.g. 82.4"
+                  value={nationalStats.passRate} 
+                  onChange={handleNatStatChange} 
+                />
+              </div>
+
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex justify-between items-center">
+                <span className="text-xs font-semibold text-slate-600">
+                  Target Year: <strong className="text-blue-700">{nationalStats.year} A/L</strong>
+                </span>
+                <Button leftIcon={Save} onClick={handleNatStatSubmit}>
+                  Save Benchmark Record
+                </Button>
               </div>
             </div>
+          </Card>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              <Input label="Total Commerce Schools" name="totalSchools" type="number" value={nationalStats.totalSchools} onChange={handleNatStatChange} />
-              <Input label="Total Commerce Students" name="totalStudents" type="number" value={nationalStats.totalStudents} onChange={handleNatStatChange} />
-              <Input label="Total Commerce Teachers" name="totalTeachers" type="number" value={nationalStats.totalTeachers} onChange={handleNatStatChange} />
-              <Input label="National Pass Rate (%)" name="passRate" type="number" value={nationalStats.passRate} onChange={handleNatStatChange} />
+          {/* Historical Benchmark Archive Table */}
+          <Card>
+            <CardHeader 
+              title="Official Annual Benchmarks Archive" 
+              description="Historical provincial and national aggregate statistics recorded in the database." 
+            />
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    <th className="py-3 px-4">A/L Year</th>
+                    <th className="py-3 px-4">Pass Rate (%)</th>
+                    <th className="py-3 px-4">Total Students</th>
+                    <th className="py-3 px-4">Total Teachers</th>
+                    <th className="py-3 px-4">Total Schools</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white font-medium text-slate-800">
+                  {allNationalStats.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-6 text-center text-slate-400">
+                        No benchmark data recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    [...allNationalStats]
+                      .sort((a, b) => b.year - a.year)
+                      .map((stat) => (
+                        <tr key={stat.id || stat.year} className="hover:bg-slate-50 transition-colors">
+                          <td className="py-3 px-4 font-bold text-blue-700 font-mono text-sm">
+                            {stat.year} A/L
+                          </td>
+                          <td className="py-3 px-4 font-bold text-emerald-700">
+                            {stat.passRate ? `${stat.passRate}%` : 'N/A'}
+                          </td>
+                          <td className="py-3 px-4">
+                            {stat.totalStudents ? stat.totalStudents.toLocaleString() : '-'}
+                          </td>
+                          <td className="py-3 px-4">
+                            {stat.totalTeachers ? stat.totalTeachers.toLocaleString() : '-'}
+                          </td>
+                          <td className="py-3 px-4">
+                            {stat.totalSchools ? stat.totalSchools.toLocaleString() : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => handleSelectStatRow(stat)}
+                              className="px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              Edit in Form
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
             </div>
-
-            <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 flex justify-end items-center">
-              <Button leftIcon={Save} onClick={handleNatStatSubmit}>Save National Statistics</Button>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
       )}
 
       {/* Provincial Director Modal to Configure Unit Names */}
@@ -923,21 +1389,41 @@ const ResultsEntry = () => {
                       placeholder={`Enter topic title for Unit ${unit.unitNumber}...`}
                     />
                   </div>
+                  {unitFormList.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveUnit(unit.unitNumber)}
+                      title="Remove this unit module"
+                      className="w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center font-bold text-sm cursor-pointer transition-colors"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-              <Button variant="outline" onClick={() => setIsConfiguringUnits(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleSaveUnitDefinitions}
-                disabled={isSavingUnits}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+            <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={handleAddNewUnit}
+                className="px-3.5 py-2 text-xs font-black text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-200 cursor-pointer transition-all flex items-center gap-1.5"
               >
-                {isSavingUnits ? 'Saving Syllabus...' : 'Save Official Unit Names'}
-              </Button>
+                <span>➕ Add New Unit Module</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setIsConfiguringUnits(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSaveUnitDefinitions}
+                  disabled={isSavingUnits}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                >
+                  {isSavingUnits ? 'Saving Syllabus...' : 'Save Official Unit Names'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

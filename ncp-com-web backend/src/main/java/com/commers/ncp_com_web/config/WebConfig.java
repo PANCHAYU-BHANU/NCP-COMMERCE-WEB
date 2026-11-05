@@ -12,11 +12,18 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        Path uploadDir = Paths.get("uploads");
-        String uploadPath = uploadDir.toFile().getAbsolutePath();
-        
+        Path uploadDir = Paths.get("uploads").toAbsolutePath().normalize();
+        try {
+            java.nio.file.Files.createDirectories(uploadDir);
+        } catch (Exception ignored) {}
+
+        String uploadUri = uploadDir.toUri().toString();
+        if (!uploadUri.endsWith("/")) {
+            uploadUri += "/";
+        }
+
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:/" + uploadPath + "/");
+                .addResourceLocations(uploadUri);
     }
 
     @org.springframework.context.annotation.Bean

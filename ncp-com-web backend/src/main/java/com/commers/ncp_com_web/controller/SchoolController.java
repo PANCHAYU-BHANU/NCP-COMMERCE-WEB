@@ -11,6 +11,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -106,9 +110,39 @@ public class SchoolController {
         return ResponseEntity.ok(studentCountRepository.findBySchoolId(schoolId));
     }
 
+    private int getLatestNationalResultYear() {
+        Integer maxNatYear = alNationalResultRepository.findMaxYear();
+        Integer maxStudentNatYear = studentAlResultRepository.findMaxYear();
+        int y1 = (maxNatYear != null) ? maxNatYear : 0;
+        int y2 = (maxStudentNatYear != null) ? maxStudentNatYear : 0;
+        return Math.max(y1, y2);
+    }
+
+    private List<Student> filterActiveStudents(List<Student> students) {
+        if (students == null || students.isEmpty()) return Collections.emptyList();
+        int latestAlYear = getLatestNationalResultYear();
+        if (latestAlYear == 0) {
+            return students;
+        }
+
+        List<Long> graduatedIdsList = studentAlResultRepository.findStudentIdsWithAlResultsUpToYear(latestAlYear);
+        Set<Long> graduatedIds = new HashSet<>(graduatedIdsList != null ? graduatedIdsList : Collections.emptyList());
+
+        return students.stream().filter(s -> {
+            if (s.getId() != null && graduatedIds.contains(s.getId())) {
+                return false;
+            }
+            if (s.getAlYear() != null && s.getAlYear() <= latestAlYear) {
+                return false;
+            }
+            return true;
+        }).collect(Collectors.toList());
+    }
+
     @GetMapping("/{schoolId}/students")
     public ResponseEntity<?> getStudentsBySchool(@PathVariable Long schoolId) {
-        List<Student> students = studentRepository.findBySchoolId(schoolId);
+        List<Student> allStudents = studentRepository.findBySchoolId(schoolId);
+        List<Student> students = filterActiveStudents(allStudents);
         List<Map<String, Object>> result = new ArrayList<>();
         for (Student s : students) {
             Map<String, Object> map = new HashMap<>();
@@ -118,6 +152,7 @@ public class SchoolController {
             map.put("grade", s.getGrade());
             map.put("gender", s.getGender());
             map.put("whatsappNumber", s.getWhatsappNumber());
+            map.put("alYear", s.getAlYear());
             result.add(map);
         }
         return ResponseEntity.ok(result);
@@ -125,7 +160,8 @@ public class SchoolController {
 
     @GetMapping("/{schoolId}/student-summary")
     public ResponseEntity<?> getStudentSummary(@PathVariable Long schoolId) {
-        List<Student> students = studentRepository.findBySchoolId(schoolId);
+        List<Student> allStudents = studentRepository.findBySchoolId(schoolId);
+        List<Student> students = filterActiveStudents(allStudents);
         long total = students.size();
         long boys = students.stream().filter(s -> "MALE".equalsIgnoreCase(s.getGender()) || "M".equalsIgnoreCase(s.getGender())).count();
         long girls = students.stream().filter(s -> "FEMALE".equalsIgnoreCase(s.getGender()) || "F".equalsIgnoreCase(s.getGender())).count();
@@ -141,6 +177,7 @@ public class SchoolController {
         summary.put("grade12", gr12);
         summary.put("grade13", gr13);
         summary.put("totalTeachers", teacherCount);
+        summary.put("activeYear", (getLatestNationalResultYear() > 0 ? getLatestNationalResultYear() + 1 : java.time.Year.now().getValue()));
         return ResponseEntity.ok(summary);
     }
 
@@ -248,6 +285,7 @@ public class SchoolController {
             // Update gender and whatsapp if provided
             if (row.getGender() != null && !row.getGender().isEmpty()) student.setGender(row.getGender().toUpperCase());
             if (row.getWhatsapp() != null && !row.getWhatsapp().isEmpty()) student.setWhatsappNumber(row.getWhatsapp());
+            if (payload.getYear() != null) student.setAlYear(payload.getYear());
             student = studentRepository.save(student);
             
             // Save marks based on type
@@ -294,7 +332,8 @@ public class SchoolController {
 
     private void syncStudentCountsForSchool(School school) {
         try {
-            List<Student> students = studentRepository.findBySchoolId(school.getId());
+            List<Student> allStudents = studentRepository.findBySchoolId(school.getId());
+            List<Student> students = filterActiveStudents(allStudents);
             if (students.isEmpty()) return;
             
             long m12 = students.stream().filter(s -> (s.getGrade() != null && s.getGrade() == 12) && ("MALE".equalsIgnoreCase(s.getGender()) || "M".equalsIgnoreCase(s.getGender()))).count();

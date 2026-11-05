@@ -23,6 +23,9 @@ public class Student {
     @Column(nullable = false)
     private Integer grade;
 
+    @Column(name = "al_year", nullable = true)
+    private Integer alYear;
+
     @Column(nullable = true) // Keeping true initially to avoid breaking existing entries
     private String gender; // MALE, FEMALE
 

@@ -17,6 +17,12 @@ public interface StudentAlResultRepository extends JpaRepository<StudentAlResult
     @Query("SELECT DISTINCT r.year FROM StudentAlResult r WHERE r.year IS NOT NULL ORDER BY r.year DESC")
     List<Integer> findDistinctYears();
 
+    @Query("SELECT MAX(r.year) FROM StudentAlResult r")
+    Integer findMaxYear();
+
+    @Query("SELECT DISTINCT r.student.id FROM StudentAlResult r WHERE r.year <= :year")
+    List<Long> findStudentIdsWithAlResultsUpToYear(@Param("year") Integer year);
+
     @Query(value = "SELECT COUNT(DISTINCT student_id) FROM student_al_results WHERE exam_year = :year", nativeQuery = true)
     Long countTotalSatByYear(@Param("year") Integer year);
 

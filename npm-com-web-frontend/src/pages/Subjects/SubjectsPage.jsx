@@ -1,13 +1,68 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BookOpen, Calculator, TrendingUp, Cpu, Briefcase, FileDown, BarChart3, CheckCircle2, Award, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calculator, TrendingUp, Cpu, Briefcase, FileDown, BarChart3, CheckCircle2, Award, Sparkles, Layers } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import QuickAnalyticsModal from '../../components/QuickAnalyticsModal';
+
+const getSubjectVisuals = (name = '', code = '', idx = 0) => {
+  const lower = name.toLowerCase();
+  if (lower.includes('account')) {
+    return {
+      icon: Calculator,
+      color: 'from-blue-600 to-indigo-700',
+      image: '/slide_1.png'
+    };
+  }
+  if (lower.includes('business')) {
+    return {
+      icon: Briefcase,
+      color: 'from-emerald-600 to-teal-700',
+      image: '/commerce_students.jpg'
+    };
+  }
+  if (lower.includes('econom')) {
+    return {
+      icon: TrendingUp,
+      color: 'from-violet-600 to-purple-700',
+      image: '/slide_2.png'
+    };
+  }
+  if (lower.includes('ict') || lower.includes('inform') || lower.includes('technol')) {
+    return {
+      icon: Cpu,
+      color: 'from-cyan-600 to-blue-700',
+      image: '/slide_3.png'
+    };
+  }
+  if (lower.includes('entrepr')) {
+    return {
+      icon: Sparkles,
+      color: 'from-amber-600 to-orange-700',
+      image: '/anuradhapura.png'
+    };
+  }
+  const gradients = [
+    'from-blue-600 to-indigo-700',
+    'from-emerald-600 to-teal-700',
+    'from-purple-600 to-pink-700',
+    'from-amber-600 to-orange-700',
+    'from-cyan-600 to-blue-700'
+  ];
+  const images = ['/slide_1.png', '/slide_2.png', '/slide_3.png', '/commerce_students.jpg'];
+  return {
+    icon: BookOpen,
+    color: gradients[idx % gradients.length],
+    image: images[idx % images.length]
+  };
+};
 
 const SubjectsPage = () => {
   const { lang } = useLanguage();
   const [activeTab, setActiveTab] = useState('al');
+  const [dbSubjects, setDbSubjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
     title: '',
@@ -18,133 +73,46 @@ const SubjectsPage = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    fetchSubjects();
   }, []);
 
-  const alSubjects = [
-    {
-      code: '21',
-      nameEn: 'Accounting',
-      nameSi: 'ගිණුම්කරණය',
-      nameTa: 'கணக்கியல்',
-      image: '/slide_1.png',
-      icon: Calculator,
-      color: 'from-blue-600 to-indigo-700',
-      tagColor: 'bg-blue-50 text-blue-700 border-blue-200',
-      descriptionEn: 'Core financial accounting principles, partnership accounts, manufacturing accounts, company accounting, auditing, and financial statement analysis.',
-      descriptionSi: 'මූල්‍ය ගිණුම්කරණ මූලධර්ම, හවුල් ව්‍යාපාර, නිෂ්පාදන ගිණුම්, සමාගම් ගිණුම්, විගණනය සහ මූල්‍ය ප්‍රකාශන විශ්ලේෂණය පිළිබඳ පූර්ණ න්‍යායාත්මක හා ප්‍රායෝගික අධ්‍යයනය.',
-      modules: ['Financial Statements', 'Cost & Management Accounting', 'Company Law & Auditing', 'Ratios & Interpretation'],
-      modulesSi: ['මූල්‍ය ප්‍රකාශන සැකසීම', 'පිරිවැය හා කළමනාකරණ ගිණුම්කරණය', 'සමාගම් හා විගණන ප්‍රමිතීන්', 'මූල්‍ය අනුපාත විශ්ලේෂණය']
-    },
-    {
-      code: '22',
-      nameEn: 'Business Studies',
-      nameSi: 'ව්‍යාපාර අධ්‍යයනය',
-      nameTa: 'வணிகக் கல்வி',
-      image: '/commerce_students.jpg',
-      icon: Briefcase,
-      color: 'from-emerald-600 to-teal-700',
-      tagColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      descriptionEn: 'Business environment, commercial law, marketing management, human resources, operations, and modern entrepreneurship dynamics in Sri Lanka.',
-      descriptionSi: 'ව්‍යාපාර පරිසරය, වාණිජ නීතිය, අලෙවිකරණ කළමනාකරණය, මානව සම්පත්, මෙහෙයුම් සහ ශ්‍රී ලංකාවේ නූතන ව්‍යවසායකත්ව ප්‍රවණතා පිළිබඳ හැදෑරීම.',
-      modules: ['Business Environment', 'Marketing & Sales', 'Human Resource Mgmt', 'Banking & Insurance'],
-      modulesSi: ['ව්‍යාපාර පරිසරය හා නීතිය', 'අලෙවිකරණ කළමනාකරණය', 'මානව සම්පත් කළමනාකරණය', 'බැංකු හා රක්ෂණ සේවා']
-    },
-    {
-      code: '23',
-      nameEn: 'Economics',
-      nameSi: 'ආර්ථික විද්‍යාව',
-      nameTa: 'பொருளாதாரம்',
-      image: '/slide_2.png',
-      icon: TrendingUp,
-      color: 'from-violet-600 to-purple-700',
-      tagColor: 'bg-violet-50 text-violet-700 border-violet-200',
-      descriptionEn: 'Microeconomic theory, price mechanism, market structures, macroeconomic stability, fiscal and monetary policies, and international trade in Sri Lanka.',
-      descriptionSi: 'ක්ෂුද්‍ර ආර්ථික විද්‍යාව, මිල යාන්ත්‍රණය, වෙළඳපල ව්‍යුහයන්, සාර්ව ආර්ථික ස්ථාවරත්වය, රාජ්‍ය මූල්‍ය හා මූල්‍ය ප්‍රතිපත්ති සහ ජාත්‍යන්තර වෙළඳාම.',
-      modules: ['Price Mechanism', 'National Income Accounting', 'Fiscal & Monetary Policy', 'International Trade'],
-      modulesSi: ['මිල යාන්ත්‍රණය හා ඉල්ලුම/සැපයුම', 'ජාතික ආදායම් ගිණුම්කරණය', 'මූල්‍ය හා රාජ්‍ය මූල්‍ය ප්‍රතිපත්ති', 'ජාත්‍යන්තර වෙළඳාම හා විදේශ විනිමය']
-    },
-    {
-      code: '43',
-      nameEn: 'Information & Communication Technology',
-      nameSi: 'තොරතුරු හා සන්නිවේදන තාක්ෂණය (ICT)',
-      nameTa: 'தகவல் தொடர்பாடல் தொழில்நுட்பம்',
-      image: '/slide_3.png',
-      icon: Cpu,
-      color: 'from-cyan-600 to-blue-700',
-      tagColor: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-      descriptionEn: 'Database management systems, Python programming, computer networking, systems analysis, e-commerce, and business automation technologies.',
-      descriptionSi: 'දත්ත සමුදාය කළමනාකරණය (DBMS), පයිතන් ක්‍රමලේඛනය, ජාලකරණය, පද්ධති විශ්ලේෂණය, ඊ-වාණිජ්‍යය සහ ව්‍යාපාරික ස්වයංක්‍රීයකරණය.',
-      modules: ['Database Systems (SQL)', 'Python Programming', 'Networking & Cloud', 'Web Technologies'],
-      modulesSi: ['දත්ත සමුදාය පද්ධති (SQL)', 'පයිතන් ක්‍රමලේඛනය', 'පරිගණක ජාලකරණය', 'වෙබ් තාක්ෂණය හා ඊ-වාණිජ්‍යය']
-    },
-    {
-      code: '24',
-      nameEn: 'Entrepreneurship Studies',
-      nameSi: 'ව්‍යවසායකත්ව අධ්‍යයනය',
-      nameTa: 'தொழில்முயற்சி கல்வி',
-      image: '/anuradhapura.png',
-      icon: Sparkles,
-      color: 'from-amber-600 to-orange-700',
-      tagColor: 'bg-amber-50 text-amber-700 border-amber-200',
-      descriptionEn: 'Ideation, startup launch, project formulation, venture capital, financial management for SME enterprises, and sustainable innovation.',
-      descriptionSi: 'ව්‍යාපාර අදහස් උත්පාදනය, ආරම්භක ව්‍යාපාර බිහිකිරීම, ව්‍යාපෘති වාර්තාකරණය, සුළු හා මධ්‍ය පරිමාණ මූල්‍යකරණය සහ තිරසර නවෝත්පාදනය.',
-      modules: ['Business Ideation', 'Business Plan Formulation', 'SME Financial Management', 'Innovation & Growth'],
-      modulesSi: ['ව්‍යාපාර සංකල්ප උත්පාදනය', 'ව්‍යාපාර සැලසුම් සැකසීම', 'සුළු හා මධ්‍ය පරිමාණ මූල්‍යකරණය', 'නවෝත්පාදනය හා ව්‍යාප්තිය']
+  const fetchSubjects = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('http://localhost:8080/api/public/subjects');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setDbSubjects(data);
+      }
+    } catch (err) {
+      console.warn('Failed to load subjects from backend:', err);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const olSubjects = [
-    {
-      code: '60',
-      nameEn: 'Commerce & Accounting Studies',
-      nameSi: 'වාණිජ හා ගිණුම්කරණ අධ්‍යයනය',
-      nameTa: 'வணிகமும் கணக்கீட்டுக் கல்வியும்',
-      image: '/slide_1.png',
-      icon: Calculator,
-      color: 'from-blue-600 to-cyan-700',
-      tagColor: 'bg-blue-50 text-blue-700 border-blue-200',
-      descriptionEn: 'Foundational commerce concepts for Grades 10 & 11, double-entry bookkeeping, trial balance, simple financial statements, and consumer awareness.',
-      descriptionSi: '10 සහ 11 ශ්‍රේණි සඳහා වාණිජ මූලික සංකල්ප, ද්විත්ව සටහන් ක්‍රමය, ශේෂ පිරික්සුම, සරල මූල්‍ය ප්‍රකාශන, බැංකු සේවා සහ පාරිභෝගික අයිතිවාසිකම්.',
-      modules: ['Double Entry Bookkeeping', 'Cash Book & Petty Cash', 'Final Accounts of Sole Trader', 'Trade & Communication'],
-      modulesSi: ['ද්විත්ව සටහන් ක්‍රමය', 'මුදල් පොත හා සුළු මුදල් පොත', 'තනි පුද්ගල ව්‍යාපාරික අවසන් ගිණුම්', 'වෙළඳාම හා සන්නිවේදනය']
-    },
-    {
-      code: '61',
-      nameEn: 'Entrepreneurship Studies (O/L)',
-      nameSi: 'ව්‍යවසායකත්ව අධ්‍යයනය (සාමාන්‍ය පෙළ)',
-      nameTa: 'தொழில்முயற்சி (சா/த)',
-      image: '/slide_3.png',
-      icon: Briefcase,
-      color: 'from-teal-600 to-emerald-700',
-      tagColor: 'bg-teal-50 text-teal-700 border-teal-200',
-      descriptionEn: 'Introduction to entrepreneurial qualities, personal skills, small project design, and basic marketing for junior secondary learners.',
-      descriptionSi: 'කනිෂ්ඨ ද්විතීයික සිසුන් සඳහා ව්‍යවසායකත්ව ගුණාංග, පුද්ගල කුසලතා, සරල නිෂ්පාදන ක්‍රියාවලීන් සහ වෙළඳපල හඳුනාගැනීම.',
-      modules: ['Entrepreneurial Qualities', 'Small Projects', 'Production Planning', 'Basic Costing'],
-      modulesSi: ['ව්‍යවසායකත්ව ගුණාංග', 'කුඩා ව්‍යාපෘති සැලසුම්', 'නිෂ්පාදන සැලසුම්කරණය', 'සරල පිරිවැයකරණය']
-    }
-  ];
+  const isAL = (s) => (s?.type || '').toUpperCase().includes('AL') || (s?.type || '').toUpperCase() === 'A/L';
+  const isOL = (s) => (s?.type || '').toUpperCase().includes('OL') || (s?.type || '').toUpperCase() === 'O/L';
 
+  const alSubjects = dbSubjects.filter(isAL);
+  const olSubjects = dbSubjects.filter(isOL);
   const currentSubjects = activeTab === 'al' ? alSubjects : olSubjects;
 
   return (
-    <div className="min-h-screen bg-slate-100/60 pb-20">
-      
-      {/* ── 1. PRESTIGIOUS HERO BANNER WITH REAL EDUCATIONAL IMAGE ── */}
-      <section className="relative overflow-hidden bg-slate-950 text-white min-h-[340px] sm:min-h-[380px] flex items-center">
-        {/* Background Landmark Image */}
+    <div className="min-h-screen bg-slate-100/60 pb-24">
+      {/* ── 1. PRESTIGIOUS HERO BANNER ── */}
+      <section className="relative overflow-hidden bg-slate-950 text-white min-h-[380px] flex items-center">
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-35 scale-105"
-          style={{ backgroundImage: `url(/commerce_students.jpg)` }}
+          className="absolute inset-0 bg-cover bg-center opacity-30 scale-105"
+          style={{ backgroundImage: `url('/commerce_students.jpg')` }}
         />
-
-        {/* Ambient Dark Gradient Overlays */}
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/90 to-slate-950/80" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 py-12 sm:py-16 w-full">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 py-12 w-full">
           <Link
             to="/"
-            className="inline-flex items-center text-blue-300 hover:text-white mb-6 transition-colors text-xs font-bold uppercase tracking-wider bg-white/10 hover:bg-white/20 border border-white/15 px-4 py-1.5 rounded-full backdrop-blur-md"
+            className="inline-flex items-center text-blue-300 hover:text-white transition-colors text-xs font-bold uppercase tracking-wider bg-white/10 hover:bg-white/20 border border-white/15 px-4 py-1.5 rounded-full backdrop-blur-md mb-6"
           >
             <ArrowLeft className="w-4 h-4 mr-1.5" />
             <span>{lang === 'si' ? 'මුල් පිටුවට' : 'Back to Home'}</span>
@@ -170,36 +138,40 @@ const SubjectsPage = () => {
             <div className="flex bg-slate-900/90 backdrop-blur-md p-1.5 rounded-2xl border border-white/15 shadow-2xl flex-shrink-0">
               <button
                 onClick={() => setActiveTab('al')}
-                className={`px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+                className={`px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
                   activeTab === 'al'
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
-                {lang === 'si' ? 'උසස් පෙළ (A/L)' : 'G.C.E. A/L Stream'}
+                {lang === 'si' ? `උසස් පෙළ (A/L) [${alSubjects.length}]` : `G.C.E. A/L Stream (${alSubjects.length})`}
               </button>
               <button
                 onClick={() => setActiveTab('ol')}
-                className={`px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+                className={`px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
                   activeTab === 'ol'
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
-                {lang === 'si' ? 'සාමාන්‍ය පෙළ (O/L)' : 'G.C.E. O/L Stream'}
+                {lang === 'si' ? `සාමාන්‍ය පෙළ (O/L) [${olSubjects.length}]` : `G.C.E. O/L Stream (${olSubjects.length})`}
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── 2. SUBJECT CARDS GRID (ZERO CUTOFF, RICH PHOTOS & MODULES!) ── */}
+      {/* ── 2. DYNAMIC SUBJECT CARDS GRID ── */}
       <div className="max-w-7xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8 pb-3 border-b border-slate-200">
           <div>
             <h2 className="text-2xl font-black text-slate-900 flex items-center space-x-2">
               <BookOpen className="w-6 h-6 text-blue-600" />
-              <span>{activeTab === 'al' ? (lang === 'si' ? 'උසස් පෙළ විෂයයන්' : 'G.C.E. A/L Subject Disciplines') : (lang === 'si' ? 'සාමාන්‍ය පෙළ විෂයයන්' : 'G.C.E. O/L Subject Disciplines')}</span>
+              <span>
+                {activeTab === 'al'
+                  ? (lang === 'si' ? `උසස් පෙළ විෂයයන් (${alSubjects.length})` : `G.C.E. A/L Subject Disciplines (${alSubjects.length})`)
+                  : (lang === 'si' ? `සාමාන්‍ය පෙළ විෂයයන් (${olSubjects.length})` : `G.C.E. O/L Subject Disciplines (${olSubjects.length})`)}
+              </span>
             </h2>
             <p className="text-xs text-slate-500 mt-1">
               {lang === 'si' ? 'විෂය ඒකක, පසුගිය ප්‍රශ්න පත්‍ර සහ විභාග විශ්ලේෂණ පහතින් ලබාගන්න.' : 'Select any subject to explore syllabus modules, past examination papers, and analytics.'}
@@ -207,98 +179,136 @@ const SubjectsPage = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {currentSubjects.map((sub, idx) => {
-            const Icon = sub.icon;
-            return (
-              <motion.div
-                key={sub.code}
-                whileHover={{ y: -6, scale: 1.01 }}
-                className="bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-2xl border border-slate-200/80 hover:border-blue-500 transition-all duration-300 flex flex-col justify-between group"
-              >
-                {/* Photo Header */}
-                <div className="relative h-44 overflow-hidden bg-slate-900">
-                  <img
-                    src={sub.image}
-                    alt={sub.nameEn}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent" />
-                  
-                  {/* Top Bar: Icon + Code Badge */}
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                    <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${sub.color} text-white flex items-center justify-center shadow-lg`}>
-                      <Icon className="w-6 h-6" />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-white border border-white/20 shadow-md">
-                      Subject Code {sub.code}
-                    </span>
-                  </div>
+        {loading ? (
+          <div className="py-20 text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent" />
+            <p className="text-xs font-bold text-slate-500 mt-3">Loading curriculum directory...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {currentSubjects.map((sub, idx) => {
+              const visuals = getSubjectVisuals(sub.name, sub.code, idx);
+              const Icon = visuals.icon;
+              const cardImage = sub.imageUrl || visuals.image;
+              const cardColor = sub.color || visuals.color;
 
-                  {/* Title in Header */}
-                  <div className="absolute bottom-3 left-4 right-4">
-                    <h3 className="text-2xl font-black text-white drop-shadow-md">
-                      {lang === 'si' ? sub.nameSi : sub.nameEn}
-                    </h3>
-                    <p className="text-teal-300 text-xs font-bold drop-shadow">
-                      {lang === 'si' ? sub.nameEn : sub.nameSi}
-                    </p>
-                  </div>
-                </div>
+              const moduleList = sub.modules
+                ? (typeof sub.modules === 'string' ? sub.modules.split(',').map(m => m.trim()).filter(Boolean) : sub.modules)
+                : [];
+              const moduleListSi = sub.modulesSi
+                ? (typeof sub.modulesSi === 'string' ? sub.modulesSi.split(',').map(m => m.trim()).filter(Boolean) : sub.modulesSi)
+                : moduleList;
 
-                {/* Card Body */}
-                <div className="p-6 flex-1 flex flex-col justify-between">
-                  <div>
-                    {/* Description */}
-                    <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mb-6 font-medium">
-                      {lang === 'si' ? sub.descriptionSi : sub.descriptionEn}
-                    </p>
+              const displayModules = (lang === 'si' && moduleListSi.length > 0) ? moduleListSi : moduleList;
+              const displayName = lang === 'si' ? (sub.nameSi || sub.name) : sub.name;
+              const displaySubName = lang === 'si' ? sub.name : (sub.nameSi || sub.nameTa || '');
+              const displayDescription = lang === 'si' ? (sub.descriptionSi || sub.description) : (sub.description || sub.descriptionSi);
 
-                    {/* Core Competencies / Modules */}
-                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-6">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block mb-2.5">
-                        {lang === 'si' ? 'ප්‍රධාන නිපුණතා හා විෂය ඒකක' : 'Key Syllabus Modules'}
-                      </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {(lang === 'si' ? sub.modulesSi : sub.modules).map((mod, mIdx) => (
-                          <div key={mIdx} className="flex items-center space-x-2 text-xs font-semibold text-slate-700">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                            <span className="truncate">{mod}</span>
-                          </div>
-                        ))}
+              return (
+                <motion.div
+                  key={sub.id || sub.code || idx}
+                  whileHover={{ y: -6, scale: 1.01 }}
+                  className="bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-2xl border border-slate-200/80 hover:border-blue-500 transition-all duration-300 flex flex-col justify-between group"
+                >
+                  {/* Photo Header */}
+                  <div className="relative h-44 overflow-hidden bg-slate-900">
+                    <img
+                      src={cardImage}
+                      alt={sub.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      onError={(e) => { e.target.src = '/slide_1.png'; }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent" />
+
+                    {/* Top Bar: Icon + Code Badge */}
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                      <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${cardColor} text-white flex items-center justify-center shadow-lg`}>
+                        <Icon className="w-6 h-6" />
                       </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-white border border-white/20 shadow-md">
+                        {sub.code ? `Subject Code ${sub.code}` : `Level: ${sub.type}`}
+                      </span>
+                    </div>
+
+                    {/* Title in Header */}
+                    <div className="absolute bottom-3 left-4 right-4">
+                      <h3 className="text-2xl font-black text-white drop-shadow-md">
+                        {displayName}
+                      </h3>
+                      {displaySubName && (
+                        <p className="text-teal-300 text-xs font-bold drop-shadow">
+                          {displaySubName}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* Bottom Action CTAs with Context-Aware Filtering */}
-                  <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                    <Link
-                      to={`/downloads?subject=${encodeURIComponent(sub.nameEn)}&code=${sub.code}&level=${activeTab}`}
-                      className="inline-flex items-center space-x-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100/80 px-4 py-2.5 rounded-xl transition-all"
-                    >
-                      <FileDown className="w-3.5 h-3.5" />
-                      <span>{lang === 'si' ? 'ප්‍රශ්න පත්‍ර බාගත කරන්න' : 'Download Papers'}</span>
-                    </Link>
+                  {/* Card Body */}
+                  <div className="p-6 flex-1 flex flex-col justify-between">
+                    <div>
+                      {/* Description */}
+                      <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mb-6 font-medium">
+                        {displayDescription || (lang === 'si' ? 'විෂය මාලා විස්තර ඉක්මනින් එක් කරනු ලැබේ.' : 'Curriculum overview for this accredited discipline.')}
+                      </p>
 
-                    <button
-                      onClick={() => setModalConfig({
-                        isOpen: true,
-                        title: `${lang === 'si' ? sub.nameSi : sub.nameEn} Analytics`,
-                        subtitle: `G.C.E. A/L Commerce Stream • Subject Code: ${sub.code}`,
-                        subjectId: sub.code,
-                        year: '2025'
-                      })}
-                      className="inline-flex items-center space-x-1.5 text-xs font-black text-slate-700 hover:text-white bg-slate-100 hover:bg-blue-600 px-4 py-2.5 rounded-xl transition-all shadow-xs cursor-pointer"
-                    >
-                      <BarChart3 className="w-3.5 h-3.5" />
-                      <span>{lang === 'si' ? 'ක්ෂණික ප්‍රතිඵල (Analytics)' : 'Instant Analytics'}</span>
-                    </button>
+                      {/* Core Competencies / Modules */}
+                      {displayModules.length > 0 && (
+                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-6">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block mb-2.5">
+                            {lang === 'si' ? 'ප්‍රධාන නිපුණතා හා විෂය ඒකක' : 'Key Syllabus Modules'}
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {displayModules.map((mod, mIdx) => (
+                              <div key={mIdx} className="flex items-center space-x-2 text-xs font-semibold text-slate-700">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                                <span className="truncate">{mod}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Action CTAs */}
+                    <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                      <Link
+                        to={`/downloads?subject=${encodeURIComponent(sub.name)}&code=${sub.code || ''}&level=${activeTab}`}
+                        className="inline-flex items-center space-x-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100/80 px-4 py-2.5 rounded-xl transition-all"
+                      >
+                        <FileDown className="w-3.5 h-3.5" />
+                        <span>{lang === 'si' ? 'ප්‍රශ්න පත්‍ර බාගත කරන්න' : 'Download Papers'}</span>
+                      </Link>
+
+                      <button
+                        onClick={() => setModalConfig({
+                          isOpen: true,
+                          title: `${displayName} Analytics`,
+                          subtitle: `G.C.E. ${sub.type} Commerce Stream • Subject Code: ${sub.code || sub.name}`,
+                          subjectId: sub.id || sub.code,
+                          year: '2025'
+                        })}
+                        className="inline-flex items-center space-x-1.5 text-xs font-black text-slate-700 hover:text-white bg-slate-100 hover:bg-blue-600 px-4 py-2.5 rounded-xl transition-all shadow-xs cursor-pointer"
+                      >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        <span>{lang === 'si' ? 'ක්ෂණික ප්‍රතිඵල (Analytics)' : 'Instant Analytics'}</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+                </motion.div>
+              );
+            })}
+
+            {currentSubjects.length === 0 && (
+              <div className="col-span-2 py-16 text-center bg-white rounded-3xl border border-slate-200">
+                <BookOpen size={36} className="mx-auto text-slate-300 mb-3" />
+                <h3 className="text-base font-black text-slate-800">No subjects currently registered in this stream</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                  Accredited subjects added by the Provincial Directorate will automatically show up here.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Quick Analytics Popup Modal for Selected Subject */}

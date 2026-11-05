@@ -28,4 +28,10 @@ public interface AlNationalResultRepository extends JpaRepository<AlNationalResu
 
     @Query("SELECT AVG(a.passPercentage) FROM AlNationalResult a WHERE a.year = :year AND a.school.division.zone.district.province.id = :provinceId")
     Double getAveragePassPercentageByYearAndProvince(@Param("year") Integer year, @Param("provinceId") Long provinceId);
+
+    @Query("SELECT DISTINCT a.year FROM AlNationalResult a WHERE a.year IS NOT NULL ORDER BY a.year DESC")
+    List<Integer> findDistinctYears();
+
+    @Query("SELECT MAX(a.year) FROM AlNationalResult a")
+    Integer findMaxYear();
 }

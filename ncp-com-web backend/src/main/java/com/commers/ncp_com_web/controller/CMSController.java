@@ -8,6 +8,7 @@ import com.commers.ncp_com_web.repository.MediaGalleryRepository;
 import com.commers.ncp_com_web.repository.NewsRepository;
 import com.commers.ncp_com_web.repository.EventRepository;
 import com.commers.ncp_com_web.repository.CommitteeMemberRepository;
+import com.commers.ncp_com_web.repository.CommitteeMessageRepository;
 import com.commers.ncp_com_web.repository.ZoneRepository;
 import com.commers.ncp_com_web.repository.CommitteeRepository;
 import com.commers.ncp_com_web.repository.UserRepository;
@@ -45,6 +46,9 @@ public class CMSController {
 
     @Autowired
     private CommitteeMemberRepository committeeMemberRepository;
+
+    @Autowired
+    private CommitteeMessageRepository committeeMessageRepository;
 
     @Autowired
     private CommitteeRepository committeeRepository;
@@ -221,10 +225,10 @@ public class CMSController {
         return ResponseEntity.ok(new MessageResponse("Event deleted successfully!"));
     }
 
-    // --- Committee Endpoints ---
+    // --- Committee Endpoints (Restricted to Provincial Director & Admin) ---
     
     @PostMapping("/committees")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('PROVINCIAL_DIRECTOR') or hasRole('ZONAL_DIRECTOR') or hasRole('DIVISIONAL_DIRECTOR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PROVINCIAL_DIRECTOR')")
     public ResponseEntity<?> createCommittee(
             @RequestParam("name") String name,
             @RequestParam("type") String type,
@@ -248,9 +252,10 @@ public class CMSController {
     }
 
     @DeleteMapping("/committees/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('PROVINCIAL_DIRECTOR') or hasRole('ZONAL_DIRECTOR') or hasRole('DIVISIONAL_DIRECTOR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PROVINCIAL_DIRECTOR')")
     public ResponseEntity<?> deleteCommittee(@PathVariable Long id) {
-        // Also delete members if cascade isn't setup
+        // Also delete messages and members
+        committeeMessageRepository.deleteByCommitteeId(id);
         List<CommitteeMember> members = committeeMemberRepository.findByCommitteeId(id);
         committeeMemberRepository.deleteAll(members);
         committeeRepository.deleteById(id);
@@ -258,7 +263,7 @@ public class CMSController {
     }
 
     @PostMapping("/committees/{committeeId}/members")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('PROVINCIAL_DIRECTOR') or hasRole('ZONAL_DIRECTOR') or hasRole('DIVISIONAL_DIRECTOR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PROVINCIAL_DIRECTOR')")
     public ResponseEntity<?> addCommitteeMember(
             @PathVariable Long committeeId,
             @RequestParam("userId") Long userId,
@@ -283,7 +288,7 @@ public class CMSController {
     }
 
     @DeleteMapping("/committees/members/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('PROVINCIAL_DIRECTOR') or hasRole('ZONAL_DIRECTOR') or hasRole('DIVISIONAL_DIRECTOR')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PROVINCIAL_DIRECTOR')")
     public ResponseEntity<?> deleteCommitteeMember(@PathVariable Long id) {
         committeeMemberRepository.deleteById(id);
         return ResponseEntity.ok(new MessageResponse("Committee member deleted successfully!"));

@@ -11,8 +11,10 @@ import {
   ArrowUpRight, ArrowDownRight, HelpCircle, Info
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const ResultsExplorer = () => {
+  const { lang = 'en' } = useLanguage ? (useLanguage() || {}) : {};
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('overall'); // 'overall' | 'gender' | 'variance'
   const location = useLocation();
@@ -334,8 +336,8 @@ const ResultsExplorer = () => {
   ];
 
   const genderShareData = [
-    { name: 'Female (ගැහැණු)', value: femaleStats.total, color: '#ec4899' },
-    { name: 'Male (පිරිමි)', value: maleStats.total, color: '#3b82f6' }
+    { name: lang === 'si' ? 'ගැහැණු' : 'Female', value: femaleStats.total, color: '#ec4899' },
+    { name: lang === 'si' ? 'පිරිමි' : 'Male', value: maleStats.total, color: '#3b82f6' }
   ].filter(d => d.value > 0);
 
   // ── 3. PERFORMANCE VARIANCE & COMPARATIVE ANALYSIS ──
@@ -364,28 +366,17 @@ const ResultsExplorer = () => {
     };
 
     // 3. Determine scope & labels
-    let entityTitle = 'North Central Province (උතුරු මැද පළාත)';
-    let benchmarkTitle = 'National Average (ජාතික සාමාන්‍යය)';
+    let entityTitle = lang === 'si' ? 'උතුරු මැද පළාත' : 'North Central Province';
+    let benchmarkTitle = lang === 'si' ? 'ජාතික සාමාන්‍යය' : 'National Average';
 
     if (comparisonScope === 'ZONE_VS_PROVINCE') {
       const activeZoneId = selectedCompZone !== 'all' ? selectedCompZone : (filters.zoneId !== 'all' ? filters.zoneId : '1');
       const activeZoneObj = (allZonesList.length > 0 ? allZonesList : zones).find(z => String(z.id) === String(activeZoneId));
       const zName = activeZoneObj ? activeZoneObj.name : 'Anuradhapura Central';
-      entityTitle = `${zName} Zone (කලාපය)`;
-      benchmarkTitle = 'Provincial Average (පළාත් සාමාන්‍යය)';
+      entityTitle = lang === 'si' ? `${zName} කලාපය` : `${zName} Zone`;
+      benchmarkTitle = lang === 'si' ? 'පළාත් සාමාන්‍යය' : 'Provincial Average';
 
-      const zLow = zName.toLowerCase();
-      let zoneYearDiffs = [-1.5, +0.9, -0.6, +2.1, +3.4];
-      if (zLow.includes('hingurakgoda')) zoneYearDiffs = [-2.1, +0.4, -1.2, +1.8, +2.2];
-      else if (zLow.includes('medirigiriya')) zoneYearDiffs = [-3.0, -0.8, -1.9, +0.5, +0.8];
-      else if (zLow.includes('polonnaruwa')) zoneYearDiffs = [-0.8, +1.2, -1.5, -0.2, -0.9];
-      else if (zLow.includes('tambuttegama')) zoneYearDiffs = [-2.4, -1.1, -2.8, -0.8, -1.5];
-      else if (zLow.includes('kekirawa')) zoneYearDiffs = [-4.2, -2.5, -3.8, -2.1, -3.0];
-      else if (zLow.includes('galenbindunuwewa')) zoneYearDiffs = [-5.1, -3.2, -4.6, -3.5, -4.1];
-      else if (zLow.includes('dimbulagala')) zoneYearDiffs = [-6.8, -4.5, -6.1, -4.8, -5.4];
-      else if (zLow.includes('kebithigollewa')) zoneYearDiffs = [-8.5, -6.2, -8.0, -7.1, -7.8];
-      else if (zLow.includes('welikanda')) zoneYearDiffs = [-4.9, -3.1, -4.2, -2.9, -3.6];
-      else if (zLow.includes('horowpothana')) zoneYearDiffs = [-7.2, -5.3, -6.8, -5.9, -6.5];
+      let zoneYearDiffs = [0, 0, 0, 0, 0];
 
       const years = [2021, 2022, 2023, 2024, 2025];
       return years.map((yr, idx) => {
@@ -406,27 +397,11 @@ const ResultsExplorer = () => {
     } else if (comparisonScope === 'DIVISION_VS_PROVINCE') {
       const activeDivObj = (allDivisionsList.length > 0 ? allDivisionsList : divisions).find(d => String(d.id) === String(selectedCompDivision)) ||
                            (allDivisionsList.length > 0 ? allDivisionsList[0] : null);
-      const dName = activeDivObj ? activeDivObj.name : 'Nuwaragam Palatha Central';
-      entityTitle = `${dName} Division (කොට්ඨාසය)`;
-      benchmarkTitle = 'Provincial Average (පළාත් සාමාන්‍යය)';
+      const dName = activeDivObj ? activeDivObj.name : 'Division';
+      entityTitle = lang === 'si' ? `${dName} කොට්ඨාසය` : `${dName} Division`;
+      benchmarkTitle = lang === 'si' ? 'පළාත් සාමාන්‍යය' : 'Provincial Average';
 
-      const dLow = dName.toLowerCase();
-      let divDiffs = [-1.0, +1.2, +0.5, +2.3, +2.8];
-      if (dLow.includes('central')) divDiffs = [-1.0, +1.2, +0.5, +2.3, +2.8];
-      else if (dLow.includes('anuradhapura') || dLow.includes('nagenahira')) divDiffs = [-0.8, +1.5, +0.9, +2.6, +3.1];
-      else if (dLow.includes('hingurakgoda')) divDiffs = [-1.9, +0.6, -0.8, +1.7, +2.1];
-      else if (dLow.includes('polonnaruwa') || dLow.includes('thamankaduwa')) divDiffs = [-1.5, +0.8, -1.1, -0.1, -0.7];
-      else if (dLow.includes('medirigiriya')) divDiffs = [-2.8, -0.6, -1.7, +0.6, +0.9];
-      else if (dLow.includes('nachchaduwa')) divDiffs = [-3.1, -1.8, -2.5, -1.2, -1.6];
-      else if (dLow.includes('vilachchiya') || dLow.includes('wilachchiya')) divDiffs = [-4.5, -3.2, -3.8, -2.4, -2.9];
-      else if (dLow.includes('padaviya') || dLow.includes('kebithigollewa')) divDiffs = [-7.9, -5.8, -7.2, -6.5, -7.1];
-      else if (dLow.includes('madawachchiya') || dLow.includes('medawachchiya')) divDiffs = [-3.8, -2.1, -3.0, -1.8, -2.2];
-      else if (dLow.includes('dimbulagala')) divDiffs = [-6.2, -4.1, -5.5, -4.2, -4.9];
-      else if (dLow.includes('welikanda')) divDiffs = [-4.8, -3.0, -4.1, -2.7, -3.4];
-      else if (dLow.includes('elahera')) divDiffs = [-2.2, -0.5, -1.4, -0.2, -0.8];
-      else if (dLow.includes('rajanganaya')) divDiffs = [-3.4, -1.9, -2.8, -1.5, -2.1];
-      else if (dLow.includes('galnewa')) divDiffs = [-3.9, -2.2, -3.3, -1.9, -2.5];
-      else if (dLow.includes('palagala')) divDiffs = [-4.9, -3.3, -4.4, -3.1, -3.8];
+      let divDiffs = [0, 0, 0, 0, 0];
 
       const years = [2021, 2022, 2023, 2024, 2025];
       return years.map((yr, idx) => {
@@ -599,7 +574,7 @@ const ResultsExplorer = () => {
       return (
         <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-2xl p-4 shadow-2xl text-white min-w-[260px]">
           <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2.5">
-            <span className="text-xs font-bold text-slate-400">Academic Year (අධ්‍යයන වර්ෂය)</span>
+            <span className="text-xs font-bold text-slate-400">{lang === 'si' ? 'අධ්‍යයන වර්ෂය' : 'Academic Year'}</span>
             <span className="text-sm font-black text-amber-400">Year {data.year}</span>
           </div>
           <div className="space-y-2 text-xs">
@@ -612,7 +587,7 @@ const ResultsExplorer = () => {
               <span className="font-bold text-slate-300 text-sm">{data.benchmarkPassRate}%</span>
             </div>
             <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
-              <span className="font-bold text-slate-200">Net Variance (ශුද්ධ වෙනස):</span>
+              <span className="font-bold text-slate-200">{lang === 'si' ? 'ශුද්ධ වෙනස:' : 'Net Variance:'}</span>
               <span className={`font-black text-base ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {isPositive ? `+${data.variance}%` : `${data.variance}%`}
               </span>
@@ -648,15 +623,15 @@ const ResultsExplorer = () => {
           </div>
           <div className="space-y-1.5 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">Pass Rate (සමත් %):</span>
+              <span className="text-slate-400">{lang === 'si' ? 'සමත් %:' : 'Pass Rate:'}</span>
               <span className="font-bold text-white text-sm">{data.passRate}%</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">Provincial Avg (පළාත් සාමාන්‍යය):</span>
+              <span className="text-slate-400">{lang === 'si' ? 'පළාත් සාමාන්‍යය:' : 'Provincial Avg:'}</span>
               <span className="font-bold text-slate-300 text-sm">{data.benchmark}%</span>
             </div>
             <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
-              <span className="font-bold text-slate-200">Net Variance (විචලනය):</span>
+              <span className="font-bold text-slate-200">{lang === 'si' ? 'විචලනය:' : 'Net Variance:'}</span>
               <span className={`font-black text-sm ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {isPositive ? `+${data.variance}%` : `${data.variance}%`}
               </span>
@@ -671,7 +646,7 @@ const ResultsExplorer = () => {
   return (
     <div className="min-h-screen bg-slate-100/60 pb-20">
       {/* ── 1. PRESTIGIOUS HERO BANNER WITH REAL LANDMARK IMAGE ── */}
-      <section className="relative overflow-hidden bg-slate-950 text-white min-h-[340px] sm:min-h-[380px] flex items-center">
+      <section className="relative overflow-hidden bg-slate-950 text-white min-h-[300px] sm:min-h-[380px] flex items-center pt-24 pb-8 sm:py-16">
         {/* Background Landmark Image */}
         <div
           className="absolute inset-0 bg-cover bg-center opacity-35 scale-105"
@@ -711,7 +686,7 @@ const ResultsExplorer = () => {
       </section>
 
       {/* ── 2. MAIN ANALYTICS CONTENT (ZERO OVERLAP!) ── */}
-      <div className="max-w-7xl mx-auto px-6 py-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
         
         {/* Active Context Scope Banner */}
         <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/80 shadow-md flex flex-wrap items-center justify-between gap-4">
@@ -801,7 +776,7 @@ const ResultsExplorer = () => {
               <div className="space-y-5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Subject</label>
-                  <select name="subjectId" value={filters.subjectId} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors">
+                  <select name="subjectId" value={filters.subjectId} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl focus:ring-blue-500 focus:border-blue-500 block py-2 px-3 outline-none transition-colors">
                     <option value="all">All Commerce Subjects</option>
                     {subjects
                       .filter(s => !s.name?.toLowerCase().includes('statistics'))
@@ -818,7 +793,7 @@ const ResultsExplorer = () => {
                   <>
                     <div className="pt-4 border-t border-slate-100">
                       <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                        Comparison Level (සංසන්දන මට්ටම)
+                        {lang === 'si' ? 'සංසන්දන මට්ටම' : 'Comparison Level'}
                       </label>
                       <select
                         value={comparisonScope}
@@ -834,7 +809,7 @@ const ResultsExplorer = () => {
                     {comparisonScope === 'ZONE_VS_PROVINCE' && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                          Select Zone (කලාපය තෝරන්න)
+                          {lang === 'si' ? 'කලාපය තෝරන්න' : 'Select Zone'}
                         </label>
                         <select
                           value={selectedCompZone}
@@ -852,7 +827,7 @@ const ResultsExplorer = () => {
                     {comparisonScope === 'DIVISION_VS_PROVINCE' && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                          Select Division (කොට්ඨාසය තෝරන්න)
+                          {lang === 'si' ? 'කොට්ඨාසය තෝරන්න' : 'Select Division'}
                         </label>
                         <select
                           value={selectedCompDivision}
@@ -886,7 +861,7 @@ const ResultsExplorer = () => {
                   <>
                     <div>
                       <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Exam Year</label>
-                      <select name="year" value={filters.year} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors">
+                      <select name="year" value={filters.year} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl focus:ring-blue-500 focus:border-blue-500 block py-2 px-3 outline-none transition-colors">
                         <option value="all">All Years</option>
                         <option value="2025">2025</option>
                         <option value="2024">2024</option>
@@ -898,7 +873,7 @@ const ResultsExplorer = () => {
 
                     <div className="pt-4 border-t border-slate-100">
                       <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">District</label>
-                      <select name="districtId" value={filters.districtId} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors">
+                      <select name="districtId" value={filters.districtId} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl focus:ring-blue-500 focus:border-blue-500 block py-2 px-3 outline-none transition-colors">
                         <option value="all">All Districts (NCP)</option>
                         {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                       </select>
@@ -907,7 +882,7 @@ const ResultsExplorer = () => {
                     {zones.length > 0 && (
                       <motion.div initial={{ opacity:0, height:0 }} animate={{ opacity:1, height:'auto' }}>
                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Zone</label>
-                        <select name="zoneId" value={filters.zoneId} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors">
+                        <select name="zoneId" value={filters.zoneId} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl focus:ring-blue-500 focus:border-blue-500 block py-2 px-3 outline-none transition-colors">
                           <option value="all">All Zones</option>
                           {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
                         </select>
@@ -917,7 +892,7 @@ const ResultsExplorer = () => {
                     {divisions.length > 0 && (
                       <motion.div initial={{ opacity:0, height:0 }} animate={{ opacity:1, height:'auto' }}>
                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Division</label>
-                        <select name="divisionId" value={filters.divisionId} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors">
+                        <select name="divisionId" value={filters.divisionId} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl focus:ring-blue-500 focus:border-blue-500 block py-2 px-3 outline-none transition-colors">
                           <option value="all">All Divisions</option>
                           {divisions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
@@ -927,7 +902,7 @@ const ResultsExplorer = () => {
                     {schools.length > 0 && (
                       <motion.div initial={{ opacity:0, height:0 }} animate={{ opacity:1, height:'auto' }}>
                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">School</label>
-                        <select name="schoolId" value={filters.schoolId} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors">
+                        <select name="schoolId" value={filters.schoolId} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl focus:ring-blue-500 focus:border-blue-500 block py-2 px-3 outline-none transition-colors">
                           <option value="all">All Schools</option>
                           {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
@@ -941,66 +916,85 @@ const ResultsExplorer = () => {
           </div>
 
           {/* RESULTS AREA */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 space-y-6">
+            {/* View Mode Toggle Bar (Overflow Safe & Compact) */}
+            <div className="bg-white p-2.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 overflow-hidden">
+              <div className="w-full sm:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+                <div className="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200 min-w-max">
+                  <button
+                    onClick={() => setViewMode('overall')}
+                    className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                      viewMode === 'overall' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    <span>{lang === 'si' ? 'සමස්ත ප්‍රතිඵල' : 'All Students'}</span>
+                  </button>
+                  <button
+                    onClick={() => setViewMode('gender')}
+                    className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                      viewMode === 'gender' ? 'bg-pink-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>{lang === 'si' ? 'ස්ත්‍රී / පුරුෂ වෙන්වීම' : 'Gender Breakdown'}</span>
+                  </button>
+                  <button
+                    onClick={() => setViewMode('variance')}
+                    className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                      viewMode === 'variance' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <GitCompare className="w-3.5 h-3.5" />
+                    <span>{lang === 'si' ? 'ප්‍රතිඵල විචලනය' : 'Variance Analysis'}</span>
+                  </button>
+                </div>
+              </div>
+              
+              <div className="text-[11px] sm:text-xs font-bold text-slate-500 flex items-center space-x-1.5 shrink-0">
+                <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+                <span className="truncate">
+                  {viewMode === 'overall' 
+                    ? 'Aggregated Commerce Performance' 
+                    : viewMode === 'gender' 
+                    ? 'Male vs Female Analysis' 
+                    : 'Performance Variance Trajectory'}
+                </span>
+              </div>
+            </div>
+
             {loading ? (
               <div className="bg-white rounded-2xl shadow-lg border border-slate-100 p-12 flex flex-col items-center justify-center min-h-[400px]">
                 <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
                 <p className="text-slate-500 font-medium">Loading analytics...</p>
               </div>
-            ) : resultsData.length === 0 ? (
+            ) : viewMode !== 'variance' && resultsData.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-lg border border-slate-100 p-12 flex flex-col items-center justify-center min-h-[400px]">
                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                   <Search className="w-8 h-8 text-slate-400" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 mb-1">No Data Found</h3>
-                <p className="text-slate-500 text-center max-w-sm">We couldn't find any A/L results matching your current filters. Try selecting a different year or broader region.</p>
+                <h3 className="text-lg font-bold text-slate-800 mb-1">No Data Found for Selected Exam Year</h3>
+                <p className="text-slate-500 text-center max-w-sm mb-5">
+                  We couldn't find individual A/L results matching your current filters. You can view 5-year longitudinal trend comparisons or select a different year.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    onClick={() => setViewMode('variance')}
+                    className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black flex items-center space-x-2 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+                  >
+                    <GitCompare className="w-4 h-4" />
+                    <span>{lang === 'si' ? 'වසර 5ක විචලනය බලන්න' : 'View 5-Year Trend & Variance Analysis'}</span>
+                  </button>
+                  <button
+                    onClick={handleResetFilters}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Reset Filters
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-6">
-                {/* View Mode Toggle Bar */}
-                <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-wrap items-center justify-between gap-4">
-                  <div className="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200">
-                    <button
-                      onClick={() => setViewMode('overall')}
-                      className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center space-x-2 ${
-                        viewMode === 'overall' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <BarChart3 className="w-4 h-4" />
-                      <span>All Students (සමස්ත ප්‍රතිඵල)</span>
-                    </button>
-                    <button
-                      onClick={() => setViewMode('gender')}
-                      className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center space-x-2 ${
-                        viewMode === 'gender' ? 'bg-pink-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <Users className="w-4 h-4" />
-                      <span>Gender Breakdown (ස්ත්‍රී / පුරුෂ වෙන වෙනම)</span>
-                    </button>
-                    <button
-                      onClick={() => setViewMode('variance')}
-                      className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center space-x-2 ${
-                        viewMode === 'variance' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <GitCompare className="w-4 h-4" />
-                      <span>Variance Analysis (ප්‍රතිඵල විචලනය)</span>
-                    </button>
-                  </div>
-                  
-                  <div className="text-xs font-bold text-slate-500 flex items-center space-x-2">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span>
-                      {viewMode === 'overall' 
-                        ? 'Aggregated Commerce Performance' 
-                        : viewMode === 'gender' 
-                        ? 'Male vs. Female Disaggregated Analysis' 
-                        : 'Annual Performance Variance & Comparative Trajectory'}
-                    </span>
-                  </div>
-                </div>
-
                 {/* ── 1. OVERALL VIEW ── */}
                 {viewMode === 'overall' ? (
                   <>
@@ -1088,7 +1082,7 @@ const ResultsExplorer = () => {
                       <div className="bg-gradient-to-br from-blue-500/10 via-white to-blue-500/5 rounded-3xl p-6 border-2 border-blue-200 shadow-md">
                         <div className="flex items-center justify-between mb-4">
                           <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-black uppercase tracking-wider shadow-sm">
-                            <span>👦 Male Students (පිරිමි සිසුන්)</span>
+                            <span>👦 {lang === 'si' ? 'පිරිමි සිසුන්' : 'Male Students'}</span>
                           </span>
                           <span className="text-xs font-black text-blue-700">
                             {effectiveSat > 0 ? ((maleStats.total / effectiveSat) * 100).toFixed(1) : 0}% of Sat
@@ -1118,7 +1112,7 @@ const ResultsExplorer = () => {
                       <div className="bg-gradient-to-br from-rose-500/10 via-white to-rose-500/5 rounded-3xl p-6 border-2 border-rose-200 shadow-md">
                         <div className="flex items-center justify-between mb-4">
                           <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-rose-600 text-white text-xs font-black uppercase tracking-wider shadow-sm">
-                            <span>👧 Female Students (ගැහැණු සිසුන්)</span>
+                            <span>👧 {lang === 'si' ? 'ගැහැණු සිසුන්' : 'Female Students'}</span>
                           </span>
                           <span className="text-xs font-black text-rose-700">
                             {effectiveSat > 0 ? ((femaleStats.total / effectiveSat) * 100).toFixed(1) : 0}% of Sat

@@ -48,18 +48,18 @@ export const translations = {
       badge: "About the Branch",
       title: "Empowering Commerce Education Across North Central Province",
       subtitle: "Fostering academic excellence, financial acumen, and entrepreneurial mindset in Rajarata.",
-      desc1: "The Commerce Branch of the Provincial Department of Education - North Central Province is dedicated to elevating the quality of commercial studies in Anuradhapura and Polonnaruwa districts. With over 118 schools offering advanced level commerce curricula, our mission combines rigorous academic frameworks with practical industry relevance.",
+      desc1: "The Commerce Branch of the Provincial Department of Education - North Central Province is dedicated to elevating the quality of commercial studies in Anuradhapura and Polonnaruwa districts. With registered schools offering advanced level commerce curricula, our mission combines rigorous academic frameworks with practical industry relevance.",
       desc2: "Through continuous curriculum innovation, standardized province-wide evaluations, and digital resource empowerment, we guide over 12,500 students towards outstanding national achievements and prosperous professional careers.",
       points: [
         "Province-wide standardized term & unit test evaluations",
         "Empirical learning through Commerce Societies and Entrepreneurship Labs",
         "Teacher professional capacity building & pedagogical workshops",
-        "Transparent, data-driven school assessment across 11 educational zones"
+        "Transparent, data-driven school assessment across educational zones"
       ]
     },
     director: {
       badge: "Director's Message",
-      name: "Dr. Ananda Gunasekara",
+      name: "Provincial Director of Education",
       role: "Provincial Director of Education — North Central Province",
       title: "Shaping Ethical & Visionary Leaders for Sri Lanka's Economy",
       quote: "North Central Province has always been the cradle of our nation's resilience and ingenuity. Today, as global commerce rapidly digitizes, our mandate is to equip every student with deep analytical capability, unyielding integrity, and visionary entrepreneurial drive. Through empirical evaluation, enriched learning materials, and dedicated teacher mentorship, we are proud to witness our schools consistently rising in national academic rankings.",
@@ -74,9 +74,9 @@ export const translations = {
     districtsSection: {
       badge: "Regional Administration",
       title: "Our Pillar Districts & Zonal Network",
-      subtitle: "11 Educational Zones across Anuradhapura and Polonnaruwa driving localized excellence.",
-      anuBadge: "8 Educational Zones",
-      polBadge: "3 Educational Zones",
+      subtitle: "Educational Zones across Anuradhapura and Polonnaruwa driving localized excellence.",
+      anuBadge: "Educational Zones",
+      polBadge: "Educational Zones",
       exploreBtn: "Explore District Hub"
     },
     subjectsList: {
@@ -110,7 +110,7 @@ export const translations = {
     analyticsPreview: {
       badge: "Empirical Insights",
       title: "Academic Performance Benchmarks",
-      subtitle: "Data-driven governance monitoring progress across 118 commerce schools in Rajarata.",
+      subtitle: "Data-driven governance monitoring progress across registered commerce schools in Rajarata.",
       ctaBtn: "Open Full Interactive Analytics & Comparison Portal"
     }
   },
@@ -163,18 +163,18 @@ export const translations = {
       badge: "අංශය පිළිබඳව",
       title: "උතුරු මැද පළාතේ වාණිජ අධ්‍යාපනය නව මාවතකට",
       subtitle: "රජරට දූ දරුවන්ගේ ශාස්ත්‍රීය දක්ෂතාව, මූල්‍ය ඥානය හා ව්‍යවසායකත්ව ආකල්ප ප්‍රවර්ධනය කරමින්.",
-      desc1: "උතුරු මැද පළාත් අධ්‍යාපන දෙපාර්තමේන්තුවේ වාණිජ අධ්‍යාපන අංශය අනුරාධපුරය සහ පොළොන්නරුව දිස්ත්‍රික්ක දෙකෙහි වාණිජ අධ්‍යාපනයේ ගුණාත්මකභාවය ඉහළ නැංවීම වෙනුවෙන් කැපවී ක්‍රියා කරයි. උසස් පෙළ වාණිජ විෂය ධාරාව ක්‍රියාත්මක වන පාසල් 118 කට අධික ප්‍රමාණයක් සමගින්, අපගේ ප්‍රධාන අරමුණ වන්නේ විභාග ජයග්‍රහණ මෙන්ම ප්‍රායෝගික ව්‍යවසායක දැනුමෙන් පිරිපුන් ශිෂ්‍ය පරපුරක් නිර්මාණය කිරීමයි.",
-      desc2: "පළාත් මට්ටමේ ඒකාකාරී ඇගයීම් ක්‍රමවේද, ඩිජිටල් ඉගෙනුම් සම්පත් සහ අඛණ්ඩ ගුරු පුහුණු වැඩසටහන් තුළින් සිසුන් 12,500 කට අධික පිරිසකගේ අධ්‍යාපන ජයග්‍රහණ සාර්ථකව මෙහෙයවනු ලැබේ.",
+      desc1: "උතුරු මැද පළාත් අධ්‍යාපන දෙපාර්තමේන්තුවේ වාණිජ අධ්‍යාපන අංශය අනුරාධපුරය සහ පොළොන්නරුව දිස්ත්‍රික්ක දෙකෙහි වාණිජ අධ්‍යාපනයේ ගුණාත්මකභාවය ඉහළ නැංවීම වෙනුවෙන් කැපවී ක්‍රියා කරයි. උසස් පෙළ වාණිජ විෂය ධාරාව ක්‍රියාත්මක වන ලියාපදිංචි පාසල් සමගින්, අපගේ ප්‍රධාන අරමුණ වන්නේ විභාග ජයග්‍රහණ මෙන්ම ප්‍රායෝගික ව්‍යවසායක දැනුමෙන් පිරිපුන් ශිෂ්‍ය පරපුරක් නිර්මාණය කිරීමයි.",
+      desc2: "පළාත් මට්ටමේ ඒකාකාරී ඇගයීම් ක්‍රමවේද, ඩිජිටල් ඉගෙනුම් සම්පත් සහ අඛණ්ඩ ගුරු පුහුණු වැඩසටහන් තුළින් සිසුන්ගේ අධ්‍යාපන ජයග්‍රහණ සාර්ථකව මෙහෙයවනු ලැබේ.",
       points: [
         "පළාත් මට්ටමේ ඒකාකාරී වාර හා ඒකක පරීක්ෂණ ඇගයීම් පද්ධතිය",
         "වාණිජ සංගම් හා ප්‍රායෝගික ව්‍යවසායකත්ව වැඩමුළු හරහා ලැබෙන දැනුම",
         "ගුරුවරුන්ගේ වෘත්තීය නිපුණතා සංවර්ධන හා විෂය සමගාමී වැඩසටහන්",
-        "අධ්‍යාපන කලාප 11 ක් ආවරණය වන විනිවිදභාවයෙන් යුතු ප්‍රගති සමාලෝචනය"
+        "අධ්‍යාපන කලාප ආවරණය වන විනිවිදභාවයෙන් යුතු ප්‍රගති සමාලෝචනය"
       ]
     },
     director: {
       badge: "අධ්‍යක්ෂ පණිවිඩය",
-      name: "ආචාර්ය ආනන්ද ගුණසේකර",
+      name: "පළාත් අධ්‍යාපන අධ්‍යක්ෂ",
       role: "පළාත් අධ්‍යාපන අධ්‍යක්ෂ — උතුරු මැද පළාත",
       title: "දිරියෙන් පිරිපුන් දූ දරුවන් රටේ ආර්ථික නියමුවන් බවට පත් කරමු",
       quote: "ඓතිහාසික රජරට උරුමයෙන් පන්නරය ලබන අපගේ දූ දරුවන් ශ්‍රී ලංකාවේ අනාගත ආර්ථිකය හා මූල්‍ය ලෝකය මෙහෙයවන ප්‍රධාන බලවේගයයි. නූතන තාක්ෂණය හා වාණිජ විද්‍යාව මුසු කරමින්, නිවැරදි විෂය දැනුම, සදාචාරාත්මක ව්‍යවසායකත්වය හා ප්‍රායෝගික කුසලතා ඔවුන්ට ලබා දීම අපගේ පරම අභිප්‍රායයි. දත්ත මත පදනම් වූ විධිමත් අධීක්ෂණය හා සම්පත් දායකත්වය හරහා උතුරු මැද පළාත ජාතික මට්ටමේ ඉහළම සාමාර්ථ කරා ගෙන යාමට අපි කැපවී සිටිමු.",
@@ -189,9 +189,9 @@ export const translations = {
     districtsSection: {
       badge: "කලාපීය පරිපාලනය",
       title: "ප්‍රධාන දිස්ත්‍රික්ක සහ කලාප ජාලය",
-      subtitle: "අනුරාධපුර සහ පොළොන්නරුව දිස්ත්‍රික්ක තුළ පිහිටි අධ්‍යාපන කලාප 11 ක සමස්ත තොරතුරු.",
-      anuBadge: "අධ්‍යාපන කලාප 8 ක්",
-      polBadge: "අධ්‍යාපන කලාප 3 ක්",
+      subtitle: "අනුරාධපුර සහ පොළොන්නරුව දිස්ත්‍රික්ක තුළ පිහිටි අධ්‍යාපන කලාපයන්ගේ සමස්ත තොරතුරු.",
+      anuBadge: "අධ්‍යාපන කලාප",
+      polBadge: "අධ්‍යාපන කලාප",
       exploreBtn: "දිස්ත්‍රික් පුවරුවට පිවිසෙන්න"
     },
     subjectsList: {
@@ -225,7 +225,7 @@ export const translations = {
     analyticsPreview: {
       badge: "දත්ත හා ප්‍රගතිය",
       title: "අධ්‍යාපනික කාර්යසාධන දර්ශක",
-      subtitle: "රජරට පාසල් 118 ක වාණිජ විභාග ප්‍රගතිය අඛණ්ඩව අධීක්ෂණය කිරීම.",
+      subtitle: "රජරට ලියාපදිංචි පාසල්වල වාණිජ විභාග ප්‍රගතිය අඛණ්ඩව අධීක්ෂණය කිරීම.",
       ctaBtn: "සම්පූර්ණ අන්තර්ක්‍රියාකාරී ප්‍රස්තාර හා විශ්ලේෂණ පුවරුව වෙත →"
     }
   },
@@ -278,18 +278,18 @@ export const translations = {
       badge: "பிரிவு பற்றி",
       title: "வடமத்திய மாகாணத்தில் வர்த்தகக் கல்வியை மேம்படுத்துதல்",
       subtitle: "ராஜரட்ட மாணவர்களின் கல்விச் சிறப்பு, நிதி நுண்ணறிவு மற்றும் தொழில்முனைவோர் மனப்பான்மையை வளர்த்தல்.",
-      desc1: "வடமத்திய மாகாண கல்வித் திணைக்களத்தின் வர்த்தகப் பிரிவானது அனுராதபுரம் மற்றும் பொலன்னறுவை மாவட்டங்களில் வர்த்தகக் கல்வியின் தரத்தை உயர்த்துவதில் அர்ப்பணிப்புடன் செயல்படுகிறது. 118 க்கும் மேற்பட்ட உயர்தர வர்த்தக பாடசாலைகளுடன் எங்கள் பணி செயல்படுகிறது.",
-      desc2: "மாகாண மட்டத்திலான மதிப்பீட்டு முறைகள், டிஜிட்டல் கற்றல் வளங்கள் மற்றும் தொடர்ச்சியான ஆசிரியர் பயிற்சி ஆகியவற்றின் மூலம் 12,500 க்கும் மேற்பட்ட மாணவர்களின் கற்றல் வழிநடத்தப்படுகிறது.",
+      desc1: "வடமத்திய மாகாண கல்வித் திணைக்களத்தின் வர்த்தகப் பிரிவானது அனுராதபுரம் மற்றும் பொலன்னறுவை மாவட்டங்களில் வர்த்தகக் கல்வியின் தரத்தை உயர்த்துவதில் அர்ப்பணிப்புடன் செயல்படுகிறது. பதிவுசெய்யப்பட்ட உயர்தர வர்த்தக பாடசாலைகளுடன் எங்கள் பணி செயல்படுகிறது.",
+      desc2: "மாகாண மட்டத்திலான மதிப்பீட்டு முறைகள், டிஜிட்டல் கற்றல் வளங்கள் மற்றும் தொடர்ச்சியான ஆசிரியர் பயிற்சி ஆகியவற்றின் மூலம் மாணவர்களின் கற்றல் வழிநடத்தப்படுகிறது.",
       points: [
         "மாகாண மட்டத்திலான தவணை மற்றும் அலகுப் பரீட்சை மதிப்பீட்டு முறை",
         "வர்த்தக சங்கங்கள் மற்றும் தொழில்முனைவோர் செயலமர்வுகள் மூலமான கற்றல்",
         "ஆசிரியர்களுக்கான தொழில்சார் திறன் மேம்பாட்டுப் பட்டறைகள்",
-        "11 கல்வி வலயங்களை உள்ளடக்கிய வெளிப்படையான கல்வி முன்னேற்றக் கண்காணிப்பு"
+        "கல்வி வலயங்களை உள்ளடக்கிய வெளிப்படையான கல்வி முன்னேற்றக் கண்காணிப்பு"
       ]
     },
     director: {
       badge: "இயக்குநரின் செய்தி",
-      name: "கலாநிதி ஆனந்த குணசேகர",
+      name: "மாகாண கல்விப் பணிப்பாளர்",
       role: "மாகாணக் கல்விப் பணிப்பாளர் — வடமத்திய மாகாணம்",
       title: "இலங்கையின் பொருளாதாரத்தை வழிநடத்தும் எதிர்கால தலைவர்களை உருவாக்குவோம்",
       quote: "வரலாற்றுப் சிறப்புமிக்க ராஜரட்ட பாரம்பரியத்தில் வளர்ந்து வரும் நமது மாணவர்கள் நாட்டின் எதிர்காலப் பொருளாதாரத்தை வழிநடத்தும் பிரதான சக்தியாவர். நவீன தொழில்நுட்பம் மற்றும் வணிக அறிவை ஒருங்கிணைத்து, மாணவர்களுக்கு சிறந்த வழிகாட்டலை வழங்குவதே எமது முதன்மையான நோக்கமாகும்.",
@@ -304,9 +304,9 @@ export const translations = {
     districtsSection: {
       badge: "பிராந்திய நிர்வாகம்",
       title: "பிரதான மாவட்டங்கள் மற்றும் வலயக் கட்டமைப்பு",
-      subtitle: "அனுராதபுரம் மற்றும் பொலன்னறுவை மாவட்டங்களின் 11 கல்வி வலயங்கள்.",
-      anuBadge: "8 கல்வி வலயங்கள்",
-      polBadge: "3 கல்வி வலயங்கள்",
+      subtitle: "அனுராதபுரம் மற்றும் பொலன்னறுவை மாவட்டங்களின் கல்வி வலயங்கள்.",
+      anuBadge: "கல்வி வலயங்கள்",
+      polBadge: "கல்வி வலயங்கள்",
       exploreBtn: "மாவட்ட மையத்தை ஆராயுங்கள்"
     },
     subjectsList: {
@@ -340,7 +340,7 @@ export const translations = {
     analyticsPreview: {
       badge: "புள்ளிவிபரங்கள்",
       title: "கல்வி அடைவு மட்ட குறிகாட்டிகள்",
-      subtitle: "118 வர்த்தக பாடசாலைகளின் கல்வி அடைவுகளை தொடர்ச்சியாகக் கண்காணித்தல்.",
+      subtitle: "பதிவுசெய்யப்பட்ட வர்த்தக பாடசாலைகளின் கல்வி அடைவுகளை தொடர்ச்சியாகக் கண்காணித்தல்.",
       ctaBtn: "முழுமையான ஊடாடும் பகுப்பாய்வு போர்ட்டலைத் திறக்கவும் →"
     }
   }

@@ -11,9 +11,19 @@ api.interceptors.request.use(
     // Get the auth object from localStorage
     const authData = localStorage.getItem('auth');
     if (authData) {
-      const { token } = JSON.parse(authData);
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      try {
+        const parsed = JSON.parse(authData);
+        const token = parsed?.token || parsed?.accessToken;
+        if (token) {
+          if (config.headers && typeof config.headers.set === 'function') {
+            config.headers.set('Authorization', `Bearer ${token}`);
+          } else {
+            config.headers = config.headers || {};
+            config.headers['Authorization'] = `Bearer ${token}`;
+          }
+        }
+      } catch (e) {
+        console.error("Error parsing authData in api.js:", e);
       }
     }
     return config;

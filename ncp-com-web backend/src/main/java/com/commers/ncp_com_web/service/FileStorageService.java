@@ -30,8 +30,11 @@ public class FileStorageService {
     }
 
     public String storeFile(MultipartFile file) {
-        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
-        String fileName = UUID.randomUUID().toString() + "_" + originalFileName;
+        String rawName = (file != null && file.getOriginalFilename() != null && !file.getOriginalFilename().isBlank())
+                ? file.getOriginalFilename()
+                : "attachment";
+        String cleanName = StringUtils.cleanPath(rawName).replaceAll("[^a-zA-Z0-9.\\-_]", "_");
+        String fileName = UUID.randomUUID().toString() + "_" + cleanName;
 
         try {
             if (fileName.contains("..")) {

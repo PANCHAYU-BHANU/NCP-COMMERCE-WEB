@@ -1,0 +1,78 @@
+services:
+  # -------------------------------------------------------------
+  # 1. MySQL Database Service
+  # -------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: ncp_com_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ncp_com_db
+      MYSQL_ROOT_PASSWORD: "1234"
+    ports:
+      - "3306:3306"
+    volumes:
+      - ncp_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p1234"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ncp-network
+
+  # -------------------------------------------------------------
+  # 2. Spring Boot Backend Service (Java 21)
+  # -------------------------------------------------------------
+  backend:
+    container_name: ncp_com_backend
+    build:
+      context: "./ncp-com-web backend"
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ncp_com_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "1234"
+      APP_UPLOAD_DIR: uploads
+    ports:
+      - "8080:8080"
+    volumes:
+      - ncp_backend_uploads:/app/uploads
+    networks:
+      - ncp-network
+
+  # -------------------------------------------------------------
+  # 3. React Frontend Service (Vite + Nginx)
+  # -------------------------------------------------------------
+  frontend:
+    container_name: ncp_com_frontend
+    build:
+      context: "./npm-com-web-frontend"
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "5173:80"
+    networks:
+      - ncp-network
+
+# ---------------------------------------------------------------
+# Volumes & Networks
+# ---------------------------------------------------------------
+volumes:
+  ncp_mysql_data:
+    name: ncp_commerce_mysql_volume
+  ncp_backend_uploads:
+    name: ncp_commerce_uploads_volume
+
+networks:
+  ncp-network:
+    name: ncp_commerce_network
+    driver: bridge
+

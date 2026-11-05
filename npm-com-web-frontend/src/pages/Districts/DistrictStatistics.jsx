@@ -143,7 +143,7 @@ const DistrictStatistics = ({ districtId, districtName, theme, selectedZone }) =
         <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8 gap-4">
           <h3 className="text-xl font-bold text-white flex items-center space-x-3 drop-shadow-md">
             <GraduationCap className={`w-6 h-6 ${theme?.iconColor || 'text-white'}`} />
-            <span>A/L Subjects: 3-Year Pass Rate</span>
+            <span>A/L Subjects: 5-Year Pass Rate Progression</span>
           </h3>
           <div className="flex bg-black/20 backdrop-blur-sm p-1.5 rounded-2xl relative shadow-inner">
             {['Economics', 'Business Studies', 'Accounting'].map(subj => (
@@ -201,7 +201,7 @@ const DistrictStatistics = ({ districtId, districtName, theme, selectedZone }) =
         <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8 gap-4">
           <h3 className="text-xl font-bold text-white flex items-center space-x-3 drop-shadow-md">
             <BookOpen className={`w-6 h-6 ${theme?.iconColor || 'text-white'}`} />
-            <span>O/L Subjects: 3-Year Pass Rate</span>
+            <span>O/L Subjects: 5-Year Pass Rate Progression</span>
           </h3>
           <div className="flex bg-black/20 backdrop-blur-sm p-1.5 rounded-2xl relative shadow-inner">
             {['Business & Accounting', 'Entrepreneurship'].map(subj => (

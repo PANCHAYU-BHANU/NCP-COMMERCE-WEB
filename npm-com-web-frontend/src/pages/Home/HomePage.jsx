@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { translations } from './translations';
 import { useLanguage } from '../../contexts/LanguageContext';
+import SubjectCommitteesModal from '../../components/SubjectCommitteesModal';
 import {
   GraduationCap, BarChart3, Users, BookOpen, Award, ChevronRight,
   School, TrendingUp, FileText, Globe, Star, ArrowRight, LogIn,
@@ -47,7 +48,7 @@ const Counter = ({ end, label, suffix = '' }) => {
 
   return (
     <div ref={ref} className="text-center group">
-      <div className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-2 drop-shadow-sm group-hover:scale-105 transition-transform duration-300">
+      <div className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-2 drop-shadow-sm group-hover:scale-105 transition-transform duration-300">
         {count.toLocaleString()}{suffix}
       </div>
       <p className="text-blue-200 text-xs sm:text-sm font-bold uppercase tracking-wider">{label}</p>
@@ -75,30 +76,65 @@ const HomePage = () => {
   });
 
   const [stats, setStats] = useState({
-    schools: 118,
-    students: 12540,
-    teachers: 462,
-    passRate: 82.4
+    schools: 0,
+    students: 0,
+    teachers: 0,
+    passRate: 0
+  });
+
+  const [directorInfo, setDirectorInfo] = useState({
+    name: null,
+    zonesCount: 0
+  });
+
+  const [anuZones, setAnuZones] = useState([]);
+  const [polZones, setPolZones] = useState([]);
+  const [districtInfo, setDistrictInfo] = useState({
+    anuSchools: 0,
+    polSchools: 0
   });
 
   const [newsList, setNewsList] = useState([]);
   const [selectedNews, setSelectedNews] = useState(null);
+  const [isCommitteesModalOpen, setIsCommitteesModalOpen] = useState(false);
 
-  // Fetch real statistics & news from API
+  // Fetch real statistics, zones & news from API
   useEffect(() => {
     fetch('http://localhost:8080/api/public/statistics/overview')
       .then(res => res.json())
       .then(data => {
         if (data && data.provincial) {
           setStats({
-            schools: cmsSettings?.schoolsCount || data.provincial.schools || 118,
-            students: cmsSettings?.studentsCount || (data.provincial.students ? (data.provincial.students > 1000 ? data.provincial.students : 12540) : 12540),
-            teachers: cmsSettings?.teachersCount || (data.provincial.teachers ? (data.provincial.teachers > 100 ? data.provincial.teachers : 462) : 462),
-            passRate: cmsSettings?.passRate || data.provincial.passRatePrev1 || 82.4
+            schools: data.provincial.schools ?? 0,
+            students: data.provincial.students ?? 0,
+            teachers: data.provincial.teachers ?? 0,
+            passRate: data.provincial.passRateCurrent ?? 0
+          });
+          setDirectorInfo({
+            name: data.provincial.provincialDirectorName || null,
+            zonesCount: data.provincial.zones ?? 0
+          });
+        }
+        if (data && data.districts) {
+          setDistrictInfo({
+            anuSchools: data.districts.anuradhapura?.schools ?? 0,
+            polSchools: data.districts.polonnaruwa?.schools ?? 0
           });
         }
       })
       .catch(err => console.error("Error fetching stats:", err));
+
+    fetch('http://localhost:8080/api/public/zones')
+      .then(res => res.json())
+      .then(zones => {
+        if (Array.isArray(zones)) {
+          const anu = zones.filter(z => z.district?.id === 1 || (z.name && !z.name.toLowerCase().includes('polonnaruwa') && !z.name.toLowerCase().includes('hingurakgoda') && !z.name.toLowerCase().includes('medirigiriya') && !z.name.toLowerCase().includes('dimbulagala') && !z.name.toLowerCase().includes('welikanda')));
+          const pol = zones.filter(z => z.district?.id === 2 || (z.name && (z.name.toLowerCase().includes('polonnaruwa') || z.name.toLowerCase().includes('hingurakgoda') || z.name.toLowerCase().includes('medirigiriya') || z.name.toLowerCase().includes('dimbulagala') || z.name.toLowerCase().includes('welikanda'))));
+          setAnuZones(anu);
+          setPolZones(pol);
+        }
+      })
+      .catch(() => {});
 
     fetch('http://localhost:8080/api/public/news')
       .then(res => res.json())
@@ -106,56 +142,11 @@ const HomePage = () => {
         if (Array.isArray(data) && data.length > 0) {
           setNewsList(data.slice(0, 3));
         } else {
-          // Fallback curated news
-          setNewsList([
-            {
-              id: 1,
-              title: "NCP Commerce Day & Excellence Awards 2026",
-              category: "WORKSHOP",
-              content: "Provincial commerce gathering and student awards ceremony recognizing top island-rank achievers and innovative entrepreneurship projects.",
-              createdAt: "2026-10-15"
-            },
-            {
-              id: 2,
-              title: "A/L Accounting & Economics Master Revision Workshop",
-              category: "SEMINAR",
-              content: "Special seminar series conducted by National Subject In-Service Advisors (ISA) for Grade 13 Commerce students across all 11 zones.",
-              createdAt: "2026-10-10"
-            },
-            {
-              id: 3,
-              title: "Release of 2026 NCP Term & Unit Evaluation Papers",
-              category: "EXAMINATION",
-              content: "Standardized evaluation question papers and marking rubrics for Business Studies, Accounting, and ICT are now available in the download portal.",
-              createdAt: "2026-10-05"
-            }
-          ]);
+          setNewsList([]);
         }
       })
       .catch(() => {
-        setNewsList([
-          {
-            id: 1,
-            title: "NCP Commerce Day & Excellence Awards 2026",
-            category: "WORKSHOP",
-            content: "Provincial commerce gathering and student awards ceremony recognizing top island-rank achievers across Rajarata schools.",
-            createdAt: "2026-10-15"
-          },
-          {
-            id: 2,
-            title: "A/L Accounting & Economics Master Revision Workshop",
-            category: "SEMINAR",
-            content: "Special seminar series conducted by National In-Service Advisors (ISA) for Grade 13 Commerce students across 11 zones.",
-            createdAt: "2026-10-10"
-          },
-          {
-            id: 3,
-            title: "Release of 2026 NCP Term & Unit Evaluation Papers",
-            category: "EXAMINATION",
-            content: "Standardized evaluation question papers and marking rubrics for all subjects are now available in the resource portal.",
-            createdAt: "2026-10-05"
-          }
-        ]);
+        setNewsList([]);
       });
   }, []);
 
@@ -173,7 +164,7 @@ const HomePage = () => {
       {/* ══════════════════════════════════════════════════════════════
           1. HERO SECTION (Prestigious Institutional Showcase)
          ══════════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-[82vh] lg:min-h-[86vh] flex items-center overflow-hidden py-14 lg:py-18">
+      <section className="relative min-h-[82vh] lg:min-h-[86vh] flex items-center overflow-hidden pt-24 pb-8 sm:py-14 lg:py-18">
         {/* Background Slides */}
         <AnimatePresence mode="popLayout">
           <motion.img
@@ -205,9 +196,9 @@ const HomePage = () => {
                 transition={{ duration: 0.6 }}
                 className="flex items-center"
               >
-                <div className="inline-flex items-center space-x-2.5 bg-gradient-to-r from-blue-600/30 to-teal-500/20 border border-teal-400/30 backdrop-blur-md px-4 py-2 rounded-full shadow-lg shadow-teal-500/10">
-                  <span className="w-2.5 h-2.5 rounded-full bg-teal-400 animate-pulse" />
-                  <span className="text-teal-200 text-xs md:text-sm font-bold tracking-wide uppercase">
+                <div className="inline-flex items-center space-x-1.5 sm:space-x-2.5 bg-gradient-to-r from-blue-600/30 to-teal-500/20 border border-teal-400/30 backdrop-blur-md px-3 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-lg shadow-teal-500/10 max-w-[280px] sm:max-w-none">
+                  <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse shrink-0" />
+                  <span className="text-teal-200 text-[10px] sm:text-xs md:text-sm font-bold tracking-wide uppercase truncate">
                     {t.hero.provincialDept}
                   </span>
                 </div>
@@ -219,18 +210,18 @@ const HomePage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.1 }}
               >
-                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.2] mb-4 tracking-tight drop-shadow-xl">
+                <h1 className="text-2xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.2] mb-2 sm:mb-4 tracking-tight drop-shadow-xl">
                   {t.hero.welcomeTo}{' '}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-300 via-blue-400 to-cyan-300">
                     {t.hero.commerceSection}
                   </span>
                 </h1>
-                <p className="text-slate-300 text-sm sm:text-base md:text-lg leading-relaxed max-w-2xl font-medium">
+                <p className="text-slate-300 text-xs sm:text-base md:text-lg leading-relaxed max-w-2xl font-medium line-clamp-3 sm:line-clamp-none">
                   {lang === 'si'
-                    ? 'අනුරාධපුරය සහ පොළොන්නරුව දිස්ත්‍රික්කයන්හි පාසල් 118 කට අධික සංඛ්‍යාවක වාණිජ, ගිණුම්කරණ, ආර්ථික විද්‍යා සහ ව්‍යවසායකත්ව අධ්‍යාපනය ජාතික විශිෂ්ටත්වය කරා මෙහෙයවන නිල අධ්‍යාපන ද්වාරය.'
+                    ? `අනුරාධපුරය සහ පොළොන්නරුව දිස්ත්‍රික්කයන්හි ලියාපදිංචි වාණිජ පාසල් ${stats.schools || 0} ක වාණිජ, ගිණුම්කරණ, ආර්ථික විද්‍යා සහ ව්‍යවසායකත්ව අධ්‍යාපනය ජාතික විශිෂ්ටත්වය කරා මෙහෙයවන නිල අධ්‍යාපන ද්වාරය.`
                     : lang === 'ta'
                       ? 'அனுராதபுரம் மற்றும் பொலன்னறுவை மாவட்டங்களில் வர்த்தகக் கல்வியை வழிநடத்தும் வடமத்திய மாகாண கல்வித் திணைக்களத்தின் உத்தியோகபூர்வ இணையத்தளம்.'
-                      : 'Guiding academic excellence, financial acumen, and entrepreneurial innovation across 118+ commerce schools in Anuradhapura & Polonnaruwa districts.'}
+                      : `Guiding academic excellence, financial acumen, and entrepreneurial innovation across ${stats.schools || 0} registered commerce schools in Anuradhapura & Polonnaruwa districts.`}
                 </p>
               </motion.div>
 
@@ -239,30 +230,30 @@ const HomePage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.2 }}
-                className="flex flex-wrap gap-3.5"
+                className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3.5"
               >
                 <a
                   href="#districts"
-                  className="inline-flex items-center space-x-2.5 bg-gradient-to-r from-blue-600 via-blue-500 to-teal-500 text-white font-bold text-sm px-6 py-3 rounded-2xl shadow-xl shadow-blue-600/30 hover:shadow-blue-600/50 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  className="col-span-2 sm:col-span-1 inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-600 via-blue-500 to-teal-500 text-white font-bold text-xs sm:text-sm px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 hover:scale-[1.02] active:scale-[0.98] transition-all text-center"
                 >
                   <span>{lang === 'si' ? 'දිස්ත්‍රික් පුවරු (Districts)' : 'Explore District Hubs'}</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4 shrink-0" />
                 </a>
 
                 <Link
                   to="/downloads"
-                  className="inline-flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-sm px-5 py-3 rounded-2xl backdrop-blur-md transition-all hover:scale-[1.02]"
+                  className="inline-flex items-center justify-center space-x-1.5 sm:space-x-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs sm:text-sm px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl backdrop-blur-md transition-all hover:scale-[1.02] text-center"
                 >
-                  <BookOpen className="w-4 h-4 text-teal-300" />
-                  <span>{lang === 'si' ? 'ප්‍රශ්න පත්‍ර හා සම්පත්' : 'Past Papers & Resources'}</span>
+                  <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-300 shrink-0" />
+                  <span className="truncate">{lang === 'si' ? 'ප්‍රශ්න පත්‍ර' : 'Past Papers & Resources'}</span>
                 </Link>
 
                 <Link
                   to="/explore/results"
-                  className="inline-flex items-center space-x-2 bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold text-sm px-5 py-3 rounded-2xl backdrop-blur-md transition-all hover:scale-[1.02]"
+                  className="inline-flex items-center justify-center space-x-1.5 sm:space-x-2 bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold text-xs sm:text-sm px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl backdrop-blur-md transition-all hover:scale-[1.02] text-center"
                 >
-                  <BarChart3 className="w-4 h-4 text-blue-400" />
-                  <span>{lang === 'si' ? 'කාර්යසාධන විශ්ලේෂණය' : 'Performance Analytics'}</span>
+                  <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400 shrink-0" />
+                  <span className="truncate">{lang === 'si' ? 'විශ්ලේෂණ' : 'Performance Analytics'}</span>
                 </Link>
               </motion.div>
 
@@ -271,32 +262,32 @@ const HomePage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.3 }}
-                className="flex flex-wrap items-center gap-3 pt-3 border-t border-white/15"
+                className="flex flex-wrap items-center gap-1.5 sm:gap-3 pt-2 sm:pt-3 border-t border-white/15"
               >
                 <Link
                   to="/districts/anuradhapura"
-                  className="inline-flex items-center space-x-2 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-400/30 text-blue-200 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-105"
+                  className="inline-flex items-center space-x-1.5 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-400/30 text-blue-200 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all hover:scale-105"
                 >
-                  <Building2 className="w-3.5 h-3.5 text-blue-400" />
-                  <span>{lang === 'si' ? 'අනුරාධපුරය (කලාප 8)' : 'Anuradhapura (8 Zones)'}</span>
+                  <Building2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-400 shrink-0" />
+                  <span>{lang === 'si' ? 'අනුරාධපුර දිස්ත්‍රික්කය' : 'Anuradhapura District'}</span>
                 </Link>
 
                 <Link
                   to="/districts/polonnaruwa"
-                  className="inline-flex items-center space-x-2 bg-teal-500/15 hover:bg-teal-500/25 border border-teal-400/30 text-teal-200 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-105"
+                  className="inline-flex items-center space-x-1.5 bg-teal-500/15 hover:bg-teal-500/25 border border-teal-400/30 text-teal-200 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all hover:scale-105"
                 >
-                  <Map className="w-3.5 h-3.5 text-teal-400" />
-                  <span>{lang === 'si' ? 'පොළොන්නරුව (කලාප 3)' : 'Polonnaruwa (3 Zones)'}</span>
+                  <Map className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-teal-400 shrink-0" />
+                  <span>{lang === 'si' ? 'පොළොන්නරුව දිස්ත්‍රික්කය' : 'Polonnaruwa District'}</span>
                 </Link>
 
-                <span className="inline-flex items-center space-x-1.5 bg-white/10 border border-white/15 text-slate-300 px-3.5 py-1.5 rounded-full text-xs font-semibold">
-                  <School className="w-3.5 h-3.5 text-cyan-300" />
-                  <span>{stats.schools}+ {lang === 'si' ? 'පාසල්' : 'Schools'}</span>
+                <span className="inline-flex items-center space-x-1 bg-white/10 border border-white/15 text-slate-300 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold">
+                  <School className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-300 shrink-0" />
+                  <span>{stats.schools} {lang === 'si' ? 'පාසල්' : 'Schools'}</span>
                 </span>
 
-                <span className="inline-flex items-center space-x-1.5 bg-white/10 border border-white/15 text-slate-300 px-3.5 py-1.5 rounded-full text-xs font-semibold">
-                  <GraduationCap className="w-3.5 h-3.5 text-amber-300" />
-                  <span>{lang === 'si' ? 'උසස් පෙළ & සාමාන්‍ය පෙළ' : 'A/L & O/L Stream'}</span>
+                <span className="inline-flex items-center space-x-1 bg-white/10 border border-white/15 text-slate-300 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold">
+                  <GraduationCap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-300 shrink-0" />
+                  <span>{lang === 'si' ? 'උසස් පෙළ & සා/පෙළ' : 'A/L & O/L'}</span>
                 </span>
               </motion.div>
 
@@ -325,9 +316,9 @@ const HomePage = () => {
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:24px_24px]" />
 
         <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
-          <Counter end={stats.schools} label={lang === 'si' ? 'වාණිජ පාසල්' : 'Commerce Schools'} suffix="+" />
-          <Counter end={stats.students} label={lang === 'si' ? 'වාණිජ සිසුන්' : 'Commerce Students'} suffix="+" />
-          <Counter end={stats.teachers} label={lang === 'si' ? 'සුදුසුකම්ලත් ගුරුවරුන්' : 'Certified Teachers'} suffix="+" />
+          <Counter end={stats.schools} label={lang === 'si' ? 'වාණිජ පාසල්' : 'Commerce Schools'} suffix={stats.schools > 5 ? "+" : ""} />
+          <Counter end={stats.students} label={lang === 'si' ? 'වාණිජ සිසුන්' : 'Commerce Students'} suffix={stats.students > 5 ? "+" : ""} />
+          <Counter end={stats.teachers} label={lang === 'si' ? 'සුදුසුකම්ලත් ගුරුවරුන්' : 'Certified Teachers'} suffix={stats.teachers > 5 ? "+" : ""} />
           <Counter end={Math.round(stats.passRate)} label={lang === 'si' ? 'සාමාන්‍ය සමත් ප්‍රතිශතය' : 'Average Pass Benchmark'} suffix="%" />
         </div>
       </section>
@@ -465,7 +456,7 @@ const HomePage = () => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
                   <div className="absolute bottom-4 left-4 right-4">
-                    <p className="text-white font-black text-lg">{cmsSettings?.directorName || t.director.name}</p>
+                    <p className="text-white font-black text-lg">{directorInfo.name || cmsSettings?.directorName || t.director.name}</p>
                     <p className="text-teal-300 text-xs font-semibold">{cmsSettings?.directorRole || t.director.role}</p>
                   </div>
                 </div>
@@ -505,13 +496,15 @@ const HomePage = () => {
 
               <div className="pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h4 className="text-base font-bold text-white">{cmsSettings?.directorName || t.director.name}</h4>
+                  <h4 className="text-base font-bold text-white">{directorInfo.name || cmsSettings?.directorName || t.director.name}</h4>
                   <p className="text-xs text-slate-400">{cmsSettings?.directorRole || t.director.role}</p>
                 </div>
 
                 <div className="flex items-center space-x-2">
                   <span className="text-xs text-teal-300 font-bold bg-teal-500/20 px-3 py-1.5 rounded-lg border border-teal-400/30">
-                    {lang === 'si' ? 'කලාප 11 ක මගපෙන්වීම' : 'Overseeing 11 Zones'}
+                    {lang === 'si' 
+                      ? `කලාප ${directorInfo.zonesCount || (anuZones.length + polZones.length) || 11} ක මගපෙන්වීම` 
+                      : `Overseeing ${directorInfo.zonesCount || (anuZones.length + polZones.length) || 11} Zone(s)`}
                   </span>
                 </div>
               </div>
@@ -616,7 +609,7 @@ const HomePage = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent" />
                 <div className="absolute top-4 left-4">
                   <span className="bg-blue-600 text-white text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-full shadow-md">
-                    {t.districtsSection.anuBadge}
+                    {anuZones.length} {lang === 'si' ? 'අධ්‍යාපන කලාප' : 'Educational Zones'}
                   </span>
                 </div>
                 <div className="absolute bottom-4 left-6 right-6">
@@ -629,16 +622,24 @@ const HomePage = () => {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Key Educational Zones:</p>
                   <div className="flex flex-wrap gap-2">
-                    {['Anuradhapura', 'Kebithigollewa', 'Medawachchiya', 'Thambuttegama', 'Kekirawa', 'Galenbindunuwewa', 'Padaviya', 'Nochchiyagama'].map((z, i) => (
-                      <span key={i} className="text-xs font-semibold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg">
-                        {z}
+                    {anuZones.length > 0 ? (
+                      anuZones.map((z, i) => (
+                        <span key={i} className="text-xs font-semibold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg">
+                          {z.name}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">
+                        {lang === 'si' ? 'කලාප තවමත් ඇතුළත් කර නොමැත' : 'No zones recorded yet'}
                       </span>
-                    ))}
+                    )}
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500">80+ Secondary Schools</span>
+                  <span className="text-xs font-bold text-slate-500">
+                    {districtInfo.anuSchools} {lang === 'si' ? 'වාණිජ පාසල්' : 'Commerce Schools'}
+                  </span>
                   <Link
                     to="/districts/anuradhapura"
                     className="inline-flex items-center space-x-1.5 text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors"
@@ -667,7 +668,7 @@ const HomePage = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent" />
                 <div className="absolute top-4 left-4">
                   <span className="bg-teal-600 text-white text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-full shadow-md">
-                    {t.districtsSection.polBadge}
+                    {polZones.length} {lang === 'si' ? 'අධ්‍යාපන කලාප' : 'Educational Zones'}
                   </span>
                 </div>
                 <div className="absolute bottom-4 left-6 right-6">
@@ -680,16 +681,24 @@ const HomePage = () => {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Key Educational Zones:</p>
                   <div className="flex flex-wrap gap-2">
-                    {['Polonnaruwa', 'Hingurakgoda', 'Dimbulagala', 'Medirigiriya', 'Welikanda'].map((z, i) => (
-                      <span key={i} className="text-xs font-semibold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg">
-                        {z}
+                    {polZones.length > 0 ? (
+                      polZones.map((z, i) => (
+                        <span key={i} className="text-xs font-semibold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg">
+                          {z.name}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">
+                        {lang === 'si' ? 'කලාප තවමත් ඇතුළත් කර නොමැත' : 'No zones recorded yet'}
                       </span>
-                    ))}
+                    )}
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500">38+ Secondary Schools</span>
+                  <span className="text-xs font-bold text-slate-500">
+                    {districtInfo.polSchools} {lang === 'si' ? 'වාණිජ පාසල්' : 'Commerce Schools'}
+                  </span>
                   <Link
                     to="/districts/polonnaruwa"
                     className="inline-flex items-center space-x-1.5 text-sm font-bold text-teal-600 hover:text-teal-800 transition-colors"
@@ -802,20 +811,30 @@ const HomePage = () => {
             </div>
 
             {/* 6. Curricular Committees Card */}
-            <div className="bg-gradient-to-br from-slate-900 to-blue-950 p-7 rounded-3xl text-white shadow-xl flex flex-col justify-between">
+            <div 
+              onClick={() => setIsCommitteesModalOpen(true)}
+              className="bg-white p-7 rounded-3xl border border-blue-200/90 shadow-md hover:shadow-xl hover:border-blue-300 transition-all duration-300 group flex flex-col justify-between cursor-pointer"
+            >
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-white/20 text-white flex items-center justify-center font-bold mb-5">
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold mb-5 group-hover:scale-110 transition-transform">
                   <Users className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Subject Development Committees</h3>
-                <p className="text-slate-300 text-sm leading-relaxed mb-4">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Subject Development Committees</h3>
+                <p className="text-slate-600 text-sm leading-relaxed mb-4">
                   Master educators, ISAs, and education directors working collaboratively to upgrade assessment standards.
                 </p>
               </div>
-              <Link to="/dashboard/committees" className="inline-flex items-center space-x-1.5 text-xs font-bold text-teal-300 hover:text-teal-200">
-                <span>View Committee Members</span>
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsCommitteesModalOpen(true);
+                }}
+                className="inline-flex items-center space-x-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 w-fit group-hover:translate-x-1 transition-transform cursor-pointer"
+              >
+                <span>View Committees</span>
                 <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
+              </button>
             </div>
 
           </div>
@@ -878,7 +897,10 @@ const HomePage = () => {
             </Link>
 
             {/* Card 3 */}
-            <Link to="/dashboard/committees" className="group block">
+            <div 
+              onClick={() => setIsCommitteesModalOpen(true)} 
+              className="group block cursor-pointer"
+            >
               <div className="p-6 rounded-3xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-purple-300 hover:shadow-xl transition-all duration-300 h-full flex flex-col justify-between">
                 <div>
                   <div className="w-12 h-12 rounded-2xl bg-purple-500 text-white flex items-center justify-center font-bold mb-4 shadow-md shadow-purple-500/20 group-hover:scale-110 transition-transform">
@@ -892,7 +914,7 @@ const HomePage = () => {
                   <ChevronRight className="w-3.5 h-3.5 ml-1" />
                 </div>
               </div>
-            </Link>
+            </div>
 
             {/* Card 4 */}
             <Link to="/explore/results" className="group block">
@@ -977,44 +999,56 @@ const HomePage = () => {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {newsList.map((item, idx) => (
-              <motion.div
-                key={item.id || idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                className="bg-slate-50 border border-slate-200 rounded-3xl p-6 hover:shadow-xl hover:bg-white transition-all duration-300 flex flex-col justify-between group cursor-pointer"
-                onClick={() => setSelectedNews(item)}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-[11px] font-black uppercase tracking-wider bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
-                      {item.category || 'News'}
-                    </span>
-                    <span className="text-xs text-slate-400 font-semibold flex items-center">
-                      <Clock className="w-3.5 h-3.5 mr-1" />
-                      {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Recent'}
-                    </span>
+          {newsList.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {newsList.map((item, idx) => (
+                <motion.div
+                  key={item.id || idx}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="bg-slate-50 border border-slate-200 rounded-3xl p-6 hover:shadow-xl hover:bg-white transition-all duration-300 flex flex-col justify-between group cursor-pointer"
+                  onClick={() => setSelectedNews(item)}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-[11px] font-black uppercase tracking-wider bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+                        {item.category || 'News'}
+                      </span>
+                      <span className="text-xs text-slate-400 font-semibold flex items-center">
+                        <Clock className="w-3.5 h-3.5 mr-1" />
+                        {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Recent'}
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
+                      {item.title}
+                    </h3>
+
+                    <p className="text-slate-600 text-xs sm:text-sm leading-relaxed line-clamp-3 mb-6">
+                      {item.content}
+                    </p>
                   </div>
 
-                  <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
-                    {item.title}
-                  </h3>
-
-                  <p className="text-slate-600 text-xs sm:text-sm leading-relaxed line-clamp-3 mb-6">
-                    {item.content}
-                  </p>
-                </div>
-
-                <div className="pt-4 border-t border-slate-200/60 flex items-center text-xs font-bold text-blue-600 group-hover:translate-x-1 transition-transform">
-                  <span>{lang === 'si' ? 'විස්තර කියවන්න' : 'Read Full Bulletin'}</span>
-                  <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                  <div className="pt-4 border-t border-slate-200/60 flex items-center text-xs font-bold text-blue-600 group-hover:translate-x-1 transition-transform">
+                    <span>{lang === 'si' ? 'විස්තර කියවන්න' : 'Read Full Bulletin'}</span>
+                    <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 px-6 text-center bg-slate-50 border border-slate-200 rounded-3xl">
+              <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-bold text-slate-700">
+                {lang === 'si' ? 'නිල නිවේදන හෝ වැඩමුළු තවමත් පළ කර නොමැත.' : 'No official bulletins or workshops published yet.'}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                {lang === 'si' ? 'නව පුවත් එක් කළ විට ඒවා ස්වයංක්‍රීයව මෙහි දිස්වනු ඇත.' : 'Official updates published in Content Management will automatically appear here.'}
+              </p>
+            </div>
+          )}
 
         </div>
       </section>
@@ -1093,8 +1127,8 @@ const HomePage = () => {
             <div className="space-y-3">
               <h4 className="text-sm font-black uppercase tracking-wider text-teal-400">Administration</h4>
               <ul className="space-y-2 text-xs text-slate-300">
-                <li><Link to="/dashboard/committees" className="hover:text-white transition-colors">Provincial Development Committee</Link></li>
-                <li><Link to="/dashboard/committees" className="hover:text-white transition-colors">Zonal Commerce Committees</Link></li>
+                <li><button onClick={() => setIsCommitteesModalOpen(true)} className="hover:text-white transition-colors text-left">Provincial Development Committee</button></li>
+                <li><button onClick={() => setIsCommitteesModalOpen(true)} className="hover:text-white transition-colors text-left">Zonal Commerce Committees</button></li>
                 <li><Link to="/news-events" className="hover:text-white transition-colors">Teacher Training Calendar</Link></li>
                 <li><Link to="/downloads" className="hover:text-white transition-colors">Circulars & Official Guidelines</Link></li>
                 <li><Link to="/login" className="text-teal-300 font-bold hover:underline">Official Portal Login →</Link></li>
@@ -1136,6 +1170,12 @@ const HomePage = () => {
           </div>
         </div>
       </footer>
+
+      {/* Subject Development Committees Public Modal */}
+      <SubjectCommitteesModal 
+        isOpen={isCommitteesModalOpen} 
+        onClose={() => setIsCommitteesModalOpen(false)} 
+      />
 
     </div>
   );

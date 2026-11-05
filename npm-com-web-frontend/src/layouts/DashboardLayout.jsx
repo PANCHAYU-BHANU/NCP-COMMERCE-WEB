@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,8 +33,25 @@ const DashboardLayout = () => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return true;
+  });
   const [profileOpen, setProfileOpen] = useState(false);
+  const [activeCycleYear, setActiveCycleYear] = useState(null);
+
+  useEffect(() => {
+    fetch('http://localhost:8080/api/public/statistics/overview')
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.activeYear) {
+          setActiveCycleYear(data.activeYear);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -104,6 +121,20 @@ const DashboardLayout = () => {
   };
 
   const roleMeta = getRoleConfig(currentUser?.role);
+  const isNIC = (val) => /^([0-9]{9}[vVxX]|[0-9]{12})$/.test(val || '');
+  let displayName = currentUser?.name;
+  if (!displayName || isNIC(displayName)) {
+    if (currentUser?.role === 'ZONAL_DIRECTOR') {
+      displayName = currentUser?.zoneName ? `${currentUser.zoneName} Zonal Director` : 'Zonal Director';
+    } else if (currentUser?.role === 'DIVISIONAL_DIRECTOR') {
+      displayName = currentUser?.divisionName ? `${currentUser.divisionName} Divisional Director` : 'Divisional Director';
+    } else if (currentUser?.role === 'PROVINCIAL_DIRECTOR') {
+      displayName = 'Provincial Director';
+    } else {
+      displayName = roleMeta.title || currentUser?.username || 'Officer';
+    }
+  }
+  const initialLetter = displayName.charAt(0).toUpperCase();
 
   // Grouped navigation based on roles
   const navSections = [
@@ -128,7 +159,7 @@ const DashboardLayout = () => {
           siName: 'විභාග ලකුණු ඇතුළත් කිරීම',
           path: '/dashboard/results',
           icon: FileText,
-          tag: '2027 Ready',
+          tag: activeCycleYear ? `${activeCycleYear} Ready` : 'Ready',
           roles: ['PROVINCIAL_DIRECTOR', 'ZONAL_DIRECTOR', 'DIVISIONAL_DIRECTOR', 'PRINCIPAL', 'SECTION_HEAD', 'TEACHER', 'ADMIN']
         },
         {
@@ -155,7 +186,7 @@ const DashboardLayout = () => {
           siName: 'වාණිජ කමිටු',
           path: '/dashboard/committees',
           icon: Users,
-          roles: ['PROVINCIAL_DIRECTOR', 'ZONAL_DIRECTOR', 'ADMIN']
+          roles: ['PROVINCIAL_DIRECTOR', 'ZONAL_DIRECTOR', 'DIVISIONAL_DIRECTOR', 'PRINCIPAL', 'SECTION_HEAD', 'TEACHER', 'ADMIN']
         }
       ]
     },
@@ -181,14 +212,14 @@ const DashboardLayout = () => {
           siName: 'කලාප හා පාසල් ස්ථාන',
           path: '/dashboard/locations',
           icon: MapPin,
-          roles: ['PROVINCIAL_DIRECTOR', 'ADMIN']
+          roles: ['PROVINCIAL_DIRECTOR', 'ADMIN', 'ZONAL_DIRECTOR', 'DIVISIONAL_DIRECTOR']
         },
         {
           name: 'User Management',
           siName: 'පරිශීලක කළමනාකරණය',
           path: '/dashboard/users',
           icon: UserPlus,
-          roles: ['PROVINCIAL_DIRECTOR', 'ZONAL_DIRECTOR', 'DIVISIONAL_DIRECTOR', 'ADMIN']
+          roles: ['PROVINCIAL_DIRECTOR', 'ZONAL_DIRECTOR', 'DIVISIONAL_DIRECTOR', 'PRINCIPAL', 'ADMIN']
         }
       ]
     }
@@ -231,7 +262,7 @@ const DashboardLayout = () => {
                       CMS
                     </span>
                   </div>
-                  <p className="text-[11px] font-bold text-amber-400/90 leading-tight">වාණිජ අධ්‍යාපන අංශය</p>
+                  <p className="text-[11px] font-bold text-amber-400/90 leading-tight">Commerce Education Branch</p>
                   <p className="text-[9px] text-slate-400 font-medium leading-tight">Dept of Education — NCP</p>
                 </div>
               </Link>
@@ -248,13 +279,16 @@ const DashboardLayout = () => {
               <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-800/70 via-slate-800/40 to-slate-900/80 border border-slate-700/60 shadow-lg relative overflow-hidden group">
                 <div className="flex items-center space-x-3 relative z-10">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-black text-base shadow-md flex-shrink-0 border border-white/20">
-                    {currentUser?.username?.charAt(0).toUpperCase()}
+                    {initialLetter}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center space-x-1.5">
-                      <p className="text-xs font-black text-white truncate">{currentUser?.username}</p>
+                      <p className="text-xs font-black text-white truncate">{displayName}</p>
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" title="Active Session" />
                     </div>
+                    {currentUser?.name && currentUser?.name !== currentUser?.username && (
+                      <p className="text-[10px] text-slate-400 font-mono truncate">NIC: {currentUser?.username}</p>
+                    )}
                     <div className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-black border mt-1 ${roleMeta.badgeBg}`}>
                       <span>{roleMeta.icon}</span>
                       <span className="truncate">{roleMeta.title}</span>
@@ -290,6 +324,11 @@ const DashboardLayout = () => {
                         <Link
                           key={item.name}
                           to={item.path}
+                          onClick={() => {
+                            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                              setSidebarOpen(false);
+                            }
+                          }}
                           className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
                             isActive
                               ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-lg shadow-blue-500/20'
@@ -305,9 +344,6 @@ const DashboardLayout = () => {
                             />
                             <div className="truncate">
                               <span className="text-xs font-semibold block leading-tight">{item.name}</span>
-                              <span className="text-[10px] text-slate-400/80 block leading-tight group-hover:text-slate-300 truncate font-normal">
-                                {item.siName}
-                              </span>
                             </div>
                           </div>
 
@@ -348,61 +384,71 @@ const DashboardLayout = () => {
                 className="flex items-center justify-center space-x-2 w-full px-3.5 py-2.5 text-xs font-bold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all active:scale-95"
               >
                 <LogOut size={15} />
-                <span>Sign Out ({currentUser?.username})</span>
+                <span>Sign Out ({displayName})</span>
               </button>
             </div>
           </motion.aside>
         )}
       </AnimatePresence>
 
+      {/* Mobile Backdrop Overlay */}
+      {sidebarOpen && (
+        <div 
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 md:hidden transition-opacity"
+        />
+      )}
+
       {/* ── 2. EXECUTIVE CONTENT WRAPPER ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-100">
         
         {/* Top Executive Header */}
-        <header className="h-18 bg-white border-b border-slate-200/90 flex items-center justify-between px-4 sm:px-8 z-20 shadow-sm">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 lg:px-8 z-20 shadow-xs">
           
           {/* Left: Hamburger & Dynamic Breadcrumbs */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-3.5 min-w-0 flex-1 mr-2">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-slate-500 hover:text-slate-800 focus:outline-none p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer shadow-2xs shrink-0"
               title="Toggle Navigation Sidebar"
             >
-              <Menu size={20} />
+              <Menu size={18} />
             </button>
 
-            <div>
-              <div className="flex items-center space-x-2 text-xs font-bold text-slate-400">
+            <div className="flex flex-col justify-center min-w-0 flex-1">
+              <div className="hidden sm:flex items-center space-x-1.5 text-[11px] font-bold text-slate-400 leading-none mb-1">
                 <Link to="/dashboard" className="hover:text-blue-600 transition-colors">CMS Overview</Link>
                 <span>/</span>
-                <span className="text-slate-700">{currentNavItem?.name || 'Academic Console'}</span>
+                <span className="text-slate-600 font-semibold truncate max-w-[150px]">{currentNavItem?.name || 'Academic Console'}</span>
               </div>
-              <h2 className="text-base sm:text-lg font-black text-slate-900 leading-tight flex items-center flex-wrap sm:flex-nowrap gap-2">
-                <span className="whitespace-nowrap">{currentNavItem?.name || 'Commerce Oversight Dashboard'}</span>
+              <div className="flex items-center space-x-2 min-w-0">
+                <h2 className="text-xs sm:text-base md:text-lg font-black text-slate-900 tracking-tight leading-none truncate">
+                  {currentNavItem?.name || 'Commerce Oversight Dashboard'}
+                </h2>
                 {currentNavItem?.tag && (
-                  <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap inline-flex items-center">
+                  <span className="hidden sm:inline-flex text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 border border-blue-200 tracking-wide leading-none items-center shrink-0">
                     {currentNavItem.tag}
                   </span>
                 )}
-              </h2>
+              </div>
             </div>
           </div>
 
           {/* Right: Academic Cycle Banner, Quick Actions & Profile */}
-          <div className="flex items-center space-x-3 sm:space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
             
             {/* Live Academic Batch Tag */}
-            <div className="hidden lg:flex items-center space-x-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 px-3.5 py-1.5 rounded-xl text-xs font-bold text-blue-800 shadow-sm">
+            <div className="hidden 2xl:flex items-center space-x-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 px-3 py-1.5 rounded-xl text-xs font-bold text-blue-900 shadow-2xs h-9.5">
               <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
-              <span>2027 A/L Cycle Active</span>
-              <span className="text-blue-400">•</span>
-              <span className="text-slate-600 text-[11px]">Term 1 Evaluation Phase</span>
+              <span>{activeCycleYear ? `${activeCycleYear} A/L Active` : 'A/L Academic Cycle'}</span>
+              <span className="text-blue-300">•</span>
+              <span className="text-slate-500 text-[11px]">Term Evaluation</span>
             </div>
 
             {/* Quick Public Site Link */}
             <Link
               to="/rankings"
-              className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300/80 transition-all shadow-sm"
+              className="hidden lg:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300/80 transition-all shadow-2xs h-9.5"
               title="View Public Provincial Leaderboard"
             >
               <Sparkles size={14} className="text-amber-600" />
@@ -411,27 +457,30 @@ const DashboardLayout = () => {
 
             {/* Notifications / Live Ping */}
             <button 
-              className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors relative cursor-pointer"
+              className="w-9.5 h-9.5 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-slate-200 transition-all relative cursor-pointer shadow-2xs"
               title="Notifications"
             >
-              <Bell size={19} />
-              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+              <Bell size={18} />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full border border-white" />
             </button>
+
+            {/* Subtle Divider */}
+            <div className="hidden sm:block h-6 w-px bg-slate-200" />
             
             {/* User Profile Dropdown */}
             <div className="relative">
               <button 
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center space-x-2.5 p-1.5 rounded-2xl hover:bg-slate-100 transition-all border border-slate-200/80 cursor-pointer shadow-sm"
+                className="flex items-center space-x-2 px-2.5 py-1 rounded-xl hover:bg-slate-100 transition-all border border-slate-200/90 cursor-pointer shadow-2xs bg-white h-9.5"
               >
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-md">
-                  {currentUser?.username?.charAt(0).toUpperCase()}
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-2xs">
+                  {initialLetter}
                 </div>
-                <div className="hidden md:block text-left pr-1">
-                  <p className="text-xs font-black text-slate-900 leading-tight">{currentUser?.username}</p>
-                  <p className="text-[10px] font-bold text-blue-600 leading-tight">{roleMeta.title}</p>
+                <div className="hidden md:block text-left pr-0.5">
+                  <p className="text-xs font-black text-slate-900 leading-tight">{displayName}</p>
+                  <p className="text-[10px] font-bold text-blue-600 leading-none">{roleMeta.title}</p>
                 </div>
-                <ChevronDown size={14} className="text-slate-400" />
+                <ChevronDown size={13} className="text-slate-400" />
               </button>
 
               <AnimatePresence>
@@ -445,8 +494,11 @@ const DashboardLayout = () => {
                   >
                     <div className="px-4 py-3">
                       <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Signed In Account</p>
-                      <p className="text-sm font-black text-slate-900 mt-0.5">{currentUser?.username}</p>
-                      <p className="text-xs text-slate-500">{currentUser?.email || 'NCP Education Domain'}</p>
+                      <p className="text-sm font-black text-slate-900 mt-0.5">{displayName}</p>
+                      {currentUser?.username && currentUser?.name && currentUser?.name !== currentUser?.username && (
+                        <p className="text-[10px] text-slate-400 font-mono">NIC: {currentUser?.username}</p>
+                      )}
+                      <p className="text-xs text-slate-500 mt-0.5">{currentUser?.email || 'NCP Education Domain'}</p>
                       
                       <div className="mt-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200/80">
                         <p className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
@@ -494,7 +546,7 @@ const DashboardLayout = () => {
         </header>
 
         {/* ── 3. MAIN DASHBOARD CONTENT AREA ── */}
-        <main className="flex-1 overflow-y-auto bg-slate-100/90 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-100/90 p-2.5 sm:p-5 lg:p-6">
           <Outlet />
         </main>
       </div>

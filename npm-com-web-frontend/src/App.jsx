@@ -93,7 +93,7 @@ function App() {
             <Route 
               path="committees" 
               element={
-                <RoleRoute allowedRoles={['PROVINCIAL_DIRECTOR', 'ZONAL_DIRECTOR', 'ADMIN']}>
+                <RoleRoute allowedRoles={['PROVINCIAL_DIRECTOR', 'ZONAL_DIRECTOR', 'DIVISIONAL_DIRECTOR', 'PRINCIPAL', 'SECTION_HEAD', 'TEACHER', 'ADMIN']}>
                   <Committees />
                 </RoleRoute>
               } 
@@ -102,7 +102,7 @@ function App() {
             <Route 
               path="users" 
               element={
-                <RoleRoute allowedRoles={['PROVINCIAL_DIRECTOR', 'ZONAL_DIRECTOR', 'DIVISIONAL_DIRECTOR', 'ADMIN']}>
+                <RoleRoute allowedRoles={['PROVINCIAL_DIRECTOR', 'ZONAL_DIRECTOR', 'DIVISIONAL_DIRECTOR', 'PRINCIPAL', 'ADMIN']}>
                   <UserManagement />
                 </RoleRoute>
               } 
@@ -110,7 +110,7 @@ function App() {
             <Route 
               path="locations" 
               element={
-                <RoleRoute allowedRoles={['PROVINCIAL_DIRECTOR', 'ADMIN']}>
+                <RoleRoute allowedRoles={['PROVINCIAL_DIRECTOR', 'ADMIN', 'ZONAL_DIRECTOR', 'DIVISIONAL_DIRECTOR']}>
                   <LocationManagement />
                 </RoleRoute>
               } 

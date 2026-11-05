@@ -7,6 +7,7 @@ public class JwtResponse {
     private String type = "Bearer";
     private Long id;
     private String username;
+    private String name;
     private List<String> roles;
     
     // Geographic Scope & Location
@@ -44,6 +45,9 @@ public class JwtResponse {
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
     public List<String> getRoles() { return roles; }
     public void setRoles(List<String> roles) { this.roles = roles; }

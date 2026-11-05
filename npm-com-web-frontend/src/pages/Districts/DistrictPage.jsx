@@ -16,30 +16,10 @@ const districtData = {
     nameSi: "අනුරාධපුරය",
     title: "Sacred City of Anuradhapura",
     titleSi: "අනුරාධපුර දිස්ත්‍රික් වාණිජ අධ්‍යාපන කේන්ද්‍රස්ථානය",
-    subtitle: "Empowering 8 Educational Zones, 14 Divisions, and 84+ Commerce Schools in the North Central Province.",
-    subtitleSi: "අධ්‍යාපන කලාප 8ක්, කොට්ඨාස 14ක් සහ පාසල් 84කට අධික සංඛ්‍යාවක වාණිජ අධ්‍යාපන විශිෂ්ටත්වය මෙහෙයවන නිල ද්වාරය.",
+    subtitle: "Commerce Education Portal for Educational Zones, Divisions, and Registered Schools in Anuradhapura District.",
+    subtitleSi: "අනුරාධපුර දිස්ත්‍රික්කයේ අධ්‍යාපන කලාප, කොට්ඨාස සහ වාණිජ පාසල්වල අධ්‍යාපන විශිෂ්ටත්වය මෙහෙයවන නිල ද්වාරය.",
     bgImage: "/anuradhapura.png",
-    color: "blue",
-    stats: {
-      schools: 84,
-      teachers: 320,
-      students: 7450,
-      passRate2025: 82.5,
-      passRate2024: 79.4,
-      passRate2023: 76.8,
-      zonesCount: 8,
-      divisionsCount: 14
-    },
-    zones: [
-      { id: 1, name: "Anuradhapura", nameSi: "අනුරාධපුරය", image: "/anuradhapura.png", badge: "Central Urban Hub", divisionsCount: 2, schoolsCount: 18, students: 2150 },
-      { id: 2, name: "Kekirawa", nameSi: "කැකිරාව", image: "/slide_1.png", badge: "Southern Zone", divisionsCount: 2, schoolsCount: 12, students: 1040 },
-      { id: 3, name: "Thambuttegama", nameSi: "තඹුත්තේගම", image: "/slide_2.png", badge: "Mahaweli Commercial Zone", divisionsCount: 2, schoolsCount: 12, students: 1120 },
-      { id: 4, name: "Galenbindunuwewa", nameSi: "ගලෙන්බිඳුනුවැව", image: "/slide_3.png", badge: "Hurulu Rural Zone", divisionsCount: 2, schoolsCount: 8, students: 680 },
-      { id: 5, name: "Kebithigollewa", nameSi: "කැබිතිගොල්ලෑව", image: "/commerce_students.jpg", badge: "Northern Border Zone", divisionsCount: 2, schoolsCount: 9, students: 710 },
-      { id: 6, name: "Medawachchiya", nameSi: "මැදවච්චිය", image: "/anuradhapura.png", badge: "Junction Commerce Hub", divisionsCount: 2, schoolsCount: 10, students: 850 },
-      { id: 7, name: "Nochchiyagama", nameSi: "නොච්චියාගම", image: "/slide_1.png", badge: "Western Gateway", divisionsCount: 1, schoolsCount: 7, students: 530 },
-      { id: 8, name: "Horowpothana", nameSi: "හොරොව්පොතාන", image: "/slide_2.png", badge: "Eastern Foothill Zone", divisionsCount: 1, schoolsCount: 8, students: 570 }
-    ]
+    color: "blue"
   },
   polonnaruwa: {
     id: 2,
@@ -47,25 +27,10 @@ const districtData = {
     nameSi: "පොළොන්නරුව",
     title: "Ancient Kingdom of Polonnaruwa",
     titleSi: "පොළොන්නරුව දිස්ත්‍රික් වාණිජ අධ්‍යාපන කේන්ද්‍රස්ථානය",
-    subtitle: "Guiding 3 Educational Zones, 7 Divisions, and 34+ Commerce Schools toward national excellence.",
-    subtitleSi: "අධ්‍යාපන කලාප 3ක්, කොට්ඨාස 7ක් සහ පාසල් 34ක වාණිජ අධ්‍යාපන විශිෂ්ටත්වය මෙහෙයවන නිල ද්වාරය.",
+    subtitle: "Commerce Education Portal for Educational Zones, Divisions, and Registered Schools in Polonnaruwa District.",
+    subtitleSi: "පොළොන්නරුව දිස්ත්‍රික්කයේ අධ්‍යාපන කලාප, කොට්ඨාස සහ වාණිජ පාසල්වල අධ්‍යාපන විශිෂ්ටත්වය මෙහෙයවන නිල ද්වාරය.",
     bgImage: "/polonnaruwa.png",
-    color: "teal",
-    stats: {
-      schools: 34,
-      teachers: 142,
-      students: 4200,
-      passRate2025: 81.8,
-      passRate2024: 78.6,
-      passRate2023: 75.4,
-      zonesCount: 3,
-      divisionsCount: 7
-    },
-    zones: [
-      { id: 9, name: "Polonnaruwa", nameSi: "පොළොන්නරුව", image: "/polonnaruwa.png", badge: "Ancient Royal Capital", divisionsCount: 3, schoolsCount: 15, students: 1950 },
-      { id: 10, name: "Hingurakgoda", nameSi: "හිඟුරක්ගොඩ", image: "/slide_1.png", badge: "Minneriya Agricultural Hub", divisionsCount: 2, schoolsCount: 10, students: 1280 },
-      { id: 11, name: "Dimbulagala", nameSi: "දිඹුලාගල", image: "/slide_3.png", badge: "Historical Rock Zone", divisionsCount: 2, schoolsCount: 9, students: 970 }
-    ]
+    color: "teal"
   }
 };
 
@@ -79,8 +44,21 @@ const DistrictPage = () => {
   const [selectedDivision, setSelectedDivision] = useState(null);
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [zonesList, setZonesList] = useState(dData.zones);
+  const [zonesList, setZonesList] = useState([]);
   const [districtResults, setDistrictResults] = useState([]);
+  const [districtLiveStats, setDistrictLiveStats] = useState({
+    zones: 0,
+    divisions: 0,
+    schools: 0,
+    teachers: 0,
+    students: 0,
+    passRateCurrent: 0,
+    passRate2023: 0,
+    passRate2024: 0,
+    passRate2025: 0
+  });
+
+  const [yearlyProgression, setYearlyProgression] = useState([]);
 
   // In-place Quick Analytics Modal state
   const [modalConfig, setModalConfig] = useState({
@@ -119,32 +97,51 @@ const DistrictPage = () => {
     setSelectedDivision(null);
     setSchools([]);
 
-    // 1. Fetch zones dynamically from DB (including any added via CMS)
+    // 1. Fetch live district statistics from DB
+    fetch(`http://localhost:8080/api/public/statistics/district/${dData.id}`)
+      .then(res => res.json())
+      .then(stat => {
+        if (stat) {
+          setDistrictLiveStats({
+            zones: stat.zones ?? 0,
+            divisions: stat.divisions ?? 0,
+            schools: stat.schools ?? 0,
+            teachers: stat.teachers ?? 0,
+            students: stat.students ?? 0,
+            passRateCurrent: stat.passRateCurrent ?? 0,
+            passRate2023: stat.passRatePrev2 ?? 0,
+            passRate2024: stat.passRatePrev1 ?? 0,
+            passRate2025: stat.passRateCurrent ?? 0
+          });
+        }
+      })
+      .catch(() => {});
+
+    // 2. Fetch zones dynamically from DB
     fetch(`http://localhost:8080/api/public/zones?districtId=${dData.id}`)
       .then(res => res.json())
       .then(dbZones => {
-        if (Array.isArray(dbZones) && dbZones.length > 0) {
-          const merged = dbZones.map((z, idx) => {
-            const staticMatch = dData.zones.find(sz => sz.id === z.id || sz.name.toLowerCase() === z.name.toLowerCase());
-            return {
-              id: z.id,
-              name: z.name,
-              nameSi: staticMatch?.nameSi || z.name,
-              image: staticMatch?.image || `/slide_${(idx % 3) + 1}.png`,
-              badge: staticMatch?.badge || (lang === 'si' ? 'කලාප අධ්‍යාපන කාර්යාලය' : 'Zonal Education Office'),
-              divisionsCount: staticMatch?.divisionsCount || 2,
-              schoolsCount: staticMatch?.schoolsCount || 8,
-              students: staticMatch?.students || 650
-            };
-          });
-          setZonesList(merged);
+        if (Array.isArray(dbZones)) {
+          const mapped = dbZones.map((z, idx) => ({
+            ...z,
+            id: z.id,
+            name: z.name,
+            nameSi: z.nameSi || z.name,
+            image: z.image || `/slide_${(idx % 3) + 1}.png`,
+            badge: lang === 'si' ? 'කලාප අධ්‍යාපන කාර්යාලය' : 'Zonal Education Office',
+            divisionsCount: z.divisionsCount ?? (z.divisions ? z.divisions.length : 0),
+            schoolsCount: z.schoolsCount ?? 0,
+            directorName: z.directorName || null,
+            students: z.students ?? 0
+          }));
+          setZonesList(mapped);
         } else {
-          setZonesList(dData.zones);
+          setZonesList([]);
         }
       })
-      .catch(() => setZonesList(dData.zones));
+      .catch(() => setZonesList([]));
 
-    // 2. Fetch live results from DB for real dynamic auto-calculations
+    // 3. Fetch live results from DB for real dynamic auto-calculations
     fetch(`http://localhost:8080/api/public/al-results?districtId=${dData.id}`)
       .then(res => res.json())
       .then(resData => {
@@ -154,6 +151,24 @@ const DistrictPage = () => {
       })
       .catch(() => {});
   }, [id, dData.id]);
+
+  // Dynamic 5-Year Examination Progression from DB
+  useEffect(() => {
+    let url = `http://localhost:8080/api/public/statistics/yearly-comparison?limit=5`;
+    if (selectedDivision) {
+      url += `&level=division&id=${selectedDivision.id}`;
+    } else if (selectedZone) {
+      url += `&level=zone&id=${selectedZone.id}`;
+    } else {
+      url += `&level=district&id=${dData.id}`;
+    }
+    fetch(url)
+      .then(res => res.json())
+      .then(res => {
+        if (res && res.data) setYearlyProgression(res.data);
+      })
+      .catch(() => {});
+  }, [dData.id, selectedZone?.id, selectedDivision?.id]);
 
   const scrollToExplorer = () => {
     setTimeout(() => {
@@ -174,20 +189,14 @@ const DistrictPage = () => {
     fetch(`http://localhost:8080/api/public/divisions?zoneId=${zone.id}`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setDivisions(data);
         } else {
-          setDivisions([
-            { id: 101, name: `${zone.name} North Division`, nameSi: `${zone.nameSi || zone.name} උතුරු කොට්ඨාසය`, schoolsCount: Math.ceil(zone.schoolsCount / 2) },
-            { id: 102, name: `${zone.name} South Division`, nameSi: `${zone.nameSi || zone.name} දකුණු කොට්ඨාසය`, schoolsCount: Math.floor(zone.schoolsCount / 2) }
-          ]);
+          setDivisions([]);
         }
       })
       .catch(() => {
-        setDivisions([
-          { id: 101, name: `${zone.name} North Division`, nameSi: `${zone.nameSi || zone.name} උතුරු කොට්ඨාසය`, schoolsCount: Math.ceil(zone.schoolsCount / 2) },
-          { id: 102, name: `${zone.name} South Division`, nameSi: `${zone.nameSi || zone.name} දකුණු කොට්ඨාසය`, schoolsCount: Math.floor(zone.schoolsCount / 2) }
-        ]);
+        setDivisions([]);
       })
       .finally(() => setLoading(false));
   };
@@ -200,66 +209,14 @@ const DistrictPage = () => {
     fetch(`http://localhost:8080/api/public/schools?divisionId=${division.id}`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setSchools(data);
         } else {
-          setSchools([
-            {
-              id: 201,
-              name: `A/${division.name.replace(' Division', '')} Central College (National School)`,
-              type: '1AB (National School)',
-              principal: 'M.B. Dissanayake (SLPS-I)',
-              commerceHead: 'W.M. Kanthi (ISA Commerce)',
-              students: '420',
-              teachersCount: 10,
-              teachers: { 'Accounting': 3, 'Business Studies': 3, 'Economics': 2, 'ICT': 2 }
-            },
-            {
-              id: 202,
-              name: `A/${division.name.replace(' Division', '')} Maha Vidyalaya`,
-              type: '1C (Provincial)',
-              principal: 'S.P. Bandara',
-              commerceHead: 'K.D. Jayasinghe',
-              students: '260',
-              teachersCount: 7,
-              teachers: { 'Accounting': 2, 'Business Studies': 2, 'Economics': 2, 'ICT': 1 }
-            },
-            {
-              id: 203,
-              name: `A/${division.name.replace(' Division', '')} Model Commerce School`,
-              type: '1C (Provincial)',
-              principal: 'N.H. Senarathne',
-              commerceHead: 'T.M. Gunawardena',
-              students: '190',
-              teachersCount: 5,
-              teachers: { 'Accounting': 2, 'Business Studies': 1, 'Economics': 1, 'ICT': 1 }
-            }
-          ]);
+          setSchools([]);
         }
       })
       .catch(() => {
-        setSchools([
-          {
-            id: 201,
-            name: `A/${division.name.replace(' Division', '')} Central College (National School)`,
-            type: '1AB (National School)',
-            principal: 'M.B. Dissanayake (SLPS-I)',
-            commerceHead: 'W.M. Kanthi (ISA Commerce)',
-            students: '420',
-            teachersCount: 10,
-            teachers: { 'Accounting': 3, 'Business Studies': 3, 'Economics': 2, 'ICT': 2 }
-          },
-          {
-            id: 202,
-            name: `A/${division.name.replace(' Division', '')} Maha Vidyalaya`,
-            type: '1C (Provincial)',
-            principal: 'S.P. Bandara',
-            commerceHead: 'K.D. Jayasinghe',
-            students: '260',
-            teachersCount: 7,
-            teachers: { 'Accounting': 2, 'Business Studies': 2, 'Economics': 2, 'ICT': 1 }
-          }
-        ]);
+        setSchools([]);
       })
       .finally(() => setLoading(false));
   };
@@ -318,10 +275,10 @@ const DistrictPage = () => {
       schools.some(s => s.id === r.school?.id)
     );
     const fallbackDiv = {
-      passRate2023: 78.2,
-      passRate2024: 81.0,
-      passRate2025: 84.5,
-      students: schools.reduce((acc, s) => acc + (parseInt(s.students) || 200), 0) || 480
+      passRate2023: 0,
+      passRate2024: 0,
+      passRate2025: 0,
+      students: schools.reduce((acc, s) => acc + (parseInt(s.students) || 0), 0)
     };
     const live = computeLiveStats(divResults, fallbackDiv);
 
@@ -332,14 +289,14 @@ const DistrictPage = () => {
         ? `${selectedDivision.nameSi || selectedDivision.name} කොට්ඨාස කාර්යසාධනය සහ පාසල් දර්ශක`
         : `${selectedDivision.name} Division Performance & Institutional Metrics`,
       subtitle: lang === 'si'
-        ? `${selectedDivision.name} කොට්ඨාසයේ වාණිජ පාසල් ${schools.length || 2}ක්, ගුරුවරුන් හා සිසුන්ගේ ප්‍රගති විශ්ලේෂණය`
+        ? `${selectedDivision.name} කොට්ඨාසයේ වාණිජ පාසල් ${schools.length || 0}ක්, ගුරුවරුන් හා සිසුන්ගේ ප්‍රගති විශ්ලේෂණය`
         : `Performance indicators, commerce teachers, and student enrolment in ${selectedDivision.name}`,
-      schools: schools.length || (selectedDivision.schoolsCount || 2),
-      teachers: schools.reduce((acc, s) => acc + (s.teachersCount || 7), 0) || 14,
-      students: live.students,
-      passRate2023: live.passRate2023,
-      passRate2024: live.passRate2024,
-      passRate2025: live.passRate2025,
+      schools: schools.length || (selectedDivision.schoolsCount || 0),
+      teachers: schools.reduce((acc, s) => acc + (s.teachersCount || 0), 0),
+      students: live.students || 0,
+      passRate2023: live.passRate2023 || 0,
+      passRate2024: live.passRate2024 || 0,
+      passRate2025: live.passRate2025 || 0,
       isLive: live.isLive,
       progressionTitle: lang === 'si'
         ? `${selectedDivision.name} කොට්ඨාස වාර්ෂික සාමාන්‍ය සමත් ප්‍රතිශත ප්‍රවණතාව`
@@ -351,10 +308,10 @@ const DistrictPage = () => {
       (r.school?.division?.zone?.name && r.school.division.zone.name.toLowerCase() === selectedZone.name.toLowerCase())
     );
     const fallbackZone = {
-      passRate2023: Number((dData.stats.passRate2023 - 0.6).toFixed(1)),
-      passRate2024: Number((dData.stats.passRate2024 + 0.3).toFixed(1)),
-      passRate2025: Number((dData.stats.passRate2025 + 0.4).toFixed(1)),
-      students: selectedZone.students || Math.round(selectedZone.schoolsCount * 90)
+      passRate2023: 0,
+      passRate2024: 0,
+      passRate2025: 0,
+      students: selectedZone.students || 0
     };
     const live = computeLiveStats(zoneResults, fallbackZone);
 
@@ -365,14 +322,14 @@ const DistrictPage = () => {
         ? `${selectedZone.nameSi || selectedZone.name} කලාප කාර්යසාධන දර්ශක`
         : `${selectedZone.name} Zone Commerce Benchmarks`,
       subtitle: lang === 'si'
-        ? `කොට්ඨාස ${selectedZone.divisionsCount}ක් සහ වාණිජ පාසල් ${selectedZone.schoolsCount}ක කලාපීය අධ්‍යාපන මිණුම් සලකුණු`
-        : `Regional examination performance across ${selectedZone.divisionsCount} divisions and ${selectedZone.schoolsCount} commerce schools in ${selectedZone.name} Zone`,
-      schools: selectedZone.schoolsCount,
-      teachers: Math.round(selectedZone.schoolsCount * 3.8),
-      students: live.students,
-      passRate2023: live.passRate2023,
-      passRate2024: live.passRate2024,
-      passRate2025: live.passRate2025,
+        ? `කොට්ඨාස ${selectedZone.divisionsCount || 0}ක් සහ වාණිජ පාසල් ${selectedZone.schoolsCount || 0}ක කලාපීය අධ්‍යාපන මිණුම් සලකුණු`
+        : `Regional examination performance across ${selectedZone.divisionsCount || 0} divisions and ${selectedZone.schoolsCount || 0} commerce schools in ${selectedZone.name} Zone`,
+      schools: selectedZone.schoolsCount || 0,
+      teachers: 0,
+      students: live.students || 0,
+      passRate2023: live.passRate2023 || 0,
+      passRate2024: live.passRate2024 || 0,
+      passRate2025: live.passRate2025 || 0,
       isLive: live.isLive,
       progressionTitle: lang === 'si'
         ? `${selectedZone.name} කලාප වාර්ෂික සමත් ප්‍රතිශත ප්‍රවණතාව`
@@ -380,10 +337,10 @@ const DistrictPage = () => {
     };
   } else {
     const fallbackDist = {
-      passRate2023: dData.stats.passRate2023,
-      passRate2024: dData.stats.passRate2024,
-      passRate2025: dData.stats.passRate2025,
-      students: dData.stats.students
+      passRate2023: districtLiveStats.passRate2023 || 0,
+      passRate2024: districtLiveStats.passRate2024 || 0,
+      passRate2025: districtLiveStats.passRate2025 || 0,
+      students: districtLiveStats.students || 0
     };
     const live = computeLiveStats(districtResults, fallbackDist);
 
@@ -392,13 +349,13 @@ const DistrictPage = () => {
       badge: lang === 'si' ? `${dData.nameSi} දිස්ත්‍රික්කය` : `${dData.name} District`,
       title: lang === 'si' ? `${dData.nameSi} දිස්ත්‍රික් කාර්යසාධන දර්ශක` : `${dData.name} District Commerce Benchmarks`,
       subtitle: lang === 'si' ? 'ප්‍රාදේශීය අධ්‍යාපන මිණුම් සලකුණු සහ විභාග ප්‍රවණතා' : 'Official regional metrics and examination benchmark targets',
-      schools: dData.stats.schools,
-      teachers: dData.stats.teachers,
-      students: live.students,
-      passRate2023: live.passRate2023,
-      passRate2024: live.passRate2024,
-      passRate2025: live.passRate2025,
-      isLive: live.isLive,
+      schools: districtLiveStats.schools || 0,
+      teachers: districtLiveStats.teachers || 0,
+      students: districtLiveStats.students || live.students || 0,
+      passRate2023: districtLiveStats.passRate2023 || 0,
+      passRate2024: districtLiveStats.passRate2024 || 0,
+      passRate2025: districtLiveStats.passRate2025 || 0,
+      isLive: Boolean(districtLiveStats.students > 0 || districtLiveStats.schools > 0 || live.isLive),
       progressionTitle: lang === 'si' ? 'වසර 3 ක සාමාන්‍ය සමත් ප්‍රතිශත ප්‍රවණතාව' : '3-Year District Examination Pass Rate Progression'
     };
   }
@@ -418,9 +375,9 @@ const DistrictPage = () => {
     heroBgImage = selectedZone?.image || dData.bgImage;
     heroKpis = [
       { label: lang === 'si' ? 'අධ්‍යාපන කලාපය' : 'Parent Zone', value: selectedZone?.name || 'Zone', icon: MapPin, color: 'blue' },
-      { label: lang === 'si' ? 'වාණිජ පාසල්' : 'Registered Schools', value: `${schools.length || selectedDivision.schoolsCount || 2}+`, icon: School, color: 'emerald' },
-      { label: lang === 'si' ? 'උසස් පෙළ සිසුන්' : 'Commerce Students', value: `${benchmarkContext.students}`, icon: Users, color: 'teal' },
-      { label: lang === 'si' ? 'ඉලක්කගත සමත් %' : 'Pass Benchmark', value: `${benchmarkContext.passRate2025}%`, icon: Award, color: 'amber' }
+      { label: lang === 'si' ? 'වාණිජ පාසල්' : 'Registered Schools', value: `${schools.length || selectedDivision.schoolsCount || 0}`, icon: School, color: 'emerald' },
+      { label: lang === 'si' ? 'උසස් පෙළ සිසුන්' : 'Commerce Students', value: `${benchmarkContext.students || 0}`, icon: Users, color: 'teal' },
+      { label: lang === 'si' ? 'ඉලක්කගත සමත් %' : 'Pass Benchmark', value: `${benchmarkContext.passRate2025 || 0}%`, icon: Award, color: 'amber' }
     ];
   } else if (selectedZone) {
     heroBadge = lang === 'si'
@@ -430,25 +387,27 @@ const DistrictPage = () => {
       ? `${selectedZone.nameSi || selectedZone.name} කලාප වාණිජ කේන්ද්‍රස්ථානය`
       : `${selectedZone.name} Zonal Commerce Hub`;
     heroSubtitle = lang === 'si'
-      ? `${selectedZone.nameSi || selectedZone.name} කලාපයේ කොට්ඨාස ${selectedZone.divisionsCount}ක් සහ වාණිජ පාසල් ${selectedZone.schoolsCount}ක අධ්‍යාපන විශිෂ්ටත්වය මෙහෙයවන නිල ද්වාරය.`
-      : `Directing ${selectedZone.divisionsCount} educational divisions and ${selectedZone.schoolsCount} registered commerce schools across ${selectedZone.name} Zone.`;
+      ? `${selectedZone.nameSi || selectedZone.name} කලාපයේ කොට්ඨාස ${selectedZone.divisionsCount || 0}ක් සහ වාණිජ පාසල් ${selectedZone.schoolsCount || 0}ක අධ්‍යාපන විශිෂ්ටත්වය මෙහෙයවන නිල ද්වාරය.`
+      : `Directing ${selectedZone.divisionsCount || 0} educational divisions and ${selectedZone.schoolsCount || 0} registered commerce schools across ${selectedZone.name} Zone.`;
     heroBgImage = selectedZone.image || dData.bgImage;
     heroKpis = [
-      { label: lang === 'si' ? 'අධ්‍යාපන කොට්ඨාස' : 'Divisions', value: `${selectedZone.divisionsCount}`, icon: Layers, color: 'teal' },
-      { label: lang === 'si' ? 'වාණිජ පාසල්' : 'Commerce Schools', value: `${selectedZone.schoolsCount}+`, icon: School, color: 'emerald' },
-      { label: lang === 'si' ? 'සිසු ප්‍රජාව' : 'Commerce Students', value: `${benchmarkContext.students}`, icon: Users, color: 'blue' },
-      { label: lang === 'si' ? 'ඉලක්කගත සමත් %' : 'Pass Benchmark', value: `${benchmarkContext.passRate2025}%`, icon: Award, color: 'amber' }
+      { label: lang === 'si' ? 'අධ්‍යාපන කොට්ඨාස' : 'Divisions', value: `${selectedZone.divisionsCount || 0}`, icon: Layers, color: 'teal' },
+      { label: lang === 'si' ? 'වාණිජ පාසල්' : 'Commerce Schools', value: `${selectedZone.schoolsCount || 0}`, icon: School, color: 'emerald' },
+      { label: lang === 'si' ? 'සිසු ප්‍රජාව' : 'Commerce Students', value: `${benchmarkContext.students || 0}`, icon: Users, color: 'blue' },
+      { label: lang === 'si' ? 'ඉලක්කගත සමත් %' : 'Pass Benchmark', value: `${benchmarkContext.passRate2025 || 0}%`, icon: Award, color: 'amber' }
     ];
   } else {
     heroBadge = lang === 'si' ? `${dData.nameSi} දිස්ත්‍රික් වාණිජ අංශය` : `${dData.name} District Commerce Division`;
     heroTitle = lang === 'si' ? dData.titleSi : `${dData.name} District Commerce Hub`;
-    heroSubtitle = lang === 'si' ? dData.subtitleSi : dData.subtitle;
+    heroSubtitle = lang === 'si'
+      ? `අධ්‍යාපන කලාප ${districtLiveStats.zones}ක්, කොට්ඨාස ${districtLiveStats.divisions}ක් සහ ලියාපදිංචි වාණිජ පාසල් ${districtLiveStats.schools}ක වාණිජ අධ්‍යාපන විශිෂ්ටත්වය මෙහෙයවන නිල ද්වාරය.`
+      : `Empowering ${districtLiveStats.zones} Educational Zone(s), ${districtLiveStats.divisions} Division(s), and ${districtLiveStats.schools} Commerce School(s) in ${dData.name} District.`;
     heroBgImage = dData.bgImage;
     heroKpis = [
-      { label: lang === 'si' ? 'අධ්‍යාපන කලාප' : 'Educational Zones', value: `${dData.stats.zonesCount}`, icon: MapPin, color: 'blue' },
-      { label: lang === 'si' ? 'අධ්‍යාපන කොට්ඨාස' : 'Educational Divisions', value: `${dData.stats.divisionsCount}`, icon: Layers, color: 'teal' },
-      { label: lang === 'si' ? 'වාණිජ පාසල්' : 'Commerce Schools', value: `${dData.stats.schools}+`, icon: School, color: 'emerald' },
-      { label: lang === 'si' ? 'ඉලක්කගත සමත් %' : 'Pass Benchmark Target', value: `${dData.stats.passRate2025}%`, icon: Award, color: 'amber' }
+      { label: lang === 'si' ? 'අධ්‍යාපන කලාප' : 'Educational Zones', value: `${districtLiveStats.zones}`, icon: MapPin, color: 'blue' },
+      { label: lang === 'si' ? 'අධ්‍යාපන කොට්ඨාස' : 'Educational Divisions', value: `${districtLiveStats.divisions}`, icon: Layers, color: 'teal' },
+      { label: lang === 'si' ? 'වාණිජ පාසල්' : 'Commerce Schools', value: `${districtLiveStats.schools}`, icon: School, color: 'emerald' },
+      { label: lang === 'si' ? 'ඉලක්කගත සමත් %' : 'Pass Benchmark Target', value: `${districtLiveStats.passRateCurrent}%`, icon: Award, color: 'amber' }
     ];
   }
 
@@ -538,31 +497,31 @@ const DistrictPage = () => {
       </section>
 
       {/* ── 2. MAIN REGIONAL EXPLORER AREA (CLEAN TOP MARGIN, ZERO CUTOFF!) ── */}
-      <div id="explorer-content" className="max-w-7xl mx-auto px-6 py-10 scroll-mt-24">
+      <div id="explorer-content" className="max-w-7xl mx-auto px-3 sm:px-6 py-5 sm:py-10 scroll-mt-24">
         
-        {/* Stepper Breadcrumbs Bar */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center space-x-2 text-xs sm:text-sm font-bold">
+        {/* Stepper Breadcrumbs Bar (Mobile Responsive No-Cutoff Strip) */}
+        <div className="bg-white rounded-2xl p-2.5 sm:p-4 shadow-xs border border-slate-200/80 mb-5 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm font-bold overflow-x-auto no-scrollbar w-full sm:w-auto py-0.5">
             <button
               onClick={handleResetToAllZones}
-              className={`px-4 py-2 rounded-xl transition-all flex items-center space-x-2 ${
-                step === 1 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-black' : 'hover:bg-slate-100 text-slate-700'
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all flex items-center space-x-1.5 sm:space-x-2 whitespace-nowrap shrink-0 cursor-pointer ${
+                step === 1 ? 'bg-blue-600 text-white shadow-xs font-black' : 'hover:bg-slate-100 text-slate-700 bg-slate-50'
               }`}
             >
-              <MapPin className="w-4 h-4" />
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
               <span>1. {lang === 'si' ? 'කලාප (Zones)' : 'All Zones'}</span>
             </button>
 
             {selectedZone && (
               <>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <button
                   onClick={handleBackToZone}
-                  className={`px-4 py-2 rounded-xl transition-all flex items-center space-x-2 ${
-                    step === 2 ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30 font-black' : 'hover:bg-slate-100 text-slate-700'
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all flex items-center space-x-1.5 sm:space-x-2 whitespace-nowrap shrink-0 cursor-pointer ${
+                    step === 2 ? 'bg-teal-600 text-white shadow-xs font-black' : 'hover:bg-slate-100 text-slate-700 bg-slate-50'
                   }`}
                 >
-                  <Building2 className="w-4 h-4" />
+                  <Building2 className="w-3.5 h-3.5 shrink-0" />
                   <span>2. {selectedZone.name} {lang === 'si' ? 'කලාපය' : 'Zone'}</span>
                 </button>
               </>
@@ -570,9 +529,9 @@ const DistrictPage = () => {
 
             {selectedDivision && (
               <>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-                <span className="px-4 py-2 rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/30 font-black flex items-center space-x-2">
-                  <School className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-indigo-600 text-white shadow-xs font-black flex items-center space-x-1.5 sm:space-x-2 whitespace-nowrap shrink-0">
+                  <School className="w-3.5 h-3.5 shrink-0" />
                   <span>3. {selectedDivision.name}</span>
                 </span>
               </>
@@ -582,7 +541,7 @@ const DistrictPage = () => {
           {step > 1 && (
             <button
               onClick={handleResetToAllZones}
-              className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3.5 py-2 rounded-xl transition-all"
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all self-start sm:self-auto shrink-0 cursor-pointer"
             >
               {lang === 'si' ? '← සියලු කලාප වෙත' : '← Back to All Zones'}
             </button>
@@ -670,15 +629,15 @@ const DistrictPage = () => {
 
         {/* STEP 2: DIVISIONS GRID */}
         {step === 2 && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200">
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-8 shadow-md border border-slate-200">
             {/* Zonal Leadership Profile Card */}
-            <div className="mb-8 p-6 sm:p-7 rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white shadow-xl relative overflow-hidden border border-white/10">
+            <div className="mb-5 sm:mb-8 p-3.5 sm:p-7 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white shadow-xl relative overflow-hidden border border-white/10">
               <div className="absolute right-0 top-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
               
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                  <div className="relative">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl overflow-hidden border-2 border-teal-400/60 shadow-2xl bg-slate-800 flex-shrink-0">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 relative z-10">
+                <div className="flex flex-row items-center gap-3 sm:gap-5">
+                  <div className="relative shrink-0">
+                    <div className="w-14 h-14 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-teal-400/60 shadow-xl bg-slate-800 flex-shrink-0">
                       <img
                         src="/provincial_director.png"
                         alt={selectedZone.name}
@@ -686,55 +645,55 @@ const DistrictPage = () => {
                         onError={(e) => { e.target.src = '/slide_1.png'; }}
                       />
                     </div>
-                    <span className="absolute -bottom-1 -right-1 bg-teal-500 text-slate-950 p-1 rounded-full shadow-md" title="Official Authority">
-                      <ShieldCheck className="w-4 h-4" />
+                    <span className="absolute -bottom-1 -right-1 bg-teal-500 text-slate-950 p-0.5 sm:p-1 rounded-full shadow-md" title="Official Authority">
+                      <ShieldCheck className="w-3 h-3 sm:w-4 sm:h-4" />
                     </span>
                   </div>
 
-                  <div>
-                    <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-[11px] font-black uppercase tracking-wider mb-2">
-                      <Award className="w-3.5 h-3.5" />
-                      <span>{lang === 'si' ? 'කලාප අධ්‍යාපන නායකත්වය' : 'Zonal Education Directorate'}</span>
+                  <div className="min-w-0">
+                    <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-[10px] sm:text-[11px] font-black uppercase tracking-wider mb-1 sm:mb-2">
+                      <Award className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span>{lang === 'si' ? 'කලාප අධ්‍යාපන නායකත්වය' : 'Zonal Directorate'}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-black text-white drop-shadow-sm">
-                      {selectedZone.directorName || `K.M. Jayasekara (SLAS - Class I)`}
+                    <h3 className="text-base sm:text-2xl font-black text-white drop-shadow-sm truncate">
+                      {selectedZone.directorName || (lang === 'si' ? 'කලාප අධ්‍යක්ෂ (පත්කිරීම අපේක්ෂිතයි)' : 'Zonal Director (Pending Appointment)')}
                     </h3>
-                    <p className="text-xs sm:text-sm text-teal-200 font-bold mt-0.5">
-                      {lang === 'si' ? `කලාප අධ්‍යාපන අධ්‍යක්ෂ — ${selectedZone.nameSi || selectedZone.name} කලාපය` : `Zonal Director of Education — ${selectedZone.name} Zone`}
+                    <p className="text-[11px] sm:text-sm text-teal-200 font-bold mt-0.5 truncate">
+                      {lang === 'si' ? `කලාප අධ්‍යාපන අධ්‍යක්ෂ — ${selectedZone.nameSi || selectedZone.name} කලාපය` : `Zonal Director — ${selectedZone.name} Zone`}
                     </p>
-                    <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-slate-300">
-                      <span className="flex items-center space-x-1.5">
-                        <UserCog className="w-3.5 h-3.5 text-blue-400" />
-                        <span><strong>Commerce ISA:</strong> Mrs. W.M. Sunethra Kumari</span>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 sm:mt-3 text-[10px] sm:text-xs text-slate-300">
+                      <span className="flex items-center space-x-1">
+                        <MapPin className="w-3 h-3 text-teal-400 shrink-0" />
+                        <span>{lang === 'si' ? `${selectedZone.name} කලාප අධ්‍යාපන කාර්යාලය` : `Zonal Education Office, ${selectedZone.name}`}</span>
                       </span>
-                      <span className="flex items-center space-x-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-teal-400" />
-                        <span>Zonal Education Office, {selectedZone.name}</span>
+                      <span className="flex items-center space-x-1">
+                        <School className="w-3 h-3 text-blue-400 shrink-0" />
+                        <span>{selectedZone.schoolsCount ?? 0} {lang === 'si' ? 'ලියාපදිංචි වාණිජ පාසල්' : 'Registered Commerce Schools'}</span>
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Instant Actions */}
-                <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 flex-shrink-0">
+                <div className="grid grid-cols-2 sm:flex sm:flex-row md:flex-col gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/10">
                   <button
                     onClick={() => openAnalytics({
                       title: `${selectedZone.name} Zone Performance`,
                       subtitle: `${selectedZone.divisionsCount} Divisions • ${selectedZone.schoolsCount} Commerce Schools • Official Benchmark`,
                       zoneId: selectedZone.id
                     })}
-                    className="px-5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-teal-500/25 flex items-center justify-center space-x-2 transition-all cursor-pointer"
+                    className="px-3 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center justify-center space-x-1.5 transition-all cursor-pointer text-center"
                   >
-                    <BarChart3 className="w-4 h-4" />
-                    <span>{lang === 'si' ? 'කලාප ප්‍රතිඵල (ක්ෂණික)' : 'Zonal Analytics (Instant)'}</span>
+                    <BarChart3 className="w-3.5 h-3.5 shrink-0" />
+                    <span>{lang === 'si' ? 'ප්‍රතිඵල' : 'Zonal Analytics'}</span>
                   </button>
 
                   <Link
                     to={`/downloads?district=${dData.id}&zone=${selectedZone.id}`}
-                    className="px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-2 transition-all"
+                    className="px-3 sm:px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all text-center"
                   >
-                    <Download className="w-4 h-4 text-teal-300" />
-                    <span>{lang === 'si' ? 'කලාප ප්‍රශ්න පත්‍ර' : 'Zonal Papers'}</span>
+                    <Download className="w-3.5 h-3.5 text-teal-300 shrink-0" />
+                    <span>{lang === 'si' ? 'ප්‍රශ්න පත්‍ර' : 'Zonal Papers'}</span>
                   </Link>
                 </div>
               </div>
@@ -785,7 +744,7 @@ const DistrictPage = () => {
                   <div className="pt-4 border-t border-teal-100 flex items-center justify-between text-xs font-black text-teal-700">
                     <span className="flex items-center space-x-1.5">
                       <School className="w-4 h-4 text-teal-600" />
-                      <span>{div.schoolsCount || '10+'} {lang === 'si' ? 'පාසල්' : 'Schools'}</span>
+                      <span>{div.schoolsCount ?? 0} {div.schoolsCount === 1 ? (lang === 'si' ? 'පාසල' : 'School') : (lang === 'si' ? 'පාසල්' : 'Schools')}</span>
                     </span>
                     <span className="flex items-center space-x-1 text-teal-600 group-hover:translate-x-1 transition-transform">
                       <span>{lang === 'si' ? 'පාසල් බලන්න' : 'View Schools'}</span>
@@ -800,15 +759,15 @@ const DistrictPage = () => {
 
         {/* STEP 3: SCHOOLS IN DIVISION */}
         {step === 3 && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200">
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-8 shadow-md border border-slate-200">
             {/* Divisional Leadership Profile Card */}
-            <div className="mb-8 p-6 sm:p-7 rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 text-white shadow-xl relative overflow-hidden border border-white/10">
+            <div className="mb-5 sm:mb-8 p-3.5 sm:p-7 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 text-white shadow-xl relative overflow-hidden border border-white/10">
               <div className="absolute right-0 top-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                  <div className="relative">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl overflow-hidden border-2 border-indigo-400/60 shadow-2xl bg-slate-800 flex-shrink-0">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 relative z-10">
+                <div className="flex flex-row items-center gap-3 sm:gap-5">
+                  <div className="relative shrink-0">
+                    <div className="w-14 h-14 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-indigo-400/60 shadow-xl bg-slate-800 flex-shrink-0">
                       <img
                         src="/provincial_director.png"
                         alt={selectedDivision.name}
@@ -816,37 +775,37 @@ const DistrictPage = () => {
                         onError={(e) => { e.target.src = '/slide_2.png'; }}
                       />
                     </div>
-                    <span className="absolute -bottom-1 -right-1 bg-indigo-500 text-white p-1 rounded-full shadow-md" title="Division Authority">
-                      <ShieldCheck className="w-4 h-4" />
+                    <span className="absolute -bottom-1 -right-1 bg-indigo-500 text-white p-0.5 sm:p-1 rounded-full shadow-md" title="Division Authority">
+                      <ShieldCheck className="w-3 h-3 sm:w-4 sm:h-4" />
                     </span>
                   </div>
 
-                  <div>
-                    <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-[11px] font-black uppercase tracking-wider mb-2">
-                      <Building2 className="w-3.5 h-3.5" />
-                      <span>{lang === 'si' ? 'කොට්ඨාස අධ්‍යාපන පාලනය' : 'Divisional Education Administration'}</span>
+                  <div className="min-w-0">
+                    <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-[10px] sm:text-[11px] font-black uppercase tracking-wider mb-1 sm:mb-2">
+                      <Building2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span>{lang === 'si' ? 'කොට්ඨාස අධ්‍යාපනය' : 'Divisional Administration'}</span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-black text-white drop-shadow-sm">
-                      {selectedDivision.directorName || `S.B. Herath (SLAS - II)`}
+                    <h3 className="text-base sm:text-2xl font-black text-white drop-shadow-sm truncate">
+                      {selectedDivision.directorName || (lang === 'si' ? 'කොට්ඨාස අධ්‍යක්ෂ (පත්කිරීම අපේක්ෂිතයි)' : 'Divisional Director (Pending Appointment)')}
                     </h3>
-                    <p className="text-xs sm:text-sm text-indigo-200 font-bold mt-0.5">
-                      {lang === 'si' ? `කොට්ඨාස අධ්‍යාපන අධ්‍යක්ෂ — ${selectedDivision.nameSi || selectedDivision.name}` : `Divisional Director of Education — ${selectedDivision.name}`}
+                    <p className="text-[11px] sm:text-sm text-indigo-200 font-bold mt-0.5 truncate">
+                      {lang === 'si' ? `කොට්ඨාස අධ්‍යාපන අධ්‍යක්ෂ — ${selectedDivision.nameSi || selectedDivision.name}` : `Divisional Director — ${selectedDivision.name}`}
                     </p>
-                    <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-slate-300">
-                      <span className="flex items-center space-x-1.5">
-                        <UserCog className="w-3.5 h-3.5 text-teal-400" />
-                        <span><strong>Commerce Coordinator:</strong> Mr. T.M. Bandara (Commerce ISA)</span>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 sm:mt-3 text-[10px] sm:text-xs text-slate-300">
+                      <span className="flex items-center space-x-1">
+                        <MapPin className="w-3 h-3 text-indigo-400 shrink-0" />
+                        <span>{lang === 'si' ? `${selectedDivision.name} කොට්ඨාස අධ්‍යාපන කාර්යාලය` : `Divisional Education Office, ${selectedDivision.name}`}</span>
                       </span>
-                      <span className="flex items-center space-x-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-indigo-400" />
-                        <span>Divisional Education Office, {selectedDivision.name}</span>
+                      <span className="flex items-center space-x-1">
+                        <School className="w-3 h-3 text-teal-400 shrink-0" />
+                        <span>{schools.length || selectedDivision.schoolsCount || 0} {lang === 'si' ? 'ලියාපදිංචි වාණිජ පාසල්' : 'Registered Commerce Schools'}</span>
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Instant Actions */}
-                <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 flex-shrink-0">
+                <div className="grid grid-cols-2 sm:flex sm:flex-row md:flex-col gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/10">
                   <button
                     onClick={() => openAnalytics({
                       title: `${selectedDivision.name} Division Performance`,
@@ -854,18 +813,18 @@ const DistrictPage = () => {
                       divisionId: selectedDivision.id,
                       zoneId: selectedZone?.id
                     })}
-                    className="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-black text-xs rounded-xl shadow-lg shadow-indigo-500/25 flex items-center justify-center space-x-2 transition-all cursor-pointer"
+                    className="px-3 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center space-x-1.5 transition-all cursor-pointer text-center"
                   >
-                    <BarChart3 className="w-4 h-4" />
-                    <span>{lang === 'si' ? 'කොට්ඨාස ප්‍රතිඵල (ක්ෂණික)' : 'Division Analytics (Instant)'}</span>
+                    <BarChart3 className="w-3.5 h-3.5 shrink-0" />
+                    <span>{lang === 'si' ? 'ප්‍රතිඵල' : 'Division Analytics'}</span>
                   </button>
 
                   <Link
                     to={`/downloads?district=${dData.id}&zone=${selectedZone?.id}&division=${selectedDivision.id}`}
-                    className="px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-2 transition-all"
+                    className="px-3 sm:px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all text-center"
                   >
-                    <Download className="w-4 h-4 text-indigo-300" />
-                    <span>{lang === 'si' ? 'කොට්ඨාස ප්‍රශ්න පත්‍ර' : 'Division Papers'}</span>
+                    <Download className="w-3.5 h-3.5 text-indigo-300 shrink-0" />
+                    <span>{lang === 'si' ? 'ප්‍රශ්න පත්‍ර' : 'Division Papers'}</span>
                   </Link>
                 </div>
               </div>
@@ -893,7 +852,18 @@ const DistrictPage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {schools.map((school, sIdx) => (
+              {schools.length === 0 ? (
+                <div className="col-span-full py-12 text-center bg-slate-50 rounded-2xl border border-slate-200">
+                  <School className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <h4 className="text-sm font-bold text-slate-700">
+                    {lang === 'si' ? 'මෙම කොට්ඨාසය තුළ වාණිජ පාසල් තවමත් ලියාපදිංචි කර නොමැත' : 'No commerce schools registered in this division yet'}
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {lang === 'si' ? 'පාසල් ඇතුළත් කළ පසු ඒවා ස්වයංක්‍රීයව මෙහි දිස්වනු ඇත.' : 'Schools registered under this division will appear here.'}
+                  </p>
+                </div>
+              ) : (
+                schools.map((school, sIdx) => (
                 <div
                   key={school.id || sIdx}
                   className="p-6 rounded-3xl bg-slate-50/70 border border-slate-200 hover:border-blue-400 hover:bg-white hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
@@ -917,17 +887,21 @@ const DistrictPage = () => {
                       <div className="flex items-center space-x-2">
                         <UserCog className="w-4 h-4 text-blue-600 flex-shrink-0" />
                         <span className="font-bold text-slate-500">{lang === 'si' ? 'විදුහල්පති:' : 'Principal:'}</span>
-                        <span className="font-semibold text-slate-800">{school.principal}</span>
+                        <span className="font-semibold text-slate-800">
+                          {school.principal || (lang === 'si' ? 'පත්කර නොමැත' : 'Pending Appointment')}
+                        </span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Building2 className="w-4 h-4 text-teal-600 flex-shrink-0" />
                         <span className="font-bold text-slate-500">{lang === 'si' ? 'වාණිජ අංශ ප්‍රධානී:' : 'Commerce Head:'}</span>
-                        <span className="font-semibold text-slate-800">{school.commerceHead}</span>
+                        <span className="font-semibold text-slate-800">
+                          {school.sectionHead || school.commerceHead || (lang === 'si' ? 'පත්කර නොමැත' : 'Pending Appointment')}
+                        </span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Users className="w-4 h-4 text-indigo-600 flex-shrink-0" />
                         <span className="font-bold text-slate-500">{lang === 'si' ? 'උසස් පෙළ සිසුන්:' : 'A/L Students:'}</span>
-                        <span className="font-black text-indigo-700 text-sm">{school.students}</span>
+                        <span className="font-black text-indigo-700 text-sm">{school.students ?? school.activeStudents ?? 0}</span>
                       </div>
                     </div>
                   </div>
@@ -962,7 +936,7 @@ const DistrictPage = () => {
                     </Link>
                   </div>
                 </div>
-              ))}
+              )))}
             </div>
           </div>
         )}
@@ -1021,13 +995,13 @@ const DistrictPage = () => {
 
             <div className="p-5 rounded-2xl bg-gradient-to-br from-teal-50 to-white border border-teal-100 shadow-sm">
               <UserCog className="w-5 h-5 text-teal-600 mb-2" />
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mb-0.5">{benchmarkContext.teachers}+</div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 mb-0.5">{benchmarkContext.teachers > 0 ? `${benchmarkContext.teachers}+` : 0}</div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{lang === 'si' ? 'සුදුසුකම්ලත් ගුරුවරු' : 'Certified Teachers'}</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 shadow-sm">
               <Users className="w-5 h-5 text-indigo-600 mb-2" />
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 mb-0.5">{benchmarkContext.students.toLocaleString()}</div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 mb-0.5">{(benchmarkContext.students || 0).toLocaleString()}</div>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{lang === 'si' ? 'උසස් පෙළ සිසුන්' : 'A/L Students'}</p>
             </div>
 
@@ -1038,43 +1012,44 @@ const DistrictPage = () => {
             </div>
           </div>
 
-          {/* 3-Year Examination Progression */}
+          {/* 5-Year Examination Progression */}
           <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white shadow-lg">
             <h4 className="text-sm font-black uppercase tracking-wider text-teal-300 mb-4 flex items-center space-x-2">
               <Sparkles className="w-4 h-4" />
-              <span>{benchmarkContext.progressionTitle}</span>
+              <span>
+                {lang === 'si'
+                  ? `වසර 5 ක සාමාන්‍ය සමත් ප්‍රතිශත ප්‍රවණතාව ${yearlyProgression.length > 0 ? `(${yearlyProgression[0].year} — ${yearlyProgression[yearlyProgression.length - 1].year})` : ''}`
+                  : `5-Year Examination Pass Rate Progression ${yearlyProgression.length > 0 ? `(${yearlyProgression[0].year} — ${yearlyProgression[yearlyProgression.length - 1].year})` : ''}`}
+              </span>
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div>
-                <div className="flex justify-between text-xs font-bold mb-1.5">
-                  <span className="text-slate-300">2023 Benchmark</span>
-                  <span className="text-white">{benchmarkContext.passRate2023}%</span>
+            <div className={`grid grid-cols-1 sm:grid-cols-${Math.max(yearlyProgression.length, 1)} gap-4 sm:gap-6`}>
+              {yearlyProgression.length > 0 ? (
+                yearlyProgression.map((item, idx) => {
+                  const isLatest = idx === yearlyProgression.length - 1;
+                  const barColors = ['bg-slate-400', 'bg-blue-400', 'bg-indigo-400', 'bg-cyan-400', 'bg-teal-400'];
+                  const barColor = isLatest ? 'bg-teal-400' : (barColors[idx % barColors.length]);
+                  return (
+                    <div key={item.year}>
+                      <div className="flex justify-between text-xs font-bold mb-1.5">
+                        <span className={isLatest ? 'text-teal-300 font-black' : 'text-slate-300'}>
+                          {item.year} {isLatest ? (lang === 'si' ? '(නවතම)' : 'Target') : (lang === 'si' ? 'මිණුම' : 'Benchmark')}
+                        </span>
+                        <span className={isLatest ? 'text-teal-300 font-black' : 'text-white'}>
+                          {item.passRate}%
+                        </span>
+                      </div>
+                      <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
+                        <div className={`h-full ${barColor} rounded-full transition-all duration-700`} style={{ width: `${Math.min(100, Math.max(item.passRate, 0))}%` }} />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="col-span-full text-xs text-slate-400 py-4 text-center">
+                  {lang === 'si' ? 'විභාග දත්ත ඇතුළත් කර නොමැත.' : 'No examination progression records registered.'}
                 </div>
-                <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-slate-400 rounded-full" style={{ width: `${benchmarkContext.passRate2023}%` }} />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs font-bold mb-1.5">
-                  <span className="text-slate-300">2024 Benchmark</span>
-                  <span className="text-white">{benchmarkContext.passRate2024}%</span>
-                </div>
-                <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-400 rounded-full" style={{ width: `${benchmarkContext.passRate2024}%` }} />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs font-bold mb-1.5">
-                  <span className="text-teal-300">2025 Target Benchmark</span>
-                  <span className="text-teal-300 font-black">{benchmarkContext.passRate2025}%</span>
-                </div>
-                <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-teal-400 rounded-full" style={{ width: `${benchmarkContext.passRate2025}%` }} />
-                </div>
-              </div>
+              )}
             </div>
           </div>
 

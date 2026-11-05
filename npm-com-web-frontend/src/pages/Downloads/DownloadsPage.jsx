@@ -218,20 +218,20 @@ const DownloadsPage = () => {
         )}
 
         {/* TAB NAVIGATION */}
-        <div className="bg-white rounded-3xl p-2 shadow-md hover:shadow-xl transition-shadow flex flex-col md:flex-row mb-8 border border-slate-200/80">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 shadow-md hover:shadow-xl transition-shadow grid grid-cols-2 md:flex mb-8 border border-slate-200/80 gap-1.5 sm:gap-2">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center space-x-3 px-6 py-4 rounded-xl font-bold transition-all ${
+                className={`flex-1 flex items-center justify-center space-x-2 sm:space-x-3 px-3 sm:px-6 py-2.5 sm:py-4 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                   isActive 
                     ? 'bg-blue-50 text-blue-700 shadow-sm' 
                     : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50/50'
                 }`}
               >
-                <tab.icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'opacity-70'}`} />
+                <tab.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${isActive ? 'text-blue-600' : 'opacity-70'}`} />
                 <span>{tab.label}</span>
               </button>
             );

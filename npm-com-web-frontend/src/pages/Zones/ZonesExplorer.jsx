@@ -198,8 +198,8 @@ const ZonesExplorer = () => {
                 {districts.map((district) => {
                   const isA = district.name?.toLowerCase().includes('anu');
                   const img = isA ? '/anuradhapura.png' : '/polonnaruwa.png';
-                  const badge = isA ? 'Sacred Historic Capital • 8 Zones' : 'Ancient Royal Kingdom • 3 Zones';
-                  const schools = isA ? '84+ Commerce Schools' : '34+ Commerce Schools';
+                  const badge = isA ? 'Historic Capital' : 'Ancient Kingdom';
+                  const schoolsDesc = `${district.name} Educational Network`;
 
                   return (
                     <motion.div
@@ -221,7 +221,7 @@ const ZonesExplorer = () => {
                         </div>
                         <div className="absolute bottom-4 left-5 right-5">
                           <h2 className="text-3xl font-black text-white drop-shadow-md">{district.name} District</h2>
-                          <p className="text-teal-300 text-xs font-bold drop-shadow">{schools}</p>
+                          <p className="text-teal-300 text-xs font-bold drop-shadow">{schoolsDesc}</p>
                         </div>
                       </div>
 

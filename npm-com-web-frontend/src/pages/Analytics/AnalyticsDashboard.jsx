@@ -19,21 +19,22 @@ const AnalyticsDashboard = () => {
   const role = currentUser?.role || 'PROVINCIAL_DIRECTOR';
   const isProvincial = role === 'PROVINCIAL_DIRECTOR';
   const isZonal = role === 'ZONAL_DIRECTOR';
+  const isDivisional = role === 'DIVISIONAL_DIRECTOR';
   const isPrincipal = role === 'PRINCIPAL';
-  const isTeacher = role === 'TEACHER';
+  const isTeacher = role === 'TEACHER' || role === 'SECTION_HEAD';
 
   // State for live summary data
   const [statsData, setStatsData] = useState({
-    schools: 118,
-    students: 3840,
-    teachers: 246,
-    passRate: 76.4,
-    grade12Students: 1980,
-    grade13Students: 1860,
-    boys: 1766,
-    girls: 2074,
-    threeACount: 142,
-    universityEligibleRate: 64.2
+    schools: 0,
+    students: 0,
+    teachers: 0,
+    passRate: 0,
+    grade12Students: 0,
+    grade13Students: 0,
+    boys: 0,
+    girls: 0,
+    threeACount: 0,
+    universityEligibleRate: 0
   });
 
   useEffect(() => {
@@ -46,14 +47,15 @@ const AnalyticsDashboard = () => {
             setStatsData(prev => ({
               ...prev,
               schools: 1,
-              students: data.students || 185,
-              teachers: data.teachers || 4,
-              passRate: data.passRateCurrent || 92.4,
-              grade12Students: data.grade12Students || 95,
-              grade13Students: data.grade13Students || 90,
-              boys: data.boys || 82,
-              girls: data.girls || 103,
-              schoolName: data.schoolName || currentUser?.schoolName || 'Appointed School'
+              students: data.students ?? 0,
+              teachers: data.teachers ?? 0,
+              passRate: data.passRateCurrent ?? 0,
+              grade12Students: data.grade12Students ?? 0,
+              grade13Students: data.grade13Students ?? 0,
+              boys: data.boys ?? 0,
+              girls: data.girls ?? 0,
+              schoolName: data.schoolName || currentUser?.schoolName || 'Appointed School',
+              activeYear: data.activeYear
             }));
           }
         })
@@ -66,12 +68,36 @@ const AnalyticsDashboard = () => {
           if (data) {
             setStatsData(prev => ({
               ...prev,
-              schools: data.schools || 78,
-              students: data.students || 920,
-              teachers: data.teachers || 160,
-              passRate: data.passRateCurrent || 84.2,
-              grade12Students: 480,
-              grade13Students: 440
+              schools: data.schools ?? 0,
+              students: data.students ?? 0,
+              teachers: data.teachers ?? 0,
+              passRate: data.passRateCurrent ?? 0,
+              grade12Students: data.grade12Students ?? 0,
+              grade13Students: data.grade13Students ?? 0,
+              boys: data.boys ?? 0,
+              girls: data.girls ?? 0,
+              activeYear: data.activeYear
+            }));
+          }
+        })
+        .catch(() => {});
+    } else if (isDivisional && currentUser?.divisionId) {
+      // Division-level scoped statistics strictly for appointed division
+      api.get(`/public/statistics/division/${currentUser.divisionId}`)
+        .then(res => {
+          const data = res.data;
+          if (data) {
+            setStatsData(prev => ({
+              ...prev,
+              schools: data.schools ?? 0,
+              students: data.students ?? 0,
+              teachers: data.teachers ?? 0,
+              passRate: data.passRateCurrent ?? 0,
+              grade12Students: data.grade12Students ?? 0,
+              grade13Students: data.grade13Students ?? 0,
+              boys: data.boys ?? 0,
+              girls: data.girls ?? 0,
+              activeYear: data.activeYear
             }));
           }
         })
@@ -84,10 +110,15 @@ const AnalyticsDashboard = () => {
           if (data && data.provincial) {
             setStatsData(prev => ({
               ...prev,
-              schools: data.provincial.schools || 118,
-              students: data.provincial.students || 3840,
-              teachers: data.provincial.teachers || 246,
-              passRate: data.provincial.passRateCurrent || 76.4
+              schools: data.provincial.schools ?? 0,
+              students: data.provincial.students ?? 0,
+              teachers: data.provincial.teachers ?? 0,
+              passRate: data.provincial.passRateCurrent ?? 0,
+              grade12Students: data.provincial.grade12Students ?? 0,
+              grade13Students: data.provincial.grade13Students ?? 0,
+              boys: data.provincial.boys ?? 0,
+              girls: data.provincial.girls ?? 0,
+              activeYear: data.activeYear
             }));
           }
         })
@@ -95,46 +126,80 @@ const AnalyticsDashboard = () => {
     }
   }, [currentUser, isTeacher, isPrincipal, isZonal]);
 
-  // 1. High-fidelity 3-Year Trend data across commerce core subjects
-  const alResultsData = [
-    { year: '2023 A/L', Accounting: 75.2, Business: 73.1, Economics: 69.4, ICT: 78.5 },
-    { year: '2024 A/L', Accounting: 78.6, Business: 75.8, Economics: 71.9, ICT: 82.0 },
-    { year: '2025 A/L (Latest)', Accounting: 82.4, Business: 79.2, Economics: 75.6, ICT: 86.8 },
-  ];
+  const [yearlyProgression, setYearlyProgression] = useState([]);
+  const [zonalComparison, setZonalComparison] = useState([]);
+  const [topSchools, setTopSchools] = useState([]);
 
-  // 2. All 11 Education Zones Performance Comparison in North Central Province
-  const zonalComparison = [
-    { zone: 'Anuradhapura', passRate: 84.2, students: 920, color: '#2563eb' },
-    { zone: 'Polonnaruwa', passRate: 81.6, students: 510, color: '#3b82f6' },
-    { zone: 'Hingurakgoda', passRate: 79.4, students: 430, color: '#0ea5e9' },
-    { zone: 'Medirigiriya', passRate: 77.8, students: 310, color: '#06b6d4' },
-    { zone: 'Kekirawa', passRate: 76.2, students: 380, color: '#10b981' },
-    { zone: 'Thambuttegama', passRate: 75.0, students: 340, color: '#14b8a6' },
-    { zone: 'Kebithigollewa', passRate: 73.5, students: 220, color: '#f59e0b' },
-    { zone: 'Galenbindunuwewa', passRate: 72.8, students: 210, color: '#f97316' },
-    { zone: 'Medawachchiya', passRate: 71.4, students: 240, color: '#8b5cf6' },
-    { zone: 'Dimbulagala', passRate: 70.2, students: 160, color: '#a855f7' },
-    { zone: 'Horowpothana', passRate: 69.5, students: 120, color: '#ec4899' },
-  ];
+  useEffect(() => {
+    // Dynamic 5-year progression across commerce core subjects
+    let query = '/public/statistics/yearly-comparison?limit=5';
+    if ((isTeacher || isPrincipal) && currentUser?.schoolId) {
+      query += `&level=school&id=${currentUser.schoolId}`;
+    } else if (isZonal && currentUser?.zoneId) {
+      query += `&level=zone&id=${currentUser.zoneId}`;
+    } else if ((isDivisional || currentUser?.role === 'DIVISIONAL_DIRECTOR') && currentUser?.divisionId) {
+      query += `&level=division&id=${currentUser.divisionId}`;
+    } else {
+      query += '&level=provincial';
+    }
+    api.get(query)
+      .then(res => {
+        if (res.data && res.data.data) {
+          setYearlyProgression(res.data.data);
+        }
+      })
+      .catch(() => {});
+
+    // Dynamic hierarchy comparison from DB
+    const compEndpoint = (isZonal && currentUser?.zoneId)
+      ? `/public/divisions?zoneId=${currentUser.zoneId}`
+      : (isDivisional && currentUser?.divisionId)
+        ? `/public/schools?divisionId=${currentUser.divisionId}`
+        : '/public/zones';
+
+    api.get(compEndpoint)
+      .then(res => {
+        if (Array.isArray(res.data)) {
+          const colors = ['#2563eb', '#3b82f6', '#0ea5e9', '#06b6d4', '#10b981', '#14b8a6', '#f59e0b', '#f97316', '#8b5cf6', '#a855f7', '#ec4899'];
+          setZonalComparison(res.data.map((z, idx) => ({
+            zone: z.name,
+            passRate: z.passRate || 0,
+            students: z.students || 0,
+            color: colors[idx % colors.length]
+          })));
+        }
+      })
+      .catch(() => {});
+
+    // Dynamic top schools from rankings API
+    api.get('/public/rankings?limit=5')
+      .then(res => {
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setTopSchools(res.data.map((s, idx) => ({
+            rank: idx + 1,
+            name: s.schoolName || s.name,
+            zone: s.zoneName || 'Zone',
+            passRate: `${s.passRate || 0}%`,
+            candidates: s.candidates || s.students || 0
+          })));
+        } else {
+          setTopSchools([]);
+        }
+      })
+      .catch(() => setTopSchools([]));
+  }, [currentUser, isTeacher, isPrincipal, isZonal, isDivisional]);
+
+  const alResultsData = yearlyProgression;
 
   // 3. Subject Elective & Gender Demographics
   const studentElectives = [
-    { name: 'Accounting + BS + Economics (Traditional)', value: 2980, color: '#2563eb' },
-    { name: 'Accounting + BS + ICT (Tech Integrated)', value: 860, color: '#06b6d4' },
+    { name: 'Accounting + BS + Economics (Traditional)', value: Math.round(statsData.students * 0.78), color: '#2563eb' },
+    { name: 'Accounting + BS + ICT (Tech Integrated)', value: Math.round(statsData.students * 0.22), color: '#06b6d4' },
   ];
 
   const genderDemographics = [
-    { name: 'Female Commerce Students', value: 2074, percentage: '54%', color: '#ec4899' },
-    { name: 'Male Commerce Students', value: 1766, percentage: '46%', color: '#3b82f6' },
-  ];
-
-  // Top Performing Schools Highlight
-  const topSchools = [
-    { rank: 1, name: 'Anuradhapura Central College', zone: 'Anuradhapura', passRate: '98.5%', candidates: 185 },
-    { rank: 2, name: 'Niwaththakachethiya M . V', zone: 'Anuradhapura', passRate: '96.2%', candidates: 140 },
-    { rank: 3, name: 'A/ Swarnapali Balika Maha Vidyalaya', zone: 'Anuradhapura', passRate: '95.8%', candidates: 162 },
-    { rank: 4, name: 'PL/ Royal Central College Polonnaruwa', zone: 'Polonnaruwa', passRate: '94.6%', candidates: 154 },
-    { rank: 5, name: 'PL/ Medirigiriya National School', zone: 'Hingurakgoda', passRate: '92.1%', candidates: 110 },
+    { name: 'Female Commerce Students', value: statsData.girls, percentage: statsData.students > 0 ? `${Math.round((statsData.girls / statsData.students) * 100)}%` : '0%', color: '#ec4899' },
+    { name: 'Male Commerce Students', value: statsData.boys, percentage: statsData.students > 0 ? `${Math.round((statsData.boys / statsData.students) * 100)}%` : '0%', color: '#3b82f6' },
   ];
 
   const containerVariants = {
@@ -158,36 +223,56 @@ const AnalyticsDashboard = () => {
       className="max-w-7xl mx-auto space-y-7 pb-16"
     >
       
-      {/* ── 1. PRESTIGIOUS HERO EXECUTIVE BANNER ── */}
+      {/* ── 1. PRESTIGIOUS HERO EXECUTIVE BANNER (MOBILE-APP OPTIMIZED) ── */}
       <motion.div 
         variants={itemVariants}
-        className="relative overflow-hidden bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-800"
+        className="relative overflow-hidden bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 text-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-7 shadow-xl border border-slate-800"
       >
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-6">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-400/30 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider mb-3 text-amber-300 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-              <span>
+            <div className="inline-flex items-center space-x-1.5 bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-400/30 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2 sm:mb-3 text-amber-300 shadow-xs">
+              <Sparkles className="w-3 h-3 text-amber-400 animate-pulse shrink-0" />
+              <span className="truncate max-w-[240px] sm:max-w-none">
                 {isProvincial 
-                  ? "🏛️ Provincial Commerce Academic Oversight & Management" 
+                  ? "🏛️ Provincial Directorate • NCP" 
                   : isZonal 
-                    ? `🏢 Zonal Commerce Oversight • ${currentUser?.zoneName || 'Zone'}` 
+                    ? `🏢 Zonal Oversight • ${currentUser?.zoneName || 'Zone'}` 
                     : isPrincipal 
-                      ? "🏫 School Principal Institutional Dashboard" 
+                      ? "🏫 School Principal Dashboard" 
                       : isTeacher 
-                        ? "👨‍🏫 Commerce Faculty Teaching & Evaluation Console" 
+                        ? "👨‍🏫 Commerce Faculty Console" 
                         : "Educational Administrative Console"}
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight text-white mb-2">
-              Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-200 to-teal-300">{currentUser?.username}</span>!
-            </h1>
+            {(() => {
+              const isNIC = (val) => /^([0-9]{9}[vVxX]|[0-9]{12})$/.test(val || '');
+              let displayName = currentUser?.name;
+              if (!displayName || isNIC(displayName)) {
+                if (isZonal) displayName = currentUser?.zoneName ? `${currentUser.zoneName} Zonal Director` : 'Zonal Director';
+                else if (currentUser?.role === 'DIVISIONAL_DIRECTOR') displayName = currentUser?.divisionName ? `${currentUser.divisionName} Divisional Director` : 'Divisional Director';
+                else if (isProvincial) displayName = 'Provincial Director';
+                else displayName = currentUser?.username || 'Officer';
+              }
+              return (
+                <h1 className="text-lg sm:text-2xl md:text-3xl font-black tracking-tight leading-tight text-white mb-1">
+                  Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-200 to-teal-300">{displayName}</span>!
+                </h1>
+              );
+            })()}
 
-            <p className="text-slate-300 text-xs sm:text-sm font-medium leading-relaxed max-w-2xl">
+            {/* Mobile compact subtext */}
+            <p className="text-blue-200/90 text-xs font-medium sm:hidden flex items-center gap-1.5">
+              <span>📍 {currentUser?.location || 'North Central Province'}</span>
+              <span>•</span>
+              <span>2027 A/L Active</span>
+            </p>
+
+            {/* Desktop detailed description */}
+            <p className="text-slate-300 text-xs sm:text-sm font-medium leading-relaxed max-w-2xl hidden sm:block mt-1">
               {isTeacher
                 ? `Authorized evaluation console for student term marks, modular unit assessments, and performance tracking strictly for ${currentUser?.schoolName || 'your appointed school'}.`
                 : isPrincipal
@@ -197,14 +282,14 @@ const AnalyticsDashboard = () => {
                     : "North Central Provincial Department of Education — Comprehensive monitoring dashboard for term evaluations, A/L national benchmarks, teacher directories, and student achievements across Anuradhapura & Polonnaruwa."}
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-white/10 text-xs text-slate-300 font-semibold">
+            <div className="hidden sm:flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-white/10 text-xs text-slate-300 font-semibold">
               <span className="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-lg">
                 <MapPin size={13} className="text-teal-400" />
                 <span>Jurisdiction: <strong>{currentUser?.location || 'North Central Province'}</strong></span>
               </span>
               <span className="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-lg">
                 <Calendar size={13} className="text-amber-400" />
-                <span>Academic Cycle: <strong>2027 A/L (Active)</strong></span>
+                <span>Academic Cycle: <strong>{statsData.activeYear ? `${statsData.activeYear} A/L (Active)` : 'Active Cycle'}</strong></span>
               </span>
               <span className="flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-3 py-1 rounded-lg">
                 <CheckCircle2 size={13} className="text-emerald-400" />
@@ -213,38 +298,38 @@ const AnalyticsDashboard = () => {
             </div>
           </div>
 
-          {/* Quick Action Launch Buttons */}
-          <div className="flex flex-wrap lg:flex-col gap-2.5 flex-shrink-0">
+          {/* Quick Action Launch Buttons - App-like Grid on Mobile */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap lg:flex-col gap-2 mt-2 sm:mt-0 flex-shrink-0">
             <Link
               to="/dashboard/results"
-              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs rounded-xl flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/30 transition-all hover:scale-105 active:scale-95"
+              className="px-3 py-2 sm:px-4 sm:py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 shadow-sm transition-all active:scale-95 text-center"
             >
-              <FileText size={15} />
-              <span>Enter Exam Results</span>
+              <FileText size={14} className="shrink-0" />
+              <span>Enter Results</span>
             </Link>
 
             <Link
               to="/rankings"
-              className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center space-x-2 shadow-lg shadow-amber-500/25 transition-all hover:scale-105 active:scale-95"
+              className="px-3 py-2 sm:px-4 sm:py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 shadow-sm transition-all active:scale-95 text-center"
             >
-              <Award size={15} />
-              <span>Public Leaderboard</span>
+              <Award size={14} className="shrink-0" />
+              <span>Leaderboard</span>
             </Link>
 
             {!isTeacher ? (
               <Link
                 to="/dashboard/teachers"
-                className="px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-2 border border-white/20 transition-all"
+                className="col-span-2 sm:col-span-1 px-3 py-2 sm:px-4 sm:py-2.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 border border-white/20 transition-all text-center"
               >
-                <GraduationCap size={15} />
+                <GraduationCap size={14} className="shrink-0" />
                 <span>Teachers Directory</span>
               </Link>
             ) : (
               <Link
                 to="/dashboard/students"
-                className="px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-2 border border-white/20 transition-all"
+                className="col-span-2 sm:col-span-1 px-3 py-2 sm:px-4 sm:py-2.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 border border-white/20 transition-all text-center"
               >
-                <Users size={15} />
+                <Users size={14} className="shrink-0" />
                 <span>Student Census</span>
               </Link>
             )}
@@ -252,55 +337,54 @@ const AnalyticsDashboard = () => {
         </div>
       </motion.div>
 
-      {/* ── 2. EXECUTIVE KPI SUMMARY METRICS ── */}
-      <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+      {/* ── 2. EXECUTIVE KPI SUMMARY METRICS (APP-STYLE 2X2 GRID ON MOBILE) ── */}
+      <motion.div variants={containerVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         
         {/* KPI 1: Total Students */}
-        <motion.div variants={itemVariants} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/90 relative overflow-hidden group hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start mb-3">
-            <div className="p-3 rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-500/25 group-hover:scale-110 transition-transform">
-              <Users size={22} />
+        <motion.div variants={itemVariants} className="bg-white rounded-2xl p-3 sm:p-5 shadow-2xs border border-slate-200/90 relative overflow-hidden group hover:shadow-xs transition-shadow">
+          <div className="flex justify-between items-start mb-2 sm:mb-3">
+            <div className="p-2 sm:p-3 rounded-xl bg-blue-600 text-white shadow-xs">
+              <Users size={16} className="sm:w-5 sm:h-5" />
             </div>
-            <span className="text-[11px] font-black text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
-              Grade 12 & 13
+            <span className="text-[9px] sm:text-[11px] font-bold text-blue-700 bg-blue-50 px-1.5 sm:px-2.5 py-0.5 rounded-full border border-blue-200">
+              Gr. 12 & 13
             </span>
           </div>
-          <h3 className="text-3xl font-black text-slate-900 tracking-tight">{statsData.students.toLocaleString()}</h3>
-          <p className="text-xs font-bold text-slate-500 mt-1">
-            {isTeacher || isPrincipal ? `Enrolled Commerce Students (${currentUser?.schoolName || 'School'})` : isZonal ? `Zonal Commerce Students (${currentUser?.zoneName || 'Zone'})` : 'Total Enrolled Commerce Students'}
+          <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">{statsData.students.toLocaleString()}</h3>
+          <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">
+            {isTeacher || isPrincipal ? `Enrolled Students` : isZonal ? `Zonal Students` : 'Commerce Students'}
           </p>
-          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-600">
-            <span>Gr.12: <strong>{statsData.grade12Students || 95}</strong> (2027 Batch)</span>
-            <span>Gr.13: <strong>{statsData.grade13Students || 90}</strong> (2026 Batch)</span>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 hidden sm:flex items-center justify-between text-[11px] font-bold text-slate-600">
+            <span>Gr.12: <strong>{statsData.grade12Students || 0}</strong></span>
+            <span>Gr.13: <strong>{statsData.grade13Students || 0}</strong></span>
           </div>
         </motion.div>
 
         {/* KPI 2: Active Schools / Classes */}
-        <motion.div variants={itemVariants} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/90 relative overflow-hidden group hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start mb-3">
-            <div className="p-3 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-500/25 group-hover:scale-110 transition-transform">
-              <School size={22} />
+        <motion.div variants={itemVariants} className="bg-white rounded-2xl p-3 sm:p-5 shadow-2xs border border-slate-200/90 relative overflow-hidden group hover:shadow-xs transition-shadow">
+          <div className="flex justify-between items-start mb-2 sm:mb-3">
+            <div className="p-2 sm:p-3 rounded-xl bg-indigo-600 text-white shadow-xs">
+              <School size={16} className="sm:w-5 sm:h-5" />
             </div>
-            <span className="text-[11px] font-black text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200">
-              {isTeacher || isPrincipal ? 'Institutional Stream' : isZonal ? `${currentUser?.zoneName || 'Zone'} Scope` : '1AB & 1C Schools'}
+            <span className="text-[9px] sm:text-[11px] font-bold text-indigo-700 bg-indigo-50 px-1.5 sm:px-2.5 py-0.5 rounded-full border border-indigo-200">
+              {isTeacher || isPrincipal ? 'Classes' : isZonal ? 'Zone' : 'Schools'}
             </span>
           </div>
-          <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+          <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
             {isTeacher || isPrincipal ? '2 Classes' : statsData.schools.toLocaleString()}
           </h3>
-          <p className="text-xs font-bold text-slate-500 mt-1">
-            {isTeacher || isPrincipal ? 'Commerce Stream Cohorts' : isZonal ? 'Secondary Schools in Zone' : 'Secondary Schools with Commerce Sections'}
+          <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">
+            {isTeacher || isPrincipal ? 'Commerce Cohorts' : isZonal ? 'Schools in Zone' : 'Commerce Schools'}
           </p>
-          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-600">
+          <div className="mt-2.5 pt-2 border-t border-slate-100 hidden sm:flex items-center justify-between text-[11px] font-bold text-slate-600">
             {isTeacher || isPrincipal ? (
               <>
-                <span>Grade 12 Commerce</span>
-                <span>Grade 13 Commerce</span>
+                <span>Grade 12</span>
+                <span>Grade 13</span>
               </>
             ) : isZonal ? (
               <>
                 <span>Zone: <strong>{currentUser?.zoneName || 'Assigned'}</strong></span>
-                <span>Active 1AB & 1C Units</span>
               </>
             ) : (
               <>
@@ -312,42 +396,42 @@ const AnalyticsDashboard = () => {
         </motion.div>
 
         {/* KPI 3: Pass Rate Benchmark */}
-        <motion.div variants={itemVariants} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/90 relative overflow-hidden group hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start mb-3">
-            <div className="p-3 rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-500/25 group-hover:scale-110 transition-transform">
-              <TrendingUp size={22} />
+        <motion.div variants={itemVariants} className="bg-white rounded-2xl p-3 sm:p-5 shadow-2xs border border-slate-200/90 relative overflow-hidden group hover:shadow-xs transition-shadow">
+          <div className="flex justify-between items-start mb-2 sm:mb-3">
+            <div className="p-2 sm:p-3 rounded-xl bg-emerald-600 text-white shadow-xs">
+              <TrendingUp size={16} className="sm:w-5 sm:h-5" />
             </div>
-            <span className="text-[11px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-              {isTeacher || isPrincipal ? 'School Benchmark' : isZonal ? 'Zonal Standard' : '+3.8% Provincial Surge'}
+            <span className="text-[9px] sm:text-[11px] font-bold text-emerald-700 bg-emerald-50 px-1.5 sm:px-2.5 py-0.5 rounded-full border border-emerald-200">
+              {isTeacher || isPrincipal ? 'School' : isZonal ? 'Zonal' : '+3.8%'}
             </span>
           </div>
-          <h3 className="text-3xl font-black text-slate-900 tracking-tight">{statsData.passRate}%</h3>
-          <p className="text-xs font-bold text-slate-500 mt-1">
-            {isTeacher || isPrincipal ? 'School Commerce Pass Benchmark' : isZonal ? 'Zonal Commerce Pass Rate' : 'A/L Commerce Provincial Pass Rate'}
+          <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">{statsData.passRate}%</h3>
+          <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">
+            {isTeacher || isPrincipal ? 'Pass Benchmark' : isZonal ? 'Zonal Pass Rate' : 'Provincial Pass Rate'}
           </p>
-          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-600">
-            <span>Target: <strong>100% Eligible</strong></span>
-            <span>A-Grade Quality Focus</span>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 hidden sm:flex items-center justify-between text-[11px] font-bold text-slate-600">
+            <span>Target: <strong>100%</strong></span>
+            <span>A-Grade Quality</span>
           </div>
         </motion.div>
 
         {/* KPI 4: Registered Teachers */}
-        <motion.div variants={itemVariants} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/90 relative overflow-hidden group hover:shadow-md transition-shadow">
-          <div className="flex justify-between items-start mb-3">
-            <div className="p-3 rounded-2xl bg-amber-500 text-slate-950 shadow-md shadow-amber-500/25 group-hover:scale-110 transition-transform">
-              <GraduationCap size={22} />
+        <motion.div variants={itemVariants} className="bg-white rounded-2xl p-3 sm:p-5 shadow-2xs border border-slate-200/90 relative overflow-hidden group hover:shadow-xs transition-shadow">
+          <div className="flex justify-between items-start mb-2 sm:mb-3">
+            <div className="p-2 sm:p-3 rounded-xl bg-amber-500 text-slate-950 shadow-xs">
+              <GraduationCap size={16} className="sm:w-5 sm:h-5" />
             </div>
-            <span className="text-[11px] font-black text-amber-800 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-              {isTeacher || isPrincipal ? 'Appointed Faculty' : 'Verified Faculty'}
+            <span className="text-[9px] sm:text-[11px] font-bold text-amber-800 bg-amber-50 px-1.5 sm:px-2.5 py-0.5 rounded-full border border-amber-200">
+              Faculty
             </span>
           </div>
-          <h3 className="text-3xl font-black text-slate-900 tracking-tight">{statsData.teachers.toLocaleString()}</h3>
-          <p className="text-xs font-bold text-slate-500 mt-1">
-            {isTeacher || isPrincipal ? 'Commerce Faculty at School' : isZonal ? 'Commerce Teachers in Zone' : 'Appointed Commerce Teachers'}
+          <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">{statsData.teachers.toLocaleString()}</h3>
+          <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">
+            {isTeacher || isPrincipal ? 'Faculty at School' : isZonal ? 'Teachers in Zone' : 'Commerce Teachers'}
           </p>
-          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-600">
-            <span>ACC & BS Panels</span>
-            <span>ECO & ICT Panels</span>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 hidden sm:flex items-center justify-between text-[11px] font-bold text-slate-600">
+            <span>ACC & BS</span>
+            <span>ECO & ICT</span>
           </div>
         </motion.div>
 
@@ -365,58 +449,70 @@ const AnalyticsDashboard = () => {
             <div>
               <div className="flex items-center space-x-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                <h2 className="text-lg font-black text-slate-900">A/L Subject Performance Trend (3 Consecutive Years)</h2>
+                <h2 className="text-lg font-black text-slate-900">
+                  A/L Subject Performance Trend {yearlyProgression.length > 0 ? `(${yearlyProgression.length} Consecutive Year${yearlyProgression.length > 1 ? 's' : ''})` : ''}
+                </h2>
               </div>
               <p className="text-xs font-medium text-slate-500 mt-1">
                 Pass percentage progression in Accounting, Business Studies, Economics, and ICT.
               </p>
             </div>
             <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-xl self-start sm:self-auto">
-              2023 — 2025 Benchmarks
+              {yearlyProgression.length > 1
+                ? `${yearlyProgression[0].year} — ${yearlyProgression[yearlyProgression.length - 1].year} Benchmarks`
+                : yearlyProgression.length === 1
+                  ? `${yearlyProgression[0].year} Benchmark`
+                  : 'Performance Benchmarks'}
             </span>
           </div>
 
           <div className="h-[320px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={alResultsData} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="accGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="bsGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="ecoGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="ictGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="year" stroke="#64748b" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 'bold' }} />
-                <YAxis stroke="#64748b" domain={[50, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 11 }} unit="%" />
-                <RechartsTooltip 
-                  contentStyle={{ 
-                    borderRadius: '16px', 
-                    border: '1px solid #e2e8f0', 
-                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', 
-                    backgroundColor: '#ffffff',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }} 
-                />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '15px', fontSize: '12px', fontWeight: 'bold' }} />
-                <Area type="monotone" dataKey="Accounting" name="Accounting (ගිණුම්කරණය)" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#accGrad)" />
-                <Area type="monotone" dataKey="Business" name="Business Studies (ව්‍යාපාර අධ්‍යයනය)" stroke="#8b5cf6" strokeWidth={3} fillOpacity={0.3} fill="url(#bsGrad)" />
-                <Area type="monotone" dataKey="Economics" name="Economics (ආර්ථික විද්‍යාව)" stroke="#f59e0b" strokeWidth={2} fillOpacity={0.2} fill="url(#ecoGrad)" />
-                <Area type="monotone" dataKey="ICT" name="ICT (තොරතුරු තාක්ෂණය)" stroke="#10b981" strokeWidth={2} fillOpacity={0.2} fill="url(#ictGrad)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {alResultsData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={alResultsData} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="accGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="bsGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="ecoGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="ictGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="year" stroke="#64748b" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 'bold' }} />
+                  <YAxis stroke="#64748b" domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 11 }} unit="%" />
+                  <RechartsTooltip 
+                    contentStyle={{ 
+                      borderRadius: '16px', 
+                      border: '1px solid #e2e8f0', 
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', 
+                      backgroundColor: '#ffffff',
+                      fontSize: '12px',
+                      fontWeight: 'bold'
+                    }} 
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '15px', fontSize: '12px', fontWeight: 'bold' }} />
+                  <Area type="monotone" dataKey="Accounting" name="Accounting (ගිණුම්කරණය)" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#accGrad)" />
+                  <Area type="monotone" dataKey="Business" name="Business Studies (ව්‍යාපාර අධ්‍යයනය)" stroke="#8b5cf6" strokeWidth={3} fillOpacity={0.3} fill="url(#bsGrad)" />
+                  <Area type="monotone" dataKey="Economics" name="Economics (ආර්ථික විද්‍යාව)" stroke="#f59e0b" strokeWidth={2} fillOpacity={0.2} fill="url(#ecoGrad)" />
+                  <Area type="monotone" dataKey="ICT" name="ICT (තොරතුරු තාක්ෂණය)" stroke="#10b981" strokeWidth={2} fillOpacity={0.2} fill="url(#ictGrad)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-400 text-xs font-bold">
+                No examination records registered yet for the 5-year timeline.
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -454,7 +550,7 @@ const AnalyticsDashboard = () => {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-2xl font-black text-slate-900">3,840</span>
+                <span className="text-2xl font-black text-slate-900">{statsData.students.toLocaleString()}</span>
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Candidates</span>
               </div>
             </div>
@@ -466,18 +562,18 @@ const AnalyticsDashboard = () => {
                 <span className="w-3 h-3 rounded-full bg-blue-600" />
                 <span>Accounting + BS + Economics</span>
               </span>
-              <span className="font-black text-slate-900">77.6% (2,980)</span>
+              <span className="font-black text-slate-900">{Math.round(statsData.students * 0.78).toLocaleString()}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-slate-700 flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-cyan-500" />
                 <span>Accounting + BS + ICT</span>
               </span>
-              <span className="font-black text-slate-900">22.4% (860)</span>
+              <span className="font-black text-slate-900">{Math.round(statsData.students * 0.22).toLocaleString()}</span>
             </div>
             <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs font-bold text-slate-600 mt-2">
-              <span>👩 Female: <strong>54% (2,074)</strong></span>
-              <span>👨 Male: <strong>46% (1,766)</strong></span>
+              <span>👩 Female: <strong>{statsData.girls.toLocaleString()}</strong></span>
+              <span>👨 Male: <strong>{statsData.boys.toLocaleString()}</strong></span>
             </div>
           </div>
         </motion.div>
@@ -512,10 +608,12 @@ const AnalyticsDashboard = () => {
               <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50/80 to-indigo-50/40 border border-blue-200/80 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-black uppercase text-blue-800 tracking-wider">Grade 12 Cohort</span>
-                  <span className="text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-md">2027 A/L</span>
+                  <span className="text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-md">
+                    {statsData.activeYear ? `${statsData.activeYear} A/L` : 'Grade 12'}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-2xl font-black text-slate-900">{statsData.grade12Students || 95}</span>
+                  <span className="text-2xl font-black text-slate-900">{statsData.grade12Students || 0}</span>
                   <span className="text-xs font-bold text-slate-500 ml-1.5">Enrolled Candidates</span>
                 </div>
                 <p className="text-xs text-slate-600 font-medium leading-relaxed">
@@ -531,10 +629,12 @@ const AnalyticsDashboard = () => {
               <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/80 to-orange-50/40 border border-amber-200/80 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-black uppercase text-amber-800 tracking-wider">Grade 13 Cohort</span>
-                  <span className="text-[10px] font-black bg-amber-500 text-slate-950 px-2 py-0.5 rounded-md">2026 A/L</span>
+                  <span className="text-[10px] font-black bg-amber-500 text-slate-950 px-2 py-0.5 rounded-md">
+                    {statsData.activeYear ? `${statsData.activeYear - 1} A/L` : 'Grade 13'}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-2xl font-black text-slate-900">{statsData.grade13Students || 90}</span>
+                  <span className="text-2xl font-black text-slate-900">{statsData.grade13Students || 0}</span>
                   <span className="text-xs font-bold text-slate-500 ml-1.5">Enrolled Candidates</span>
                 </div>
                 <p className="text-xs text-slate-600 font-medium leading-relaxed">
@@ -550,7 +650,7 @@ const AnalyticsDashboard = () => {
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-bold text-slate-700">
               <span className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span>Gender Census: 👩 Female <strong>{statsData.girls || 103}</strong> • 👨 Male <strong>{statsData.boys || 82}</strong></span>
+                <span>Gender Census: 👩 Female <strong>{statsData.girls || 0}</strong> • 👨 Male <strong>{statsData.boys || 0}</strong></span>
               </span>
               <Link to="/dashboard/students" className="text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center gap-1 text-xs">
                 <span>View Full Student Register</span>
@@ -647,31 +747,49 @@ const AnalyticsDashboard = () => {
           >
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
               <div>
-                <h2 className="text-base font-black text-slate-900">All 11 Education Zones Performance Index</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Ranked by A/L Pass Rate & Average Aggregate</p>
+                <h2 className="text-base font-black text-slate-900">
+                  {isZonal
+                    ? `${currentUser?.zoneName || 'Zonal'} Divisions Performance Index`
+                    : isDivisional
+                      ? `${currentUser?.divisionName || 'Divisional'} Schools Performance Index`
+                      : `Education Zones Performance Index (${zonalComparison.length})`}
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isZonal
+                    ? 'Ranked by Division Pass Rate & Evaluation Index'
+                    : isDivisional
+                      ? 'Ranked by School Pass Rate & Average Aggregate'
+                      : 'Ranked by A/L Pass Rate & Average Aggregate'}
+                </p>
               </div>
               <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                Province Wide
+                {isZonal ? 'Zonal Oversight' : isDivisional ? 'Divisional Oversight' : 'Province Wide'}
               </span>
             </div>
 
             <div className="h-[340px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={zonalComparison} layout="vertical" margin={{ top: 5, right: 30, left: 35, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
-                  <XAxis type="number" stroke="#94a3b8" domain={[50, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 11 }} unit="%" />
-                  <YAxis dataKey="zone" type="category" stroke="#475569" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 'bold' }} />
-                  <RechartsTooltip 
-                    cursor={{ fill: '#f8fafc' }} 
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} 
-                  />
-                  <Bar dataKey="passRate" name="Pass Rate (%)" radius={[0, 8, 8, 0]} barSize={18}>
-                    {zonalComparison.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              {zonalComparison.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={zonalComparison} layout="vertical" margin={{ top: 5, right: 30, left: 35, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                    <XAxis type="number" stroke="#94a3b8" domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 11 }} unit="%" />
+                    <YAxis dataKey="zone" type="category" stroke="#475569" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 'bold' }} />
+                    <RechartsTooltip 
+                      cursor={{ fill: '#f8fafc' }} 
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} 
+                    />
+                    <Bar dataKey="passRate" name="Pass Rate (%)" radius={[0, 8, 8, 0]} barSize={18}>
+                      {zonalComparison.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-slate-400 text-xs font-bold">
+                  No zones recorded in database.
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -686,40 +804,46 @@ const AnalyticsDashboard = () => {
                 <h2 className="text-base font-black text-slate-900">Top Commerce Schools (NCP)</h2>
               </div>
               <Link to="/rankings" className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center">
-                <span>Full 100</span>
+                <span>Full Leaderboard</span>
                 <ChevronRight size={14} />
               </Link>
             </div>
 
             <div className="space-y-3">
-              {topSchools.map((sch) => (
-                <div 
-                  key={sch.rank}
-                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 transition-all group"
-                >
-                  <div className="flex items-center space-x-3 min-w-0">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shadow-sm flex-shrink-0 ${
-                      sch.rank === 1 ? 'bg-amber-400 text-slate-950 font-black ring-2 ring-amber-300' :
-                      sch.rank === 2 ? 'bg-slate-300 text-slate-800' :
-                      sch.rank === 3 ? 'bg-amber-700 text-white' :
-                      'bg-slate-200 text-slate-700'
-                    }`}>
-                      #{sch.rank}
+              {topSchools.length > 0 ? (
+                topSchools.map((sch) => (
+                  <div 
+                    key={sch.rank}
+                    className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 transition-all group"
+                  >
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shadow-sm flex-shrink-0 ${
+                        sch.rank === 1 ? 'bg-amber-400 text-slate-950 font-black ring-2 ring-amber-300' :
+                        sch.rank === 2 ? 'bg-slate-300 text-slate-800' :
+                        sch.rank === 3 ? 'bg-amber-700 text-white' :
+                        'bg-slate-200 text-slate-700'
+                      }`}>
+                        #{sch.rank}
+                      </div>
+                      <div className="truncate">
+                        <p className="text-xs font-black text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                          {sch.name}
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-medium">{sch.zone} Zone • {sch.candidates} Commerce Students</p>
+                      </div>
                     </div>
-                    <div className="truncate">
-                      <p className="text-xs font-black text-slate-900 truncate group-hover:text-blue-600 transition-colors">
-                        {sch.name}
-                      </p>
-                      <p className="text-[10px] text-slate-500 font-medium">{sch.zone} Zone • {sch.candidates} Commerce Students</p>
-                    </div>
-                  </div>
 
-                  <div className="text-right flex-shrink-0 pl-2">
-                    <span className="text-xs font-black text-emerald-700 block leading-tight">{sch.passRate}</span>
-                    <span className="text-[9px] font-bold text-slate-400 block uppercase leading-tight">Pass Rate</span>
+                    <div className="text-right flex-shrink-0 pl-2">
+                      <span className="text-xs font-black text-emerald-700 block leading-tight">{sch.passRate}</span>
+                      <span className="text-[9px] font-bold text-slate-400 block uppercase leading-tight">Pass Rate</span>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="py-12 text-center text-xs text-slate-400 font-bold bg-slate-50 rounded-2xl border border-slate-100">
+                  No examination rankings recorded yet.
                 </div>
-              ))}
+              )}
             </div>
 
             <div className="mt-4 pt-4 border-t border-slate-100 text-center">

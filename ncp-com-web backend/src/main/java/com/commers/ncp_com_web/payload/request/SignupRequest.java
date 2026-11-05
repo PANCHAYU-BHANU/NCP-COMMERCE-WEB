@@ -8,6 +8,10 @@ public class SignupRequest {
     @NotBlank
     private String username;
 
+    private String name;
+    private String firstName;
+    private String lastName;
+
     private String email;
 
     @NotBlank
@@ -23,4 +27,5 @@ public class SignupRequest {
     private Long schoolId;
     private java.util.List<Long> subjectIds;
     private String examLevel;
+    private Boolean isSectionHead;
 }

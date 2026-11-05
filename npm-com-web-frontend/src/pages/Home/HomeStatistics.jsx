@@ -93,25 +93,25 @@ const HomeStatistics = () => {
           <h3 className="text-2xl font-bold text-slate-800 mb-8 border-l-4 border-blue-600 pl-4">National Statistics</h3>
                     {/* National Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-            <StatCard icon={School} title="Island Commerce Schools" value={stats.national.schools.toLocaleString()} subtitle="Offering Commerce A/L" gradient="from-slate-700 to-slate-900" />
-            <StatCard icon={Users} title="Island Commerce Teachers" value={stats.national.teachers.toLocaleString()} subtitle="Commerce Educators" gradient="from-slate-600 to-slate-800" />
-            <StatCard icon={GraduationCap} title="Island Commerce Students" value={stats.national.students.toLocaleString()} subtitle="Commerce Students" gradient="from-slate-700 to-slate-900" />
+            <StatCard icon={School} title="Island Commerce Schools" value={(stats.national?.schools ?? 0).toLocaleString()} subtitle="Offering Commerce A/L" gradient="from-slate-700 to-slate-900" />
+            <StatCard icon={Users} title="Island Commerce Teachers" value={(stats.national?.teachers ?? 0).toLocaleString()} subtitle="Commerce Educators" gradient="from-slate-600 to-slate-800" />
+            <StatCard icon={GraduationCap} title="Island Commerce Students" value={(stats.national?.students ?? 0).toLocaleString()} subtitle="Commerce Students" gradient="from-slate-700 to-slate-900" />
             
-            <StatCard icon={TrendingUp} title={`${stats.national.currentYear} Pass Rate`} value={`${stats.national.passRateCurrent}%`} subtitle="National Average" gradient="from-indigo-600 to-indigo-900" />
-            <StatCard icon={TrendingUp} title={`${stats.national.currentYear - 1} Pass Rate`} value={`${stats.national.passRatePrev1}%`} subtitle="National Average" gradient="from-blue-600 to-blue-900" />
-            <StatCard icon={TrendingUp} title={`${stats.national.currentYear - 2} Pass Rate`} value={`${stats.national.passRatePrev2}%`} subtitle="National Average" gradient="from-slate-800 to-black" />
+            <StatCard icon={TrendingUp} title={`${stats.national?.currentYear || new Date().getFullYear()} Pass Rate`} value={`${stats.national?.passRateCurrent ?? 0}%`} subtitle="National Average" gradient="from-indigo-600 to-indigo-900" />
+            <StatCard icon={TrendingUp} title={`${(stats.national?.currentYear || new Date().getFullYear()) - 1} Pass Rate`} value={`${stats.national?.passRatePrev1 ?? 0}%`} subtitle="National Average" gradient="from-blue-600 to-blue-900" />
+            <StatCard icon={TrendingUp} title={`${(stats.national?.currentYear || new Date().getFullYear()) - 2} Pass Rate`} value={`${stats.national?.passRatePrev2 ?? 0}%`} subtitle="National Average" gradient="from-slate-800 to-black" />
           </div>
 
           <h3 className="text-2xl font-bold text-slate-800 mb-8 flex items-center justify-center">Provincial Level (NCP)</h3>
           {/* Provincial Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <StatCard icon={School} title="Province Commerce Schools" value={stats.provincial.schools.toLocaleString()} subtitle="North Central Province" gradient="from-blue-500 to-blue-700" />
-            <StatCard icon={Users} title="Province Commerce Teachers" value={stats.provincial.teachers.toLocaleString()} subtitle="Commerce Educators" gradient="from-teal-500 to-teal-700" />
-            <StatCard icon={GraduationCap} title="Province Commerce Students" value={stats.provincial.students.toLocaleString()} subtitle="Commerce Students" gradient="from-blue-600 to-indigo-700" />
+            <StatCard icon={School} title="Province Commerce Schools" value={(stats.provincial?.schools ?? 0).toLocaleString()} subtitle="North Central Province" gradient="from-blue-500 to-blue-700" />
+            <StatCard icon={Users} title="Province Commerce Teachers" value={(stats.provincial?.teachers ?? 0).toLocaleString()} subtitle="Commerce Educators" gradient="from-teal-500 to-teal-700" />
+            <StatCard icon={GraduationCap} title="Province Commerce Students" value={(stats.provincial?.students ?? 0).toLocaleString()} subtitle="Commerce Students" gradient="from-blue-600 to-indigo-700" />
             
-            <StatCard icon={TrendingUp} title={`${stats.national.currentYear} Pass Rate`} value={`${stats.provincial.passRateCurrent}%`} subtitle="NCP Average" gradient="from-emerald-500 to-emerald-700" />
-            <StatCard icon={TrendingUp} title={`${stats.national.currentYear - 1} Pass Rate`} value={`${stats.provincial.passRatePrev1}%`} subtitle="NCP Average" gradient="from-teal-600 to-teal-800" />
-            <StatCard icon={TrendingUp} title={`${stats.national.currentYear - 2} Pass Rate`} value={`${stats.provincial.passRatePrev2}%`} subtitle="NCP Average" gradient="from-cyan-600 to-cyan-800" />
+            <StatCard icon={TrendingUp} title={`${stats.national?.currentYear || new Date().getFullYear()} Pass Rate`} value={`${stats.provincial?.passRateCurrent ?? 0}%`} subtitle="NCP Average" gradient="from-emerald-500 to-emerald-700" />
+            <StatCard icon={TrendingUp} title={`${(stats.national?.currentYear || new Date().getFullYear()) - 1} Pass Rate`} value={`${stats.provincial?.passRatePrev1 ?? 0}%`} subtitle="NCP Average" gradient="from-teal-600 to-teal-800" />
+            <StatCard icon={TrendingUp} title={`${(stats.national?.currentYear || new Date().getFullYear()) - 2} Pass Rate`} value={`${stats.provincial?.passRatePrev2 ?? 0}%`} subtitle="NCP Average" gradient="from-cyan-600 to-cyan-800" />
           </div>
         </div>
 
@@ -124,7 +124,7 @@ const HomeStatistics = () => {
         >
           <h3 className="text-xl font-bold text-slate-800 mb-8 flex items-center space-x-3">
             <BookOpen className="text-blue-600 w-6 h-6" />
-            <span>3-Year Commerce Pass Rate Comparison (Districts)</span>
+            <span>5-Year Commerce Pass Rate Comparison (Districts)</span>
           </h3>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -161,7 +161,7 @@ const HomeStatistics = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
             <h3 className="text-xl font-bold text-slate-800 flex items-center space-x-3">
               <GraduationCap className="text-indigo-600 w-6 h-6" />
-              <span>A/L Subjects: 3-Year Comparison</span>
+              <span>A/L Subjects: 5-Year Comparison</span>
             </h3>
             <div className="flex bg-slate-100/50 backdrop-blur-sm p-1.5 rounded-2xl relative shadow-inner">
               {['Economics', 'Business Studies', 'Accounting'].map(subj => (
@@ -217,7 +217,7 @@ const HomeStatistics = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
             <h3 className="text-xl font-bold text-slate-800 flex items-center space-x-3">
               <School className="text-teal-600 w-6 h-6" />
-              <span>O/L Subjects: 3-Year Comparison</span>
+              <span>O/L Subjects: 5-Year Comparison</span>
             </h3>
             <div className="flex bg-slate-100/50 backdrop-blur-sm p-1.5 rounded-2xl relative shadow-inner">
               {['Business & Accounting', 'Entrepreneurship'].map(subj => (

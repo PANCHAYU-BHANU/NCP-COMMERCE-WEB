@@ -13,4 +13,7 @@ public interface TermTestMarkRepository extends JpaRepository<TermTestMark, Long
 
     @Query("SELECT DISTINCT m.year FROM TermTestMark m WHERE m.year IS NOT NULL ORDER BY m.year DESC")
     List<Integer> findDistinctYears();
+
+    @Query("SELECT MAX(m.year) FROM TermTestMark m")
+    Integer findMaxYear();
 }

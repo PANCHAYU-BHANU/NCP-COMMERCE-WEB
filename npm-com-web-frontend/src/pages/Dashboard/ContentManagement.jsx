@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Swal from 'sweetalert2';
 import { useAuth } from '../../contexts/AuthContext';
-import { Globe, Layout, Image as ImageIcon, FileText, Upload, Plus, Trash2, Edit2, Save, X, Settings } from 'lucide-react';
+import { Globe, Layout, Image as ImageIcon, FileText, Upload, Plus, Trash2, Edit2, Save, X, Settings, RefreshCw } from 'lucide-react';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 
@@ -58,10 +58,10 @@ const ContentManagement = () => {
     visionSi: 'වාණිජ හා ව්‍යාපාර අධ්‍යයනයෙන් දිවයිනේ විශිෂ්ටතම පළාත බවට පත්වෙමින්, සදාචාර සම්පන්න, නව්‍යතා සපිරි සහ මූල්‍ය ඥානයෙන් පිරිපුන් පුරවැසියන් බිහිකිරීම.',
     mission: 'Delivering world-class commercial pedagogy, modern technological integration, continuous teacher empowerment, and student-centered entrepreneurship across all 11 educational zones.',
     missionSi: 'කලාප 11 පුරා ගුණාත්මක වාණිජ ඉගැන්වීම් ක්‍රමවේද, නවීන තාක්ෂණය, අඛණ්ඩ ගුරු සංවර්ධනය සහ ප්‍රායෝගික ව්‍යවසායකත්ව අවස්ථා සලසමින් සිසුන් සවිබල ගැන්වීම.',
-    schoolsCount: 118,
-    studentsCount: 12540,
-    teachersCount: 462,
-    passRate: 82.4
+    schoolsCount: 0,
+    studentsCount: 0,
+    teachersCount: 0,
+    passRate: 0
   };
 
   const [homepageSettings, setHomepageSettings] = useState(() => {
@@ -73,11 +73,42 @@ const ContentManagement = () => {
     }
   });
 
+  const [liveStats, setLiveStats] = useState({
+    schoolsCount: 0,
+    studentsCount: 0,
+    teachersCount: 0,
+    passRate: 0,
+    benchmarkYear: 2025
+  });
+  const [loadingLiveStats, setLoadingLiveStats] = useState(false);
+
+  const fetchLiveStats = async () => {
+    setLoadingLiveStats(true);
+    try {
+      const res = await fetch('http://localhost:8080/api/public/statistics/overview');
+      const data = await res.json();
+      if (data && data.provincial) {
+        setLiveStats({
+          schoolsCount: data.provincial.schools || 0,
+          studentsCount: data.provincial.students || 0,
+          teachersCount: data.provincial.teachers || 0,
+          passRate: data.provincial.passRateCurrent || 0,
+          benchmarkYear: 2025
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching live stats:', err);
+    } finally {
+      setLoadingLiveStats(false);
+    }
+  };
+
   useEffect(() => {
     fetchNews();
     fetchEvents();
     fetchSubjects();
     fetchResources();
+    fetchLiveStats();
   }, []);
 
   const fetchResources = async () => {
@@ -379,16 +410,16 @@ const ContentManagement = () => {
 
   const renderNewsTab = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <div>
-          <h2 className="text-xl font-bold text-slate-800">News & Announcements</h2>
-          <p className="text-sm text-slate-500">Manage updates shown on the public homepage.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 sm:gap-4 bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xs border border-slate-200/80">
+        <div className="min-w-0">
+          <h2 className="text-sm sm:text-lg font-black text-slate-800 tracking-tight leading-snug">News & Announcements</h2>
+          <p className="text-[11px] sm:text-xs text-slate-500 line-clamp-1 sm:line-clamp-none mt-0.5">Manage updates shown on the public homepage.</p>
         </div>
-        <Button leftIcon={Plus} onClick={() => { setNewsFormData({ title: '', content: '', category: 'General', status: 'Published', examLevel: 'GENERAL' }); setIsNewsModalOpen(true); }}>Add News</Button>
+        <Button size="sm" leftIcon={Plus} onClick={() => { setNewsFormData({ title: '', content: '', category: 'General', status: 'Published', examLevel: 'GENERAL' }); setIsNewsModalOpen(true); }} className="whitespace-nowrap shrink-0 self-start sm:self-auto cursor-pointer shadow-xs">Add News</Button>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200"><table className="w-full text-left border-collapse min-w-[560px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
               <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase">Title</th>
@@ -408,7 +439,7 @@ const ContentManagement = () => {
                   </span>
                 </td>
                 <td className="py-4 px-6 text-right">
-                  <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex justify-end space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleEditNewsClick(news)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit2 size={16} /></button>
                     <button onClick={() => handleDeleteNews(news.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
                   </div>
@@ -417,6 +448,7 @@ const ContentManagement = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
       {/* News Modal */}
       <AnimatePresence>
@@ -437,16 +469,16 @@ const ContentManagement = () => {
                 <form id="newsForm" onSubmit={handleAddNews} className="space-y-4">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Title</label>
-                    <input type="text" required value={newsFormData.title} onChange={e => setNewsFormData({...newsFormData, title: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50" />
+                    <input type="text" required value={newsFormData.title} onChange={e => setNewsFormData({...newsFormData, title: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Content</label>
-                    <textarea rows="4" required value={newsFormData.content} onChange={e => setNewsFormData({...newsFormData, content: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50"></textarea>
+                    <textarea rows="4" required value={newsFormData.content} onChange={e => setNewsFormData({...newsFormData, content: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50"></textarea>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1.5">Category</label>
-                      <select value={newsFormData.category} onChange={e => setNewsFormData({...newsFormData, category: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50">
+                      <select value={newsFormData.category} onChange={e => setNewsFormData({...newsFormData, category: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50">
                         <option>General</option>
                         <option>Exam</option>
                         <option>Event</option>
@@ -454,14 +486,14 @@ const ContentManagement = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1.5">Status</label>
-                      <select value={newsFormData.status} onChange={e => setNewsFormData({...newsFormData, status: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50">
+                      <select value={newsFormData.status} onChange={e => setNewsFormData({...newsFormData, status: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50">
                         <option>Published</option>
                         <option>Draft</option>
                       </select>
                     </div>
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1.5">Exam Level</label>
-                      <select value={newsFormData.examLevel} onChange={e => setNewsFormData({...newsFormData, examLevel: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50">
+                      <select value={newsFormData.examLevel} onChange={e => setNewsFormData({...newsFormData, examLevel: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50">
                         <option value="GENERAL">General (All)</option>
                         <option value="AL">A/L Only</option>
                         <option value="OL">O/L Only</option>
@@ -483,16 +515,16 @@ const ContentManagement = () => {
 
   const renderEventsTab = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <div>
-          <h2 className="text-xl font-bold text-slate-800">Calendar Events</h2>
-          <p className="text-sm text-slate-500">Manage events shown on the News & Events page calendar.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 sm:gap-4 bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xs border border-slate-200/80">
+        <div className="min-w-0">
+          <h2 className="text-sm sm:text-lg font-black text-slate-800 tracking-tight leading-snug">Calendar Events</h2>
+          <p className="text-[11px] sm:text-xs text-slate-500 line-clamp-1 sm:line-clamp-none mt-0.5">Manage events shown on the News & Events page calendar.</p>
         </div>
-        <Button leftIcon={Plus} onClick={() => { setEventFormData({ title: '', description: '', eventDate: '', image: null, examLevel: 'GENERAL' }); setIsEventModalOpen(true); }}>Add Event</Button>
+        <Button size="sm" leftIcon={Plus} onClick={() => { setEventFormData({ title: '', description: '', eventDate: '', image: null, examLevel: 'GENERAL' }); setIsEventModalOpen(true); }} className="whitespace-nowrap shrink-0 self-start sm:self-auto cursor-pointer shadow-xs">Add Event</Button>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200"><table className="w-full text-left border-collapse min-w-[560px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
               <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase">Title</th>
@@ -510,7 +542,7 @@ const ContentManagement = () => {
                 </td>
                 <td className="py-4 px-6 text-slate-500 text-sm truncate max-w-xs">{event.description}</td>
                 <td className="py-4 px-6 text-right">
-                  <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex justify-end space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleEditEventClick(event)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit2 size={16} /></button>
                     <button onClick={() => handleDeleteEvent(event.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
                   </div>
@@ -519,6 +551,7 @@ const ContentManagement = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -539,19 +572,19 @@ const ContentManagement = () => {
                 <form id="eventForm" onSubmit={handleAddEvent} className="space-y-4">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Event Title</label>
-                    <input type="text" required value={eventFormData.title} onChange={e => setEventFormData({...eventFormData, title: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50" />
+                    <input type="text" required value={eventFormData.title} onChange={e => setEventFormData({...eventFormData, title: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Date & Time</label>
-                    <input type="datetime-local" required value={eventFormData.eventDate} onChange={e => setEventFormData({...eventFormData, eventDate: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50" />
+                    <input type="datetime-local" required value={eventFormData.eventDate} onChange={e => setEventFormData({...eventFormData, eventDate: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Description</label>
-                    <textarea rows="4" required value={eventFormData.description} onChange={e => setEventFormData({...eventFormData, description: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50"></textarea>
+                    <textarea rows="4" required value={eventFormData.description} onChange={e => setEventFormData({...eventFormData, description: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50"></textarea>
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Exam Level</label>
-                    <select value={eventFormData.examLevel} onChange={e => setEventFormData({...eventFormData, examLevel: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50">
+                    <select value={eventFormData.examLevel} onChange={e => setEventFormData({...eventFormData, examLevel: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50">
                       <option value="GENERAL">General (All)</option>
                       <option value="AL">A/L Only</option>
                       <option value="OL">O/L Only</option>
@@ -559,7 +592,7 @@ const ContentManagement = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Event Image (Optional)</label>
-                    <input type="file" accept="image/*" onChange={e => setEventFormData({...eventFormData, image: e.target.files[0]})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50" />
+                    <input type="file" accept="image/*" onChange={e => setEventFormData({...eventFormData, image: e.target.files[0]})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50" />
                   </div>
                 </form>
               </div>
@@ -576,10 +609,10 @@ const ContentManagement = () => {
 
   const renderMediaTab = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <div>
-          <h2 className="text-xl font-bold text-slate-800">Media Gallery Uploads</h2>
-          <p className="text-sm text-slate-500">Upload photos and videos to category galleries.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 sm:gap-4 bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xs border border-slate-200/80">
+        <div className="min-w-0">
+          <h2 className="text-sm sm:text-lg font-black text-slate-800 tracking-tight leading-snug">Media Gallery Uploads</h2>
+          <p className="text-[11px] sm:text-xs text-slate-500 line-clamp-1 sm:line-clamp-none mt-0.5">Upload photos and videos to category galleries.</p>
         </div>
       </div>
       
@@ -648,10 +681,10 @@ const ContentManagement = () => {
   );
   const renderResourcesTab = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <div>
-          <h2 className="text-xl font-bold text-slate-800">Resource & Paper Management</h2>
-          <p className="text-sm text-slate-500">Publish and manage past papers, term test papers, and unit modular evaluations.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 sm:gap-4 bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xs border border-slate-200/80">
+        <div className="min-w-0">
+          <h2 className="text-sm sm:text-lg font-black text-slate-800 tracking-tight leading-snug">Resource & Paper Management</h2>
+          <p className="text-[11px] sm:text-xs text-slate-500 line-clamp-1 sm:line-clamp-none mt-0.5">Publish and manage past papers, term test papers, and unit modular evaluations.</p>
         </div>
       </div>
 
@@ -665,11 +698,11 @@ const ContentManagement = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1.5">Title (ප්‍රශ්න පත්‍රයේ මාතෘකාව)</label>
-              <input type="text" placeholder="e.g. 2025 AL Accounting 2nd Term Evaluation Paper" value={resourceFormData.title} onChange={e => setResourceFormData({...resourceFormData, title: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50" />
+              <input type="text" placeholder="e.g. 2025 AL Accounting 2nd Term Evaluation Paper" value={resourceFormData.title} onChange={e => setResourceFormData({...resourceFormData, title: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50" />
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1.5">Document Type (ප්‍රශ්න පත්‍ර වර්ගය)</label>
-              <select value={resourceFormData.resourceType} onChange={e => setResourceFormData({...resourceFormData, resourceType: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50">
+              <select value={resourceFormData.resourceType} onChange={e => setResourceFormData({...resourceFormData, resourceType: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50">
                 <option value="PAST_PAPER">A/L Past Paper (පසුගිය විභාග ප්‍රශ්න පත්‍ර)</option>
                 <option value="TERM_TEST">Provincial Term Test Paper (වාර විභාග ප්‍රශ්න පත්‍ර)</option>
                 <option value="UNIT_TEST">Unit Test Paper (ඒකක පරීක්ෂණ ප්‍රශ්න පත්‍ර)</option>
@@ -679,20 +712,20 @@ const ContentManagement = () => {
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1.5">Exam Level (විභාග මට්ටම)</label>
-              <select value={resourceFormData.examLevel} onChange={e => setResourceFormData({...resourceFormData, examLevel: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50">
+              <select value={resourceFormData.examLevel} onChange={e => setResourceFormData({...resourceFormData, examLevel: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50">
                 <option value="AL">G.C.E. A/L (උසස් පෙළ)</option>
                 <option value="OL">G.C.E. O/L (සාමාන්‍ය පෙළ)</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1.5">Subject (අදාළ විෂය)</label>
-              <select value={resourceFormData.subjectId} onChange={e => setResourceFormData({...resourceFormData, subjectId: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50">
+              <select value={resourceFormData.subjectId} onChange={e => setResourceFormData({...resourceFormData, subjectId: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50">
                 {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.type})</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1.5">Academic Year (අදාළ වසර)</label>
-              <input type="number" value={resourceFormData.examYear} onChange={e => setResourceFormData({...resourceFormData, examYear: parseInt(e.target.value)})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50" />
+              <input type="number" value={resourceFormData.examYear} onChange={e => setResourceFormData({...resourceFormData, examYear: parseInt(e.target.value)})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50" />
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1.5">Select File (PDF ගොනුව තෝරන්න)</label>
@@ -932,7 +965,7 @@ const ContentManagement = () => {
                     type="text"
                     value={homepageSettings.directorName}
                     onChange={(e) => setHomepageSettings({ ...homepageSettings, directorName: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/50"
+                    className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold font-semibold focus:ring-2 focus:ring-blue-500/50"
                   />
                 </div>
                 <div>
@@ -941,7 +974,7 @@ const ContentManagement = () => {
                     type="text"
                     value={homepageSettings.directorRole}
                     onChange={(e) => setHomepageSettings({ ...homepageSettings, directorRole: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/50"
+                    className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold font-semibold focus:ring-2 focus:ring-blue-500/50"
                   />
                 </div>
                 <div>
@@ -950,7 +983,7 @@ const ContentManagement = () => {
                     type="text"
                     value={homepageSettings.directorTitle}
                     onChange={(e) => setHomepageSettings({ ...homepageSettings, directorTitle: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/50"
+                    className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold font-semibold focus:ring-2 focus:ring-blue-500/50"
                   />
                 </div>
               </div>
@@ -963,7 +996,7 @@ const ContentManagement = () => {
                   rows={4}
                   value={homepageSettings.directorQuote}
                   onChange={(e) => setHomepageSettings({ ...homepageSettings, directorQuote: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm leading-relaxed focus:ring-2 focus:ring-blue-500/50"
+                  className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold leading-relaxed focus:ring-2 focus:ring-blue-500/50"
                 />
               </div>
               <div>
@@ -972,7 +1005,7 @@ const ContentManagement = () => {
                   rows={4}
                   value={homepageSettings.directorQuoteSi}
                   onChange={(e) => setHomepageSettings({ ...homepageSettings, directorQuoteSi: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm leading-relaxed focus:ring-2 focus:ring-blue-500/50"
+                  className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold leading-relaxed focus:ring-2 focus:ring-blue-500/50"
                 />
               </div>
             </div>
@@ -989,7 +1022,7 @@ const ContentManagement = () => {
                 rows={3}
                 value={homepageSettings.vision}
                 onChange={(e) => setHomepageSettings({ ...homepageSettings, vision: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50"
+                className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50"
               />
             </div>
             <div>
@@ -998,7 +1031,7 @@ const ContentManagement = () => {
                 rows={3}
                 value={homepageSettings.visionSi}
                 onChange={(e) => setHomepageSettings({ ...homepageSettings, visionSi: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50"
+                className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50"
               />
             </div>
           </div>
@@ -1013,7 +1046,7 @@ const ContentManagement = () => {
                 rows={3}
                 value={homepageSettings.mission}
                 onChange={(e) => setHomepageSettings({ ...homepageSettings, mission: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50"
+                className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50"
               />
             </div>
             <div>
@@ -1022,55 +1055,68 @@ const ContentManagement = () => {
                 rows={3}
                 value={homepageSettings.missionSi}
                 onChange={(e) => setHomepageSettings({ ...homepageSettings, missionSi: e.target.value })}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50"
+                className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50"
               />
             </div>
           </div>
         </Card>
 
-        {/* 3. Provincial Live Benchmark Statistics */}
+        {/* 3. Provincial Live Benchmark Statistics (Auto-Calculated) */}
         <Card className="border border-slate-100 shadow-sm lg:col-span-2">
           <CardHeader
-            title="Provincial Benchmark Statistics Overrides"
-            description="Control public-facing headline metrics displayed on the animated counter band."
+            title="Provincial Benchmark Statistics (Live Automated Calculations)"
+            description="Official headline metrics displayed across public portals. These figures are calculated in real-time from active registered schools, examination submissions, appointed teachers, and provincial benchmark records."
+            action={
+              <button
+                onClick={fetchLiveStats}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingLiveStats ? 'animate-spin' : ''}`} />
+                <span>Sync Metrics</span>
+              </button>
+            }
           />
-          <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Commerce Schools</label>
-              <input
-                type="number"
-                value={homepageSettings.schoolsCount}
-                onChange={(e) => setHomepageSettings({ ...homepageSettings, schoolsCount: parseInt(e.target.value) || 0 })}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-black text-slate-800"
-              />
+          <div className="p-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Commerce Schools</span>
+                <p className="text-2xl font-black text-slate-900">{liveStats.schoolsCount}</p>
+                <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-blue-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                  <span>Database Synchronized</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Commerce Students</span>
+                <p className="text-2xl font-black text-slate-900">{liveStats.studentsCount.toLocaleString()}</p>
+                <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span>Candidate Roster</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Certified Teachers</span>
+                <p className="text-2xl font-black text-slate-900">{liveStats.teachersCount}</p>
+                <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-purple-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                  <span>Appointed Faculty</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Pass Benchmark (%)</span>
+                <p className="text-2xl font-black text-slate-900">{liveStats.passRate}%</p>
+                <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-amber-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  <span>{liveStats.benchmarkYear} A/L Benchmark</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Commerce Students</label>
-              <input
-                type="number"
-                value={homepageSettings.studentsCount}
-                onChange={(e) => setHomepageSettings({ ...homepageSettings, studentsCount: parseInt(e.target.value) || 0 })}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-black text-slate-800"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Certified Teachers</label>
-              <input
-                type="number"
-                value={homepageSettings.teachersCount}
-                onChange={(e) => setHomepageSettings({ ...homepageSettings, teachersCount: parseInt(e.target.value) || 0 })}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-black text-slate-800"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Pass Benchmark (%)</label>
-              <input
-                type="number"
-                step="0.1"
-                value={homepageSettings.passRate}
-                onChange={(e) => setHomepageSettings({ ...homepageSettings, passRate: parseFloat(e.target.value) || 0 })}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-black text-slate-800"
-              />
+
+            <div className="mt-4 p-3 bg-blue-50/70 border border-blue-200/60 rounded-xl text-xs text-blue-800 flex items-center justify-between">
+              <span>💡 Benchmark pass rates and provincial aggregate totals can be updated under <strong>Exam Results Entry &gt; Provincial Aggregate Summary (Admin)</strong>.</span>
             </div>
           </div>
         </Card>
@@ -1079,30 +1125,33 @@ const ContentManagement = () => {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 p-6 sm:p-7 rounded-3xl shadow-xl border border-slate-800 text-white">
-        <div className="inline-flex items-center space-x-2 bg-blue-500/10 text-blue-600 border border-blue-200 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider mb-2">
-          <span>🌐 Public Web CMS & Publishing Studio</span>
+    <div className="space-y-3 sm:space-y-6">
+      {/* Page Header (Prestigious Mobile-App Compact) */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-md">
+        <div className="inline-flex items-center space-x-1.5 bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 px-2 sm:px-2.5 py-0.5 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1 sm:mb-1.5">
+          <Globe size={12} className="text-indigo-400" />
+          <span>Publishing Studio</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Website Content & Media Management</h1>
-        <p className="text-slate-300 text-sm mt-1">
-          Manage public-facing website content. Scope restricted to: <span className="font-bold text-amber-300">{currentUser?.location || 'Your Jurisdiction'}</span>
+        <h1 className="text-base sm:text-2xl font-black text-white tracking-tight leading-snug">
+          Website Content & Media Management
+        </h1>
+        <p className="text-slate-300 text-xs mt-0.5 hidden sm:block font-medium">
+          Manage public-facing website content. Scope restricted to: <span className="font-bold text-indigo-300">{currentUser?.location || 'Your Jurisdiction'}</span>
         </p>
         
         {/* Navigation Tabs */}
-        <div className="flex overflow-x-auto space-x-2 mt-6 pb-2 scrollbar-hide">
+        <div className="flex overflow-x-auto space-x-1.5 sm:space-x-2 mt-3 sm:mt-5 pb-1 no-scrollbar">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+              className={`flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id 
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
-                  : 'bg-white/10 text-slate-200 hover:bg-white/20'
+                  ? 'bg-blue-600 text-white shadow-xs' 
+                  : 'bg-white/10 text-slate-300 hover:bg-white/20 hover:text-white'
               }`}
             >
-              <tab.icon size={16} />
+              <tab.icon size={14} />
               <span>{tab.label}</span>
             </button>
           ))}

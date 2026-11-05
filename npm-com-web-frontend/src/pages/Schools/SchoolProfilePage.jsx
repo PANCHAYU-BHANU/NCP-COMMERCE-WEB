@@ -17,6 +17,7 @@ const SchoolProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [schoolData, setSchoolData] = useState(null);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [yearlyProgression, setYearlyProgression] = useState([]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -40,20 +41,10 @@ const SchoolProfilePage = () => {
             if (found) {
               setSchoolData({
                 school: found,
-                principal: { name: "M.B. Dissanayake (SLPS - Class I)", designation: "PRINCIPAL", phone: "+94 25 222 2450" },
-                sectionHead: { name: "Mrs. W.M. Kanthi (ISA Commerce)", designation: "SECTION_HEAD", phone: "+94 71 845 2910" },
-                teachers: [
-                  { id: 1, name: "Mr. K.D. Jayasinghe (B.Com, PGDE)", school: found },
-                  { id: 2, name: "Mrs. S.P. Bandara (B.Sc Mgt, M.Ed)", school: found },
-                  { id: 3, name: "Mr. N.H. Senarathne (B.Com Hons)", school: found },
-                  { id: 4, name: "Mrs. T.M. Gunawardena (BIT, PGDE ICT)", school: found }
-                ],
-                studentCounts: [
-                  { grade: 12, gender: 'MALE', count: 98 },
-                  { grade: 12, gender: 'FEMALE', count: 124 },
-                  { grade: 13, gender: 'MALE', count: 90 },
-                  { grade: 13, gender: 'FEMALE', count: 118 }
-                ],
+                principal: null,
+                sectionHead: null,
+                teachers: [],
+                studentCounts: [],
                 results: []
               });
             }
@@ -61,6 +52,14 @@ const SchoolProfilePage = () => {
           .catch(() => {});
       })
       .finally(() => setLoading(false));
+
+    // Dynamic 5-year comparison from DB
+    fetch(`http://localhost:8080/api/public/statistics/yearly-comparison?level=school&id=${id}&limit=5`)
+      .then(r => r.json())
+      .then(res => {
+        if (res && res.data) setYearlyProgression(res.data);
+      })
+      .catch(() => {});
   }, [id]);
 
   if (loading) {
@@ -74,39 +73,24 @@ const SchoolProfilePage = () => {
 
   const school = schoolData?.school || {
     id: id,
-    name: "A/ Anuradhapura Central College (National School)",
-    address: "Harischandra Mawatha, Anuradhapura"
+    name: "School",
+    address: "North Central Province"
   };
 
-  const division = school.division || { id: 1, name: "Nuwaragam Palatha East", zone: { id: 1, name: "Anuradhapura", district: { id: 1, name: "Anuradhapura" } } };
-  const zone = division.zone || { id: 1, name: "Anuradhapura", district: { id: 1, name: "Anuradhapura" } };
-  const district = zone.district || { id: 1, name: "Anuradhapura" };
+  const division = school?.division || { id: 1, name: "Division" };
+  const zone = division?.zone || { id: 1, name: "Zone" };
+  const district = zone?.district || { id: 1, name: "District" };
 
-  const principal = schoolData?.principal || {
-    name: "M.B. Dissanayake (SLPS - Class I)",
-    phone: "+94 25 222 2450",
-    email: "principal@central.ncp.edu.lk"
-  };
-
-  const sectionHead = schoolData?.sectionHead || {
-    name: "Mrs. W.M. Kanthi (ISA Commerce)",
-    phone: "+94 71 845 2910",
-    email: "commerce.head@central.ncp.edu.lk"
-  };
-
-  const teachers = (schoolData?.teachers && schoolData.teachers.length > 0) ? schoolData.teachers : [
-    { id: 1, name: "Mr. K.D. Jayasinghe", subject: "Accounting (ගිණුම්කරණය)", qualification: "B.Com (Sp), PGDE (Colombo)", service: "14 Years" },
-    { id: 2, name: "Mrs. S.P. Bandara", subject: "Business Studies (ව්‍යාපාර අධ්‍යයනය)", qualification: "B.Sc Mgt, M.Ed (Peradeniya)", service: "11 Years" },
-    { id: 3, name: "Mr. N.H. Senarathne", subject: "Economics (ආර්ථික විද්‍යාව)", qualification: "B.A. Economics (Hons), PGDE", service: "9 Years" },
-    { id: 4, name: "Mrs. T.M. Gunawardena", subject: "ICT (තොරතුරු හා සන්නිවේදන තාක්ෂණය)", qualification: "B.Sc IT, PGDE (ICT)", service: "8 Years" }
-  ];
+  const principal = schoolData?.principal || null;
+  const sectionHead = schoolData?.sectionHead || null;
+  const teachers = schoolData?.teachers || [];
 
   // Student counts calculation
   const studentCounts = schoolData?.studentCounts || [];
-  const g12Male = studentCounts.find(s => s.grade === 12 && s.gender === 'MALE')?.count || 94;
-  const g12Female = studentCounts.find(s => s.grade === 12 && s.gender === 'FEMALE')?.count || 126;
-  const g13Male = studentCounts.find(s => s.grade === 13 && s.gender === 'MALE')?.count || 88;
-  const g13Female = studentCounts.find(s => s.grade === 13 && s.gender === 'FEMALE')?.count || 122;
+  const g12Male = studentCounts.find(s => s.grade === 12 && s.gender === 'MALE')?.count || 0;
+  const g12Female = studentCounts.find(s => s.grade === 12 && s.gender === 'FEMALE')?.count || 0;
+  const g13Male = studentCounts.find(s => s.grade === 13 && s.gender === 'MALE')?.count || 0;
+  const g13Female = studentCounts.find(s => s.grade === 13 && s.gender === 'FEMALE')?.count || 0;
 
   const totalG12 = g12Male + g12Female;
   const totalG13 = g13Male + g13Female;
@@ -114,9 +98,8 @@ const SchoolProfilePage = () => {
   const totalBoys = g12Male + g13Male;
   const totalGirls = g12Female + g13Female;
 
-  const passRate2025 = 88.6;
-  const passRate2024 = 85.2;
-  const passRate2023 = 82.4;
+  const latestStats = yearlyProgression.length > 0 ? yearlyProgression[yearlyProgression.length - 1] : null;
+  const passRateCurrent = latestStats ? latestStats.passRate : 0;
 
   return (
     <div className="min-h-screen bg-slate-100/60 pb-24">
@@ -181,7 +164,7 @@ const SchoolProfilePage = () => {
               </div>
               <div className="flex items-center space-x-3 px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-xs font-bold">
                 <Award className="w-4 h-4 text-emerald-400" />
-                <span><strong>{passRate2025}%</strong> {lang === 'si' ? 'උසස් පෙළ සාමාර්ථ %' : 'A/L Pass Rate'}</span>
+                <span><strong>{passRateCurrent}%</strong> {lang === 'si' ? 'උසස් පෙළ සාමාර්ථ %' : 'A/L Pass Rate'}</span>
               </div>
               <div className="flex items-center space-x-3 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-200 text-xs font-bold">
                 <Trophy className="w-4 h-4 text-amber-400" />
@@ -238,14 +221,16 @@ const SchoolProfilePage = () => {
                 <span className="text-[11px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200 inline-block mb-1.5">
                   {lang === 'si' ? 'විදුහල්පතිතුමා' : 'Principal'}
                 </span>
-                <h3 className="text-xl font-black text-slate-900">{principal.name}</h3>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">Sri Lanka Principals' Service (SLPS - Class I)</p>
-                <div className="mt-2.5 flex flex-wrap gap-3 text-xs text-slate-600">
-                  <span className="flex items-center space-x-1">
-                    <Phone className="w-3.5 h-3.5 text-blue-600" />
-                    <span>{principal.phone}</span>
-                  </span>
-                </div>
+                <h3 className="text-xl font-black text-slate-900">{principal?.name || (lang === 'si' ? 'පත් කර නොමැත' : 'Not Appointed')}</h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">{principal ? "Sri Lanka Principals' Service (SLPS - Class I)" : (lang === 'si' ? 'විදුහල්පතිවරයෙකු පද්ධතියට එක්කර නැත' : 'No principal assigned in system yet')}</p>
+                {principal?.phone && (
+                  <div className="mt-2.5 flex flex-wrap gap-3 text-xs text-slate-600">
+                    <span className="flex items-center space-x-1">
+                      <Phone className="w-3.5 h-3.5 text-blue-600" />
+                      <span>{principal.phone}</span>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="mt-4 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600 italic">
@@ -267,14 +252,16 @@ const SchoolProfilePage = () => {
                 <span className="text-[11px] font-black uppercase tracking-wider text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-200 inline-block mb-1.5">
                   {lang === 'si' ? 'වාණිජ අංශ ප්‍රධානී' : 'Commerce Section Head'}
                 </span>
-                <h3 className="text-xl font-black text-slate-900">{sectionHead.name}</h3>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">Head of Commerce & In-Service Advisor Coordinator</p>
-                <div className="mt-2.5 flex flex-wrap gap-3 text-xs text-slate-600">
-                  <span className="flex items-center space-x-1">
-                    <Phone className="w-3.5 h-3.5 text-teal-600" />
-                    <span>{sectionHead.phone}</span>
-                  </span>
-                </div>
+                <h3 className="text-xl font-black text-slate-900">{sectionHead?.name || (lang === 'si' ? 'පත් කර නොමැත' : 'Not Appointed')}</h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">{sectionHead ? 'Head of Commerce & In-Service Advisor Coordinator' : (lang === 'si' ? 'අංශ ප්‍රධානියෙකු පද්ධතියට එක්කර නැත' : 'No commerce head assigned in system yet')}</p>
+                {sectionHead?.phone && (
+                  <div className="mt-2.5 flex flex-wrap gap-3 text-xs text-slate-600">
+                    <span className="flex items-center space-x-1">
+                      <Phone className="w-3.5 h-3.5 text-teal-600" />
+                      <span>{sectionHead.phone}</span>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="mt-4 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600 italic">
@@ -301,35 +288,40 @@ const SchoolProfilePage = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {teachers.map((tch, idx) => (
-              <motion.div
-                key={tch.id || idx}
-                whileHover={{ y: -4, scale: 1.02 }}
-                className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 hover:border-indigo-400 hover:shadow-lg transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-sm mb-3 shadow-inner">
-                    T{idx + 1}
+            {teachers.length === 0 ? (
+              <div className="col-span-full py-10 text-center bg-slate-50 rounded-2xl border border-slate-200">
+                <GraduationCap className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <h4 className="text-sm font-bold text-slate-700">
+                  {lang === 'si' ? 'මෙම පාසල සඳහා ගුරුවරුන් තවමත් පවරා නොමැත' : 'No commerce teachers assigned to this school yet'}
+                </h4>
+                <p className="text-xs text-slate-400 mt-1">
+                  {lang === 'si' ? 'ගුරුභවතුන් පත් කළ පසු ඔවුන්ගේ විස්තර මෙහි දිස්වනු ඇත.' : 'Teachers assigned in User Management will automatically appear here.'}
+                </p>
+              </div>
+            ) : (
+              teachers.map((tch, idx) => (
+                <motion.div
+                  key={tch.id || idx}
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 hover:border-indigo-400 hover:shadow-lg transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-sm shadow-inner">
+                        {tch.name ? tch.name.charAt(0).toUpperCase() : `T${idx + 1}`}
+                      </div>
+                      {tch.isSectionHead && (
+                        <span className="text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                          ★ {lang === 'si' ? 'අංශ ප්‍රධානී' : 'Section Head'}
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="text-base font-black text-slate-900 mb-1">{tch.name}</h4>
+                    <p className="text-xs font-bold text-indigo-600">{tch.subject || "Commerce Stream"}</p>
                   </div>
-                  <h4 className="text-base font-black text-slate-900 mb-1">{tch.name}</h4>
-                  <p className="text-xs font-bold text-indigo-600 mb-3">{tch.subject || "Commerce Stream"}</p>
-                  
-                  <div className="space-y-1 text-[11px] text-slate-500 border-t border-slate-100 pt-3">
-                    <p><strong>Qualification:</strong> {tch.qualification || "B.Com / B.Sc, PGDE"}</p>
-                    <p><strong>Service:</strong> {tch.service || "10+ Years"}</p>
-                    <p><strong>Classes:</strong> Grade 12 & 13</p>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-400">
-                  <span className="flex items-center space-x-1 text-emerald-600">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Appointed</span>
-                  </span>
-                  <span>National School</span>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
 
@@ -367,56 +359,53 @@ const SchoolProfilePage = () => {
             {/* Gender Ratio Bar */}
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
               <div className="flex justify-between text-xs font-black mb-2">
-                <span className="text-blue-700">Boys: {totalBoys} ({((totalBoys / totalCommerceStudents) * 100).toFixed(0)}%)</span>
-                <span className="text-rose-600">Girls: {totalGirls} ({((totalGirls / totalCommerceStudents) * 100).toFixed(0)}%)</span>
+                <span className="text-blue-700">Boys: {totalBoys} ({totalCommerceStudents > 0 ? ((totalBoys / totalCommerceStudents) * 100).toFixed(0) : 0}%)</span>
+                <span className="text-rose-600">Girls: {totalGirls} ({totalCommerceStudents > 0 ? ((totalGirls / totalCommerceStudents) * 100).toFixed(0) : 0}%)</span>
               </div>
               <div className="w-full h-3 rounded-full bg-slate-200 overflow-hidden flex">
-                <div className="h-full bg-blue-500" style={{ width: `${(totalBoys / totalCommerceStudents) * 100}%` }} />
-                <div className="h-full bg-pink-500" style={{ width: `${(totalGirls / totalCommerceStudents) * 100}%` }} />
+                <div className="h-full bg-blue-500" style={{ width: `${totalCommerceStudents > 0 ? (totalBoys / totalCommerceStudents) * 100 : 50}%` }} />
+                <div className="h-full bg-pink-500" style={{ width: `${totalCommerceStudents > 0 ? (totalGirls / totalCommerceStudents) * 100 : 50}%` }} />
               </div>
             </div>
           </div>
 
-          {/* Academic Milestones */}
+          {/* Academic Milestones - Dynamic 5-Year Progression */}
           <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white rounded-3xl p-8 shadow-xl flex flex-col justify-between">
             <div>
               <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-teal-400/20 text-teal-300 border border-teal-400/30 text-[11px] font-black uppercase tracking-wider mb-4">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>3-Year Progression</span>
+                <span>{lang === 'si' ? 'වසර 5 ක ප්‍රගතිය' : '5-Year Academic Progression'}</span>
               </div>
-              <h3 className="text-2xl font-black mb-2">A/L Pass Benchmarks</h3>
-              <p className="text-xs text-slate-300 mb-6">Continuous academic improvement across term tests and national A/L evaluations.</p>
+              <h3 className="text-2xl font-black mb-2">{lang === 'si' ? 'උසස් පෙළ සාමාර්ථ මිණුම් සලකුණු' : 'A/L Pass Benchmarks'}</h3>
+              <p className="text-xs text-slate-300 mb-6">{lang === 'si' ? 'පසුගිය වසර 5 තුළ වාණිජ අංශයේ ප්‍රතිඵල විශ්ලේෂණය' : '5-Year historical performance trends from official examination records.'}</p>
 
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-xs font-bold mb-1">
-                    <span>2023 Pass Rate</span>
-                    <span>{passRate2023}%</span>
+              <div className="space-y-3.5">
+                {yearlyProgression.length > 0 ? (
+                  yearlyProgression.map((item, idx) => {
+                    const isLatest = idx === yearlyProgression.length - 1;
+                    const barColors = ['bg-slate-400', 'bg-blue-400', 'bg-indigo-400', 'bg-cyan-400', 'bg-teal-400'];
+                    const barColor = isLatest ? 'bg-teal-400' : (barColors[idx % barColors.length]);
+                    return (
+                      <div key={item.year}>
+                        <div className="flex justify-between text-xs font-bold mb-1">
+                          <span className={isLatest ? 'text-teal-300 font-black' : 'text-slate-300'}>
+                            {item.year} {lang === 'si' ? 'සමත් %' : 'Pass Rate'} {isLatest ? `(${lang === 'si' ? 'නවතම' : 'Latest'})` : ''}
+                          </span>
+                          <span className={isLatest ? 'text-teal-300 font-black' : 'text-white'}>
+                            {item.passRate}% {item.totalSat > 0 ? `(${item.totalSat} Sat)` : ''}
+                          </span>
+                        </div>
+                        <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                          <div className={`h-full ${barColor} rounded-full transition-all duration-700`} style={{ width: `${Math.min(100, Math.max(item.passRate, 0))}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-xs text-slate-400 py-6 text-center bg-white/5 rounded-2xl border border-white/10">
+                    {lang === 'si' ? 'මෙම පාසල සඳහා විභාග ලකුණු තවමත් ඇතුළත් කර නොමැත.' : 'No examination marks recorded yet for this school.'}
                   </div>
-                  <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
-                    <div className="h-full bg-slate-400 rounded-full" style={{ width: `${passRate2023}%` }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs font-bold mb-1">
-                    <span>2024 Pass Rate</span>
-                    <span>{passRate2024}%</span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
-                    <div className="h-full bg-blue-400 rounded-full" style={{ width: `${passRate2024}%` }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs font-bold mb-1">
-                    <span className="text-teal-300">2025 Target</span>
-                    <span className="text-teal-300 font-black">{passRate2025}%</span>
-                  </div>
-                  <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
-                    <div className="h-full bg-teal-400 rounded-full" style={{ width: `${passRate2025}%` }} />
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -437,11 +426,11 @@ const SchoolProfilePage = () => {
         isOpen={isAnalyticsOpen}
         onClose={() => setIsAnalyticsOpen(false)}
         title={school.name}
-        subtitle={`${school.address || division.name} • Principal: ${principal.name}`}
+        subtitle={`${school.address || division?.name || ''} • Principal: ${principal?.name || 'Not Appointed'}`}
         schoolId={school.id}
-        divisionId={division.id}
-        zoneId={zone.id}
-        districtId={district.id}
+        divisionId={division?.id}
+        zoneId={zone?.id}
+        districtId={district?.id}
       />
     </div>
   );
