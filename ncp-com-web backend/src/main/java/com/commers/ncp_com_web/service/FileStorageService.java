@@ -29,19 +29,49 @@ public class FileStorageService {
         }
     }
 
+    private static final java.util.Set<String> ALLOWED_EXTENSIONS = java.util.Set.of(
+            "jpg", "jpeg", "png", "gif", "webp", "svg",
+            "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv",
+            "mp4", "webm", "mp3", "wav", "zip", "rar"
+    );
+
+    private static final java.util.Set<String> BLOCKED_EXTENSIONS = java.util.Set.of(
+            "exe", "bat", "cmd", "sh", "jsp", "jspx", "html", "htm", "php", "pl", "py", "cgi", "dll", "so", "vbs", "js", "jar", "war"
+    );
+
     public String storeFile(MultipartFile file) {
-        String rawName = (file != null && file.getOriginalFilename() != null && !file.getOriginalFilename().isBlank())
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("Cannot store an empty file.");
+        }
+
+        String rawName = (file.getOriginalFilename() != null && !file.getOriginalFilename().isBlank())
                 ? file.getOriginalFilename()
                 : "attachment";
         String cleanName = StringUtils.cleanPath(rawName).replaceAll("[^a-zA-Z0-9.\\-_]", "_");
+
+        // Validate file extension
+        String extension = "";
+        int extIndex = cleanName.lastIndexOf('.');
+        if (extIndex > 0 && extIndex < cleanName.length() - 1) {
+            extension = cleanName.substring(extIndex + 1).toLowerCase();
+        }
+
+        if (BLOCKED_EXTENSIONS.contains(extension) || (!extension.isEmpty() && !ALLOWED_EXTENSIONS.contains(extension))) {
+            throw new RuntimeException("Security Error: Uploading file type '." + extension + "' is not permitted.");
+        }
+
         String fileName = UUID.randomUUID().toString() + "_" + cleanName;
 
         try {
             if (fileName.contains("..")) {
-                throw new RuntimeException("Sorry! Filename contains invalid path sequence " + fileName);
+                throw new RuntimeException("Security Error: Filename contains invalid path sequence " + fileName);
             }
 
-            Path targetLocation = this.fileStorageLocation.resolve(fileName);
+            Path targetLocation = this.fileStorageLocation.resolve(fileName).normalize();
+            if (!targetLocation.startsWith(this.fileStorageLocation)) {
+                throw new RuntimeException("Security Error: Target location is outside storage directory.");
+            }
+
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
             return fileName;
@@ -52,9 +82,15 @@ public class FileStorageService {
 
     public Resource loadFileAsResource(String fileName) {
         try {
+            if (fileName == null || fileName.contains("..")) {
+                throw new RuntimeException("Security Error: Invalid file name requested: " + fileName);
+            }
             Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
+            if (!filePath.startsWith(this.fileStorageLocation)) {
+                throw new RuntimeException("Security Error: Path traversal attempt detected: " + fileName);
+            }
             Resource resource = new UrlResource(filePath.toUri());
-            if (resource.exists()) {
+            if (resource.exists() && resource.isReadable()) {
                 return resource;
             } else {
                 throw new RuntimeException("File not found " + fileName);

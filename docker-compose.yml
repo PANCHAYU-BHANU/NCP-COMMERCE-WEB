@@ -10,9 +10,10 @@ services:
       MYSQL_DATABASE: ncp_com_db
       MYSQL_ROOT_PASSWORD: "1234"
     ports:
-      - "3306:3306"
+      - "3308:3306"
     volumes:
       - ncp_mysql_data:/var/lib/mysql
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p1234"]
       interval: 5s
@@ -38,6 +39,9 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: "1234"
       APP_UPLOAD_DIR: uploads
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-4f7a93c8d1b2e5a6f84920c1d4e7f9a8b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6}
+      APP_DIRECTOR_USERNAME: ${APP_DIRECTOR_USERNAME:-provincial_director}
+      APP_DIRECTOR_PASSWORD: ${APP_DIRECTOR_PASSWORD:-NcpDirector@2026#Secure}
     ports:
       - "8080:8080"
     volumes:

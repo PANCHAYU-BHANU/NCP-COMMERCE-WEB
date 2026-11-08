@@ -30,23 +30,14 @@ const RankingsLeaderboardPage = () => {
   const [selectedZone, setSelectedZone] = useState('');
   const [selectedDivision, setSelectedDivision] = useState('');
 
-  // Handle switching Exam Type with smart year realignment (e.g. 2027 for upcoming batch term tests, 2025 for completed A/L)
+  // Handle switching Exam Type with smart year realignment based on actual backend data
   const handleExamTypeChange = (newExam) => {
     setExamType(newExam);
-    if (newExam === 'al') {
-      if (parseInt(selectedYear, 10) > 2025) {
-        setSelectedYear('2025');
-      }
-    } else {
-      if (parseInt(selectedYear, 10) < 2026) {
-        setSelectedYear('2027');
-      }
-    }
   };
 
   // Dynamically load available years for the selected exam type from backend
   useEffect(() => {
-    fetch(`http://localhost:8080/api/public/rankings/years?examType=${examType}`)
+    fetch(`/api/public/rankings/years?examType=${examType}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
@@ -95,7 +86,7 @@ const RankingsLeaderboardPage = () => {
 
   // Load geo hierarchies
   useEffect(() => {
-    fetch('http://localhost:8080/api/public/districts')
+    fetch('/api/public/districts')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
@@ -114,7 +105,7 @@ const RankingsLeaderboardPage = () => {
         ]);
       });
 
-    fetch('http://localhost:8080/api/public/schools')
+    fetch('/api/public/schools')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setSchoolsList(data);
@@ -125,12 +116,12 @@ const RankingsLeaderboardPage = () => {
   // When district changes, load zones
   useEffect(() => {
     if (selectedDistrict) {
-      fetch(`http://localhost:8080/api/public/zones?districtId=${selectedDistrict}`)
+      fetch(`/api/public/zones?districtId=${selectedDistrict}`)
         .then(res => res.json())
         .then(data => setZonesList(data || []))
         .catch(() => {});
     } else {
-      fetch(`http://localhost:8080/api/public/zones`)
+      fetch(`/api/public/zones`)
         .then(res => res.json())
         .then(data => setZonesList(data || []))
         .catch(() => {});
@@ -140,12 +131,12 @@ const RankingsLeaderboardPage = () => {
   // When zone changes, load divisions
   useEffect(() => {
     if (selectedZone) {
-      fetch(`http://localhost:8080/api/public/divisions?zoneId=${selectedZone}`)
+      fetch(`/api/public/divisions?zoneId=${selectedZone}`)
         .then(res => res.json())
         .then(data => setDivisionsList(data || []))
         .catch(() => {});
     } else {
-      fetch(`http://localhost:8080/api/public/divisions`)
+      fetch(`/api/public/divisions`)
         .then(res => res.json())
         .then(data => setDivisionsList(data || []))
         .catch(() => {});
@@ -186,7 +177,7 @@ const RankingsLeaderboardPage = () => {
     if (scope === 'division' && selectedDivision) locationParams += `&divisionId=${selectedDivision}`;
     if (scope === 'school' && selectedSchool) locationParams += `&schoolId=${selectedSchool}`;
 
-    const url = `http://localhost:8080/api/public/rankings?examType=${examType}&year=${selectedYear}${subjectIdParam}${locationParams}`;
+    const url = `/api/public/rankings?examType=${examType}&year=${selectedYear}${subjectIdParam}${locationParams}`;
 
     fetch(url)
       .then(res => {

@@ -2,11 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Users, GraduationCap, School as SchoolIcon, Search, Filter, 
-  RefreshCw, BookOpen, MapPin, ExternalLink, Award, Lock, Building, Landmark
+  RefreshCw, BookOpen, MapPin, ExternalLink, Award, Lock, Building, Landmark,
+  Eye, CheckCircle2, AlertCircle, FileText
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Button } from '../../components/ui/Button';
+import TeacherDossierModal from '../../components/TeacherDossierModal';
 
 const TeacherStats = () => {
   const { currentUser } = useAuth();
@@ -18,6 +20,9 @@ const TeacherStats = () => {
   const isPrincipal = ['PRINCIPAL', 'SECTION_HEAD', 'TEACHER'].includes(currentUser?.role);
 
   const [teachers, setTeachers] = useState([]);
+  const [teacherStatuses, setTeacherStatuses] = useState({});
+  const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Geographic filter sources
@@ -50,7 +55,7 @@ const TeacherStats = () => {
   ];
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/public/districts')
+    fetch('/api/public/districts')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
@@ -69,7 +74,7 @@ const TeacherStats = () => {
         ]);
       });
 
-    fetch('http://localhost:8080/api/public/subjects')
+    fetch('/api/public/subjects')
       .then(res => res.json())
       .then(data => setAllSubjects(Array.isArray(data) && data.length > 0 ? data : DEFAULT_SUBJECTS))
       .catch(() => setAllSubjects(DEFAULT_SUBJECTS));
@@ -168,12 +173,12 @@ const TeacherStats = () => {
   useEffect(() => {
     const dId = resolvedDistrictId || selectedDistrict;
     if (dId && dId !== 'ALL') {
-      fetch(`http://localhost:8080/api/public/zones?districtId=${dId}`)
+      fetch(`/api/public/zones?districtId=${dId}`)
         .then(res => res.json())
         .then(data => setZones(Array.isArray(data) ? data : []))
         .catch(console.error);
     } else {
-      fetch('http://localhost:8080/api/public/zones')
+      fetch('/api/public/zones')
         .then(res => res.json())
         .then(data => setZones(Array.isArray(data) ? data : []))
         .catch(console.error);
@@ -187,7 +192,7 @@ const TeacherStats = () => {
   useEffect(() => {
     const zoneToUse = resolvedZoneId || selectedZone;
     if (zoneToUse && zoneToUse !== 'ALL') {
-      fetch(`http://localhost:8080/api/public/divisions?zoneId=${zoneToUse}`)
+      fetch(`/api/public/divisions?zoneId=${zoneToUse}`)
         .then(res => res.json())
         .then(data => setDivisions(Array.isArray(data) ? data : []))
         .catch(console.error);
@@ -204,12 +209,12 @@ const TeacherStats = () => {
     const zoneToUse = resolvedZoneId || selectedZone;
 
     if (divToUse && divToUse !== 'ALL') {
-      fetch(`http://localhost:8080/api/public/schools?divisionId=${divToUse}`)
+      fetch(`/api/public/schools?divisionId=${divToUse}`)
         .then(res => res.json())
         .then(data => setSchools(Array.isArray(data) ? data : []))
         .catch(console.error);
     } else if (zoneToUse && zoneToUse !== 'ALL') {
-      fetch(`http://localhost:8080/api/public/schools?zoneId=${zoneToUse}`)
+      fetch(`/api/public/schools?zoneId=${zoneToUse}`)
         .then(res => res.json())
         .then(data => setSchools(Array.isArray(data) ? data : []))
         .catch(console.error);
@@ -223,7 +228,10 @@ const TeacherStats = () => {
   const fetchTeachers = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/api/auth/users');
+      const token = currentUser?.token || currentUser?.accessToken || JSON.parse(localStorage.getItem('auth') || '{}')?.token;
+      const res = await fetch('/api/auth/users', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       if (res.ok) {
         const data = await res.json();
         // Filter users who are teachers or section heads
@@ -232,6 +240,20 @@ const TeacherStats = () => {
           return role === 'TEACHER' || role === 'ROLE_TEACHER' || role === 'SECTION_HEAD' || role === 'ROLE_SECTION_HEAD' || Boolean(u.isSectionHead);
         });
         setTeachers(teacherUsers);
+      }
+
+      // Fetch teacher profile completion statuses
+      try {
+        const token = JSON.parse(localStorage.getItem('auth'))?.token || currentUser?.token || currentUser?.accessToken;
+        const statusRes = await fetch('/api/teacher-profile/all-status', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (statusRes.ok) {
+          const statusMap = await statusRes.json();
+          setTeacherStatuses(statusMap || {});
+        }
+      } catch (err) {
+        console.warn('Could not load teacher profile statuses:', err);
       }
     } catch (err) {
       console.error('Error fetching teachers:', err);
@@ -763,7 +785,8 @@ const TeacherStats = () => {
                   <th className="py-3 px-6">Appointed School & Scope</th>
                   <th className="py-3 px-6">Teaching Subject(s)</th>
                   <th className="py-3 px-6">Level</th>
-                  <th className="py-3 px-6 text-center">Status</th>
+                  <th className="py-3 px-6 text-center">Profile Status</th>
+                  <th className="py-3 px-6 text-center">Executive Dossier</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -774,16 +797,48 @@ const TeacherStats = () => {
                   const isOL = teacher.examLevel === 'OL';
                   const isBoth = teacher.examLevel === 'BOTH';
 
+                  const status = teacherStatuses[teacher.id] || {};
+                  const isCompleted = Boolean(status.isCompleted);
+                  const pic = status.profilePic || teacher.profilePic;
+                  const fullPhotoUrl = pic ? (pic.startsWith('http') ? pic : (pic.startsWith('/') ? pic : `/${pic}`)) : null;
+
                   return (
-                    <tr key={teacher.id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr key={teacher.id} className="hover:bg-slate-50/70 transition-colors group">
                       <td className="py-3.5 px-6">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-sm flex items-center justify-center shadow-2xs shrink-0">
-                            {(teacher.name || teacher.username || 'T').charAt(0).toUpperCase()}
+                          <div className="relative shrink-0">
+                            {fullPhotoUrl ? (
+                              <img
+                                src={fullPhotoUrl}
+                                alt={teacher.name || teacher.username}
+                                className="w-10 h-10 rounded-xl object-cover border border-slate-300 shadow-2xs bg-slate-100"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.nextSibling.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <div 
+                              className={`w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-sm flex items-center justify-center shadow-2xs shrink-0 ${fullPhotoUrl ? 'hidden' : 'flex'}`}
+                            >
+                              {(teacher.name || teacher.username || 'T').charAt(0).toUpperCase()}
+                            </div>
+                            {isCompleted && (
+                              <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-0.5 rounded-full shadow border border-white" title="Complete Profile">
+                                <CheckCircle2 size={10} />
+                              </span>
+                            )}
                           </div>
+
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-bold text-slate-900 leading-tight">
+                              <p 
+                                onClick={() => {
+                                  setSelectedTeacher(teacher);
+                                  setIsDossierOpen(true);
+                                }}
+                                className="font-bold text-slate-900 leading-tight hover:text-blue-600 cursor-pointer"
+                              >
                                 {teacher.name || teacher.username}
                               </p>
                               {(teacher.isSectionHead || teacher.role === 'SECTION_HEAD') && (
@@ -862,10 +917,31 @@ const TeacherStats = () => {
                       </td>
 
                       <td className="py-3.5 px-6 text-center">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          Active
-                        </span>
+                        {isCompleted ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 size={11} className="text-emerald-500" />
+                            <span>Complete</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <AlertCircle size={11} className="text-amber-500" />
+                            <span>Incomplete</span>
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-6 text-center">
+                        <button
+                          onClick={() => {
+                            setSelectedTeacher(teacher);
+                            setIsDossierOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 font-bold text-xs border border-blue-200 hover:border-blue-600 transition shadow-2xs cursor-pointer group"
+                          title="View Official Teacher Dossier"
+                        >
+                          <Eye size={13} className="text-blue-500 group-hover:text-white transition-colors" />
+                          <span>View Dossier</span>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -875,6 +951,16 @@ const TeacherStats = () => {
           </div>
         )}
       </div>
+
+      {/* ── TEACHER OFFICIAL DOSSIER MODAL ── */}
+      <TeacherDossierModal
+        isOpen={isDossierOpen}
+        teacher={selectedTeacher}
+        onClose={() => {
+          setIsDossierOpen(false);
+          setSelectedTeacher(null);
+        }}
+      />
 
     </div>
   );

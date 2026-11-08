@@ -60,6 +60,9 @@ public class SchoolController {
     @Autowired
     private IssueSuggestionRepository issueSuggestionRepository;
 
+    @Autowired
+    private com.commers.ncp_com_web.repository.NationalStatisticRepository nationalStatisticRepository;
+
     // Endpoint for adding student counts (Grade 10,11,12,13)
     @PostMapping("/{schoolId}/student-counts")
     @PreAuthorize("hasRole('SECTION_HEAD') or hasRole('PRINCIPAL') or hasRole('TEACHER') or hasRole('PROVINCIAL_DIRECTOR') or hasRole('ZONAL_DIRECTOR') or hasRole('DIVISIONAL_DIRECTOR') or hasRole('ADMIN')")
@@ -113,9 +116,11 @@ public class SchoolController {
     private int getLatestNationalResultYear() {
         Integer maxNatYear = alNationalResultRepository.findMaxYear();
         Integer maxStudentNatYear = studentAlResultRepository.findMaxYear();
+        Integer maxStatYear = nationalStatisticRepository.findMaxYear();
         int y1 = (maxNatYear != null) ? maxNatYear : 0;
         int y2 = (maxStudentNatYear != null) ? maxStudentNatYear : 0;
-        return Math.max(y1, y2);
+        int y3 = (maxStatYear != null) ? maxStatYear : 0;
+        return Math.max(y1, Math.max(y2, y3));
     }
 
     private List<Student> filterActiveStudents(List<Student> students) {
@@ -165,20 +170,174 @@ public class SchoolController {
         long total = students.size();
         long boys = students.stream().filter(s -> "MALE".equalsIgnoreCase(s.getGender()) || "M".equalsIgnoreCase(s.getGender())).count();
         long girls = students.stream().filter(s -> "FEMALE".equalsIgnoreCase(s.getGender()) || "F".equalsIgnoreCase(s.getGender())).count();
-        long gr12 = students.stream().filter(s -> s.getGrade() != null && s.getGrade() == 12).count();
-        long gr13 = students.stream().filter(s -> s.getGrade() == null || s.getGrade() == 13).count();
         
+        List<Integer> distinctYears = students.stream()
+                .map(Student::getAlYear)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .sorted(java.util.Comparator.reverseOrder())
+                .collect(Collectors.toList());
+
+        Integer y1 = !distinctYears.isEmpty() ? distinctYears.get(0) : null;
+        Integer y2 = (distinctYears.size() >= 2) ? distinctYears.get(1) : null;
+
+        long c1 = (y1 != null) ? students.stream().filter(s -> y1.equals(s.getAlYear())).count() : 0;
+        long c2 = (y2 != null) ? students.stream().filter(s -> y2.equals(s.getAlYear())).count() : 0;
+
         long teacherCount = teacherRepository.countBySchoolId(schoolId);
 
         Map<String, Object> summary = new HashMap<>();
         summary.put("totalStudents", total);
         summary.put("boys", boys);
         summary.put("girls", girls);
-        summary.put("grade12", gr12);
-        summary.put("grade13", gr13);
+        summary.put("cohort1Year", y1);
+        summary.put("cohort1Count", c1);
+        summary.put("cohort2Year", y2);
+        summary.put("cohort2Count", c2);
+        summary.put("grade12", c1);
+        summary.put("grade13", c2);
         summary.put("totalTeachers", teacherCount);
-        summary.put("activeYear", (getLatestNationalResultYear() > 0 ? getLatestNationalResultYear() + 1 : java.time.Year.now().getValue()));
+        summary.put("activeYear", y1 != null ? y1 : (getLatestNationalResultYear() > 0 ? getLatestNationalResultYear() + 1 : java.time.Year.now().getValue()));
+
+        List<Long> studentIds = students.stream().map(Student::getId).filter(java.util.Objects::nonNull).collect(Collectors.toList());
+        Subject acc = subjectRepository.findFirstByNameContainingIgnoreCase("Account").orElse(null);
+        Subject bs = subjectRepository.findFirstByNameContainingIgnoreCase("Business Studies").orElse(null);
+        Subject eco = subjectRepository.findFirstByNameContainingIgnoreCase("Econom").orElse(null);
+        Subject it = subjectRepository.findFirstByNameContainingIgnoreCase("Information").orElse(
+                     subjectRepository.findFirstByNameContainingIgnoreCase("Statistics").orElse(null));
+
+        summary.put("accCandidates", countDistinctStudentsForSubject(studentIds, acc));
+        summary.put("bsCandidates", countDistinctStudentsForSubject(studentIds, bs));
+        summary.put("ecoCandidates", countDistinctStudentsForSubject(studentIds, eco));
+        summary.put("itCandidates", countDistinctStudentsForSubject(studentIds, it));
+
         return ResponseEntity.ok(summary);
+    }
+
+    private long countDistinctStudentsForSubject(List<Long> studentIds, Subject subject) {
+        if (subject == null || studentIds == null || studentIds.isEmpty()) return 0L;
+        Set<Long> set = new HashSet<>();
+        try {
+            List<Long> tIds = termTestMarkRepository.findDistinctStudentIdsBySubjectId(studentIds, subject.getId());
+            if (tIds != null) set.addAll(tIds);
+            List<Long> uIds = unitTestMarkRepository.findDistinctStudentIdsBySubjectId(studentIds, subject.getId());
+            if (uIds != null) set.addAll(uIds);
+            List<Long> aIds = studentAlResultRepository.findDistinctStudentIdsBySubjectId(studentIds, subject.getId());
+            if (aIds != null) set.addAll(aIds);
+        } catch (Exception ignored) {}
+        return set.size();
+    }
+
+    @GetMapping("/{schoolId}/results-roster")
+    public ResponseEntity<?> getResultsRoster(
+            @PathVariable Long schoolId,
+            @RequestParam(required = false, defaultValue = "TERM_TEST") String type,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false, defaultValue = "1") Integer termOrUnit) {
+
+        School school = schoolRepository.findById(schoolId)
+                .orElseThrow(() -> new RuntimeException("Error: School not found."));
+
+        List<Student> allStudents = studentRepository.findBySchoolId(schoolId);
+        List<Student> students = allStudents;
+
+        if (year != null) {
+            students = students.stream().filter(s -> {
+                if (s.getAlYear() != null) {
+                    return s.getAlYear().equals(year);
+                }
+                if (year >= 2027 && s.getGrade() != null && s.getGrade() == 12) return true;
+                if (year <= 2026 && (s.getGrade() == null || s.getGrade() == 13)) return true;
+                return false;
+            }).collect(Collectors.toList());
+        }
+
+        students.sort((a, b) -> {
+            String idxA = a.getIndexNumber() != null ? a.getIndexNumber() : "";
+            String idxB = b.getIndexNumber() != null ? b.getIndexNumber() : "";
+            try {
+                return Long.compare(Long.parseLong(idxA), Long.parseLong(idxB));
+            } catch (Exception e) {
+                return idxA.compareToIgnoreCase(idxB);
+            }
+        });
+
+        Subject acc = subjectRepository.findFirstByNameContainingIgnoreCase("Account").orElse(null);
+        Subject eco = subjectRepository.findFirstByNameContainingIgnoreCase("Econom").orElse(null);
+        Subject bs = subjectRepository.findFirstByNameContainingIgnoreCase("Business Studies").orElse(null);
+        Subject it = subjectRepository.findFirstByNameContainingIgnoreCase("Information").orElse(
+                     subjectRepository.findFirstByNameContainingIgnoreCase("Statistics").orElse(null));
+
+        List<Map<String, Object>> roster = new ArrayList<>();
+        int targetYear = (year != null) ? year : 2027;
+
+        for (Student s : students) {
+            Map<String, Object> row = new HashMap<>();
+            row.put("id", s.getId());
+            row.put("studentId", s.getId());
+            row.put("indexNumber", s.getIndexNumber() != null ? s.getIndexNumber() : "");
+            row.put("name", s.getName() != null ? s.getName() : "");
+            row.put("gender", s.getGender() != null ? s.getGender().toUpperCase() : "MALE");
+            row.put("whatsapp", s.getWhatsappNumber() != null ? s.getWhatsappNumber() : "");
+            row.put("alYear", s.getAlYear() != null ? s.getAlYear() : targetYear);
+            row.put("acc", "");
+            row.put("eco", "");
+            row.put("bs", "");
+            row.put("it", "");
+            row.put("zScore", "");
+            row.put("districtRank", "");
+            row.put("islandRank", "");
+
+            if ("TERM_TEST".equalsIgnoreCase(type)) {
+                List<TermTestMark> marks = termTestMarkRepository.findByStudentIdAndYearAndTerm(s.getId(), targetYear, termOrUnit);
+                if (marks != null) {
+                    for (TermTestMark m : marks) {
+                        if (m.getSubject() != null && m.getMarks() != null) {
+                            String mVal = (m.getMarks() == Math.floor(m.getMarks())) ? String.valueOf(m.getMarks().intValue()) : String.valueOf(m.getMarks());
+                            if (acc != null && m.getSubject().getId().equals(acc.getId())) row.put("acc", mVal);
+                            else if (eco != null && m.getSubject().getId().equals(eco.getId())) row.put("eco", mVal);
+                            else if (bs != null && m.getSubject().getId().equals(bs.getId())) row.put("bs", mVal);
+                            else if (it != null && m.getSubject().getId().equals(it.getId())) row.put("it", mVal);
+                        }
+                    }
+                }
+            } else if ("UNIT_TEST".equalsIgnoreCase(type)) {
+                List<UnitTestMark> marks = unitTestMarkRepository.findByStudentIdAndYearAndUnitNumber(s.getId(), targetYear, termOrUnit);
+                if (marks != null) {
+                    for (UnitTestMark m : marks) {
+                        if (m.getSubject() != null && m.getMarks() != null) {
+                            String mVal = (m.getMarks() == Math.floor(m.getMarks())) ? String.valueOf(m.getMarks().intValue()) : String.valueOf(m.getMarks());
+                            if (acc != null && m.getSubject().getId().equals(acc.getId())) row.put("acc", mVal);
+                            else if (eco != null && m.getSubject().getId().equals(eco.getId())) row.put("eco", mVal);
+                            else if (bs != null && m.getSubject().getId().equals(bs.getId())) row.put("bs", mVal);
+                            else if (it != null && m.getSubject().getId().equals(it.getId())) row.put("it", mVal);
+                        }
+                    }
+                }
+            } else if ("AL_RESULTS".equalsIgnoreCase(type)) {
+                List<StudentAlResult> results = studentAlResultRepository.findByStudentIdAndYear(s.getId(), targetYear);
+                if (results != null) {
+                    for (StudentAlResult r : results) {
+                        if (r.getSubject() != null && r.getGrade() != null) {
+                            if (acc != null && r.getSubject().getId().equals(acc.getId())) row.put("acc", r.getGrade());
+                            else if (eco != null && r.getSubject().getId().equals(eco.getId())) row.put("eco", r.getGrade());
+                            else if (bs != null && r.getSubject().getId().equals(bs.getId())) row.put("bs", r.getGrade());
+                            else if (it != null && r.getSubject().getId().equals(it.getId())) row.put("it", r.getGrade());
+                        }
+                    }
+                }
+                StudentAlSummary summary = studentAlSummaryRepository.findFirstByStudentIdAndYear(s.getId(), targetYear).orElse(null);
+                if (summary != null) {
+                    if (summary.getZScore() != null) row.put("zScore", String.valueOf(summary.getZScore()));
+                    if (summary.getDistrictRank() != null) row.put("districtRank", String.valueOf(summary.getDistrictRank()));
+                    if (summary.getIslandRank() != null) row.put("islandRank", String.valueOf(summary.getIslandRank()));
+                }
+            }
+
+            roster.add(row);
+        }
+
+        return ResponseEntity.ok(roster);
     }
 
     // Endpoint for Term Test Marks
@@ -240,6 +399,7 @@ public class SchoolController {
         Subject it = subjectRepository.findFirstByNameContainingIgnoreCase("Information").orElse(
                      subjectRepository.findFirstByNameContainingIgnoreCase("Statistics").orElse(null));
         
+        Set<String> processedIndices = new HashSet<>();
         for (com.commers.ncp_com_web.payload.request.StudentResultRow row : payload.getRows()) {
             boolean hasName = row.getName() != null && !row.getName().trim().isEmpty();
             boolean hasIndex = row.getIndexNumber() != null && !row.getIndexNumber().trim().isEmpty();
@@ -251,41 +411,62 @@ public class SchoolController {
             }
             
             String indexNum = row.getIndexNumber().trim();
+            if (processedIndices.contains(indexNum)) {
+                return ResponseEntity.badRequest().body("Validation Error: Duplicate Index Number '" + indexNum + "' detected in upload payload. Each student in the submission must have a unique index number.");
+            }
+            processedIndices.add(indexNum);
+
             String studentName = hasName ? row.getName().trim() : ("Student " + indexNum);
-            
-            // 1. First priority: look up student by (schoolId, indexNumber)
+            Integer targetAlYear = payload.getYear();
+
+            // 1. Look up student by strictly unique (schoolId, indexNumber)
             Student student = null;
-            if (indexNum != null && !indexNum.isEmpty()) {
+            if (!indexNum.isEmpty()) {
                 student = studentRepository.findBySchoolIdAndIndexNumber(schoolId, indexNum).orElse(null);
             }
             
-            // 2. Fallback: look up by (name, schoolId)
-            if (student == null && hasName) {
-                student = studentRepository.findByNameAndSchoolId(studentName, schoolId).orElse(null);
-            }
-            
-            // 3. Create new student if still not found
-            if (student == null) {
+            if (student != null) {
+                // If student is found, ensure the index is not being reused for another batch/year
+                if (student.getAlYear() != null && targetAlYear != null && !student.getAlYear().equals(targetAlYear)) {
+                    return ResponseEntity.badRequest().body("Validation Error: Index Number '" + indexNum + 
+                        "' is already registered to " + student.getName() + " in the " + student.getAlYear() + 
+                        " A/L cohort. A student index cannot be reused across different batches or years in this school.");
+                }
+
+                // If found student has a established name, ensure someone isn't assigning this index to another student name
+                if (hasName && student.getName() != null && !student.getName().startsWith("Student ") 
+                        && !student.getName().equalsIgnoreCase(studentName)
+                        && !studentName.toLowerCase().contains(student.getName().toLowerCase())
+                        && !student.getName().toLowerCase().contains(studentName.toLowerCase())) {
+                    return ResponseEntity.badRequest().body("Validation Error: Index Number '" + indexNum + 
+                        "' is already assigned to student '" + student.getName() + "'. Duplicate index numbers are not allowed.");
+                }
+
+                if (student.getIndexNumber() == null || student.getIndexNumber().isEmpty()) {
+                    student.setIndexNumber(indexNum);
+                }
+                if (hasName && (student.getName() == null || student.getName().startsWith("Student ") || studentName.length() > student.getName().length())) {
+                    student.setName(studentName);
+                }
+                if (student.getAlYear() == null && targetAlYear != null) {
+                    student.setAlYear(targetAlYear);
+                }
+            } else {
+                // New student: verify index is truly unused in this school
+                if (studentRepository.existsBySchoolIdAndIndexNumber(schoolId, indexNum)) {
+                    return ResponseEntity.badRequest().body("Validation Error: Index Number '" + indexNum + "' is already in use by another student in this school.");
+                }
                 student = new Student();
                 student.setName(studentName);
                 student.setIndexNumber(indexNum);
                 student.setSchool(school);
-                student.setGrade(13); // Defaulting to 13 for AL
-            } else {
-                // If existing student had no index number recorded, attach it now
-                if (indexNum != null && !indexNum.isEmpty() && (student.getIndexNumber() == null || student.getIndexNumber().isEmpty())) {
-                    student.setIndexNumber(indexNum);
-                }
-                // If fuller name is provided, update student name
-                if (hasName && (student.getName() == null || student.getName().startsWith("Student ") || studentName.length() > student.getName().length())) {
-                    student.setName(studentName);
-                }
+                student.setGrade(12);
+                student.setAlYear(targetAlYear);
             }
             
             // Update gender and whatsapp if provided
             if (row.getGender() != null && !row.getGender().isEmpty()) student.setGender(row.getGender().toUpperCase());
             if (row.getWhatsapp() != null && !row.getWhatsapp().isEmpty()) student.setWhatsappNumber(row.getWhatsapp());
-            if (payload.getYear() != null) student.setAlYear(payload.getYear());
             student = studentRepository.save(student);
             
             // Save marks based on type
@@ -296,7 +477,9 @@ public class SchoolController {
                 saveAlResult(student, payload.getYear(), it, row.getIt());
                 
                 // Save summary
-                StudentAlSummary summary = new StudentAlSummary();
+                StudentAlSummary summary = studentAlSummaryRepository
+                    .findFirstByStudentIdAndYear(student.getId(), payload.getYear())
+                    .orElse(new StudentAlSummary());
                 summary.setStudent(student);
                 summary.setYear(payload.getYear());
                 try { if (row.getZScore() != null && !row.getZScore().isEmpty()) summary.setZScore(Double.parseDouble(row.getZScore())); } catch (Exception e) {}
@@ -334,12 +517,11 @@ public class SchoolController {
         try {
             List<Student> allStudents = studentRepository.findBySchoolId(school.getId());
             List<Student> students = filterActiveStudents(allStudents);
-            if (students.isEmpty()) return;
             
-            long m12 = students.stream().filter(s -> (s.getGrade() != null && s.getGrade() == 12) && ("MALE".equalsIgnoreCase(s.getGender()) || "M".equalsIgnoreCase(s.getGender()))).count();
-            long f12 = students.stream().filter(s -> (s.getGrade() != null && s.getGrade() == 12) && ("FEMALE".equalsIgnoreCase(s.getGender()) || "F".equalsIgnoreCase(s.getGender()))).count();
-            long m13 = students.stream().filter(s -> (s.getGrade() == null || s.getGrade() == 13) && ("MALE".equalsIgnoreCase(s.getGender()) || "M".equalsIgnoreCase(s.getGender()))).count();
-            long f13 = students.stream().filter(s -> (s.getGrade() == null || s.getGrade() == 13) && ("FEMALE".equalsIgnoreCase(s.getGender()) || "F".equalsIgnoreCase(s.getGender()))).count();
+            long m12 = students.stream().filter(s -> ((s.getAlYear() != null && s.getAlYear() >= 2027) || (s.getAlYear() == null && s.getGrade() != null && s.getGrade() == 12)) && ("MALE".equalsIgnoreCase(s.getGender()) || "M".equalsIgnoreCase(s.getGender()))).count();
+            long f12 = students.stream().filter(s -> ((s.getAlYear() != null && s.getAlYear() >= 2027) || (s.getAlYear() == null && s.getGrade() != null && s.getGrade() == 12)) && ("FEMALE".equalsIgnoreCase(s.getGender()) || "F".equalsIgnoreCase(s.getGender()))).count();
+            long m13 = students.stream().filter(s -> ((s.getAlYear() != null && s.getAlYear() <= 2026) || (s.getAlYear() == null && (s.getGrade() == null || s.getGrade() == 13))) && ("MALE".equalsIgnoreCase(s.getGender()) || "M".equalsIgnoreCase(s.getGender()))).count();
+            long f13 = students.stream().filter(s -> ((s.getAlYear() != null && s.getAlYear() <= 2026) || (s.getAlYear() == null && (s.getGrade() == null || s.getGrade() == 13))) && ("FEMALE".equalsIgnoreCase(s.getGender()) || "F".equalsIgnoreCase(s.getGender()))).count();
 
             List<StudentCount> existing = studentCountRepository.findBySchoolId(school.getId());
             updateOrCreateCount(existing, school, 12, "MALE", (int) m12);
@@ -397,7 +579,9 @@ public class SchoolController {
     
     private void saveAlResult(Student student, Integer year, Subject subject, String grade) {
         if (subject == null || grade == null || grade.trim().isEmpty()) return;
-        StudentAlResult res = new StudentAlResult();
+        StudentAlResult res = studentAlResultRepository
+                .findByStudentIdAndYearAndSubjectId(student.getId(), year, subject.getId())
+                .orElse(new StudentAlResult());
         res.setStudent(student);
         res.setYear(year);
         res.setSubject(subject);
@@ -409,7 +593,9 @@ public class SchoolController {
         if (subject == null || markStr == null || markStr.trim().isEmpty()) return;
         try {
             double marks = Double.parseDouble(markStr.trim());
-            TermTestMark res = new TermTestMark();
+            TermTestMark res = termTestMarkRepository
+                    .findByStudentIdAndYearAndTermAndSubjectId(student.getId(), year, term, subject.getId())
+                    .orElse(new TermTestMark());
             res.setStudent(student);
             res.setYear(year);
             res.setTerm(term);
@@ -423,7 +609,9 @@ public class SchoolController {
         if (subject == null || markStr == null || markStr.trim().isEmpty()) return;
         try {
             double marks = Double.parseDouble(markStr.trim());
-            UnitTestMark res = new UnitTestMark();
+            UnitTestMark res = unitTestMarkRepository
+                    .findByStudentIdAndYearAndUnitNumberAndSubjectId(student.getId(), year, unit, subject.getId())
+                    .orElse(new UnitTestMark());
             res.setStudent(student);
             res.setYear(year);
             res.setUnitNumber(unit);

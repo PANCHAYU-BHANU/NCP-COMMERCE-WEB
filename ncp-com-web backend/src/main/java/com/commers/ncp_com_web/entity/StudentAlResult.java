@@ -26,6 +26,6 @@ public class StudentAlResult {
     @JoinColumn(name = "subject_id", nullable = false)
     private Subject subject;
 
-    @Column(nullable = false, length = 2)
+    @Column(nullable = false, length = 20)
     private String grade; // A, B, C, S, F, ab (absent)
 }

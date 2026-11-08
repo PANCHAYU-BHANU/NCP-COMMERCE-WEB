@@ -119,7 +119,7 @@ const SchoolDetailedCard = ({ school, theme, index }) => {
                   </div>
                 </div>
 
-                {/* Students Breakdown 2027 & 2028 */}
+                {/* Students Breakdown */}
                 <div>
                   <h5 className={`text-sm font-bold mb-4 flex items-center space-x-2 ${theme.textDark || 'text-white'}`}>
                     <BookOpen className={`w-4 h-4 ${theme.iconColor}`} />
@@ -127,8 +127,8 @@ const SchoolDetailedCard = ({ school, theme, index }) => {
                   </h5>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {['2027', '2028'].map(year => {
-                      const studentData = year === '2027' ? school.students2027 : school.students2028;
+                    {[school.cohort1Year || '2027', school.cohort2Year || '2026'].filter(Boolean).map(year => {
+                      const studentData = school[`students${year}`] || school.students2027 || [];
                       return (
                         <div key={year}>
                           <div className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold mb-3 shadow-sm ${theme.iconBg} ${theme.iconColor}`}>

@@ -17,4 +17,5 @@ public class StudentResultRow {
     private String zScore;
     private String districtRank;
     private String islandRank;
+    private Integer alYear;
 }

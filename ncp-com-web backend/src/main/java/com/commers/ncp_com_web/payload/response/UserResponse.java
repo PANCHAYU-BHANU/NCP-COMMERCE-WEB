@@ -22,6 +22,8 @@ public class UserResponse {
     private String examLevel;
     private Boolean isSectionHead;
     private List<String> subjects;
+    private String profilePic;
+    private Boolean isProfileComplete;
 
     public UserResponse() {}
 
@@ -87,4 +89,10 @@ public class UserResponse {
 
     public List<String> getSubjects() { return subjects; }
     public void setSubjects(List<String> subjects) { this.subjects = subjects; }
+
+    public String getProfilePic() { return profilePic; }
+    public void setProfilePic(String profilePic) { this.profilePic = profilePic; }
+
+    public Boolean getIsProfileComplete() { return isProfileComplete; }
+    public void setIsProfileComplete(Boolean isProfileComplete) { this.isProfileComplete = isProfileComplete; }
 }

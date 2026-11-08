@@ -1,8 +1,20 @@
 import axios from 'axios';
 
+export const API_BASE = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : '';
+export const API_URL = import.meta.env.VITE_API_URL || '/api';
+
+export const getMediaUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE}${cleanPath}`;
+};
+
 // Create an Axios instance
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api', // Point to the Spring Boot backend
+  baseURL: API_URL, // Points to /api (proxied via Vite or Nginx)
 });
 
 // Add a request interceptor to attach the JWT token to every request

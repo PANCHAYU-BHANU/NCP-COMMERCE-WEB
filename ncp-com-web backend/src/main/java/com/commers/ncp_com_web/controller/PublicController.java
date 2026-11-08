@@ -7,8 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -67,9 +67,11 @@ public class PublicController {
     private int getLatestNationalResultYear() {
         Integer maxNatYear = alNationalResultRepository.findMaxYear();
         Integer maxStudentNatYear = studentAlResultRepository.findMaxYear();
+        Integer maxStatYear = nationalStatisticRepository.findMaxYear();
         int y1 = (maxNatYear != null) ? maxNatYear : 0;
         int y2 = (maxStudentNatYear != null) ? maxStudentNatYear : 0;
-        return Math.max(y1, y2);
+        int y3 = (maxStatYear != null) ? maxStatYear : 0;
+        return Math.max(y1, Math.max(y2, y3));
     }
 
     private List<Student> filterActiveStudents(List<Student> students) {
@@ -96,15 +98,91 @@ public class PublicController {
     }
 
     private int getActiveAcademicYear() {
+        Integer maxStudentYear = studentRepository.findMaxAlYear();
+        Integer maxTermYear = termTestMarkRepository.findMaxYear();
+        int candidateYear = 0;
+        if (maxStudentYear != null && maxStudentYear > candidateYear) {
+            candidateYear = maxStudentYear;
+        }
+        if (maxTermYear != null && maxTermYear > candidateYear) {
+            candidateYear = maxTermYear;
+        }
+        if (candidateYear > 0) {
+            return candidateYear;
+        }
         int latestAlYear = getLatestNationalResultYear();
         int currentCalYear = java.time.Year.now().getValue();
-        int baseActive = (latestAlYear > 0) ? (latestAlYear + 1) : currentCalYear + 1;
+        return (latestAlYear > 0) ? (latestAlYear + 1) : currentCalYear;
+    }
+
+    private Map<String, Object> calculateLatestTwoCohorts(List<Student> students) {
+        Map<String, Object> map = new HashMap<>();
         
-        Integer maxTermYear = termTestMarkRepository.findMaxYear();
-        if (maxTermYear != null && maxTermYear > baseActive) {
-            baseActive = maxTermYear;
+        List<Integer> distinctYears = (students != null) ? students.stream()
+                .map(Student::getAlYear)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted(Comparator.reverseOrder())
+                .collect(Collectors.toList()) : Collections.emptyList();
+
+        int defaultActive = getActiveAcademicYear();
+        int y1 = !distinctYears.isEmpty() ? distinctYears.get(0) : defaultActive;
+        int y2 = (distinctYears.size() >= 2) ? distinctYears.get(1) : (y1 - 1);
+
+        long c1 = (students != null) ? students.stream().filter(s -> Integer.valueOf(y1).equals(s.getAlYear())).count() : 0;
+        long c2 = (students != null) ? students.stream().filter(s -> Integer.valueOf(y2).equals(s.getAlYear())).count() : 0;
+
+        map.put("cohort1Year", y1);
+        map.put("cohort1Count", c1);
+        map.put("cohort2Year", y2);
+        map.put("cohort2Count", c2);
+        map.put("grade12Students", c1);
+        map.put("grade13Students", c2);
+        return map;
+    }
+
+    private Map<String, Long> calculateSubjectCandidateCounts(List<Student> students) {
+        Map<String, Long> map = new HashMap<>();
+        map.put("accCandidates", 0L);
+        map.put("bsCandidates", 0L);
+        map.put("ecoCandidates", 0L);
+        map.put("itCandidates", 0L);
+
+        if (students == null || students.isEmpty()) {
+            return map;
         }
-        return baseActive;
+
+        List<Long> studentIds = students.stream().map(Student::getId).filter(Objects::nonNull).collect(Collectors.toList());
+        if (studentIds.isEmpty()) {
+            return map;
+        }
+
+        Subject acc = subjectRepository.findFirstByNameContainingIgnoreCase("Account").orElse(null);
+        Subject bs = subjectRepository.findFirstByNameContainingIgnoreCase("Business Studies").orElse(null);
+        Subject eco = subjectRepository.findFirstByNameContainingIgnoreCase("Econom").orElse(null);
+        Subject it = subjectRepository.findFirstByNameContainingIgnoreCase("Information").orElse(
+                     subjectRepository.findFirstByNameContainingIgnoreCase("Statistics").orElse(null));
+
+        map.put("accCandidates", countDistinctStudentsForSubject(studentIds, acc));
+        map.put("bsCandidates", countDistinctStudentsForSubject(studentIds, bs));
+        map.put("ecoCandidates", countDistinctStudentsForSubject(studentIds, eco));
+        map.put("itCandidates", countDistinctStudentsForSubject(studentIds, it));
+
+        return map;
+    }
+
+    private long countDistinctStudentsForSubject(List<Long> studentIds, Subject subject) {
+        if (subject == null || studentIds == null || studentIds.isEmpty()) return 0L;
+        Set<Long> set = new HashSet<>();
+        try {
+            List<Long> tIds = termTestMarkRepository.findDistinctStudentIdsBySubjectId(studentIds, subject.getId());
+            if (tIds != null) set.addAll(tIds);
+            List<Long> uIds = unitTestMarkRepository.findDistinctStudentIdsBySubjectId(studentIds, subject.getId());
+            if (uIds != null) set.addAll(uIds);
+            List<Long> aIds = studentAlResultRepository.findDistinctStudentIdsBySubjectId(studentIds, subject.getId());
+            if (aIds != null) set.addAll(aIds);
+        } catch (Exception ignored) {}
+        return set.size();
     }
 
     @GetMapping("/statistics/overview")
@@ -156,6 +234,8 @@ public class PublicController {
         prov.put("passRatePrev1", passRate);
         prov.put("zones", zoneRepository.count());
         prov.put("divisions", divisionRepository.count());
+        prov.putAll(calculateLatestTwoCohorts(activeStudents));
+        prov.putAll(calculateSubjectCandidateCounts(activeStudents));
 
         Optional<User> pd = userRepository.findFirstByRole(ERole.ROLE_PROVINCIAL_DIRECTOR);
         String pdName = pd.map(u -> (u.getName() != null && !u.getName().trim().isEmpty() && !u.getName().equals(u.getUsername())) ? u.getName() : u.getUsername()).orElse(null);
@@ -255,6 +335,8 @@ public class PublicController {
         resp.put("grade13Students", g13);
         resp.put("passRateCurrent", passRate);
         resp.put("activeYear", getActiveAcademicYear());
+        resp.putAll(calculateLatestTwoCohorts(studentsInZone));
+        resp.putAll(calculateSubjectCandidateCounts(studentsInZone));
 
         return ResponseEntity.ok(resp);
     }
@@ -311,6 +393,8 @@ public class PublicController {
         resp.put("grade13Students", g13);
         resp.put("passRateCurrent", passRate);
         resp.put("activeYear", getActiveAcademicYear());
+        resp.putAll(calculateLatestTwoCohorts(students));
+        resp.putAll(calculateSubjectCandidateCounts(students));
 
         return ResponseEntity.ok(resp);
     }
@@ -352,6 +436,8 @@ public class PublicController {
         resp.put("grade12Students", g12);
         resp.put("grade13Students", g13);
         resp.put("activeYear", getActiveAcademicYear());
+        resp.putAll(calculateLatestTwoCohorts(studentsInDiv));
+        resp.putAll(calculateSubjectCandidateCounts(studentsInDiv));
 
         return ResponseEntity.ok(resp);
     }
@@ -579,7 +665,7 @@ public class PublicController {
     }
 
     @PostMapping("/national-statistics")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('PROVINCIAL_DIRECTOR') or hasRole('ADMIN')")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('PROVINCIAL_DIRECTOR') or hasRole('ZONAL_DIRECTOR') or hasRole('DIVISIONAL_DIRECTOR') or hasRole('PRINCIPAL') or hasRole('TEACHER') or hasRole('ADMIN')")
     public ResponseEntity<?> saveNationalStatistics(@RequestBody NationalStatistic stat) {
         NationalStatistic existing = nationalStatisticRepository.findByYear(stat.getYear()).orElse(new NationalStatistic());
         existing.setYear(stat.getYear());
@@ -591,28 +677,19 @@ public class PublicController {
         return ResponseEntity.ok(new com.commers.ncp_com_web.payload.response.MessageResponse("National Statistics saved successfully!"));
     }
 
+    @DeleteMapping("/national-statistics/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('PROVINCIAL_DIRECTOR') or hasRole('ZONAL_DIRECTOR') or hasRole('DIVISIONAL_DIRECTOR') or hasRole('PRINCIPAL') or hasRole('TEACHER') or hasRole('ADMIN')")
+    public ResponseEntity<?> deleteNationalStatistics(@PathVariable Long id) {
+        if (nationalStatisticRepository.existsById(id)) {
+            nationalStatisticRepository.deleteById(id);
+            return ResponseEntity.ok(new com.commers.ncp_com_web.payload.response.MessageResponse("Benchmark record deleted successfully!"));
+        }
+        return ResponseEntity.notFound().build();
+    }
+
     @GetMapping("/national-statistics")
     public ResponseEntity<List<NationalStatistic>> getNationalStatistics() {
         List<NationalStatistic> stats = nationalStatisticRepository.findAll();
-        if (stats.isEmpty() || stats.size() < 5) {
-            int[] years = {2021, 2022, 2023, 2024, 2025};
-            double[] passRates = {72.4, 74.8, 76.2, 78.5, 81.2};
-            long[] students = {44500L, 46200L, 47800L, 49100L, 51300L};
-            long[] teachers = {3100L, 3250L, 3320L, 3450L, 3580L};
-            long[] schools = {2850L, 2890L, 2920L, 2940L, 2960L};
-            
-            for (int i = 0; i < years.length; i++) {
-                int yr = years[i];
-                NationalStatistic s = nationalStatisticRepository.findByYear(yr).orElse(new NationalStatistic());
-                s.setYear(yr);
-                if (s.getPassRate() == null || s.getPassRate() == 0.0) s.setPassRate(passRates[i]);
-                if (s.getTotalStudents() == null || s.getTotalStudents() == 0L) s.setTotalStudents(students[i]);
-                if (s.getTotalTeachers() == null || s.getTotalTeachers() == 0L) s.setTotalTeachers(teachers[i]);
-                if (s.getTotalSchools() == null || s.getTotalSchools() == 0L) s.setTotalSchools(schools[i]);
-                nationalStatisticRepository.save(s);
-            }
-            stats = nationalStatisticRepository.findAll();
-        }
         stats.sort(java.util.Comparator.comparing(NationalStatistic::getYear));
         return ResponseEntity.ok(stats);
     }
@@ -633,6 +710,12 @@ public class PublicController {
     @GetMapping("/zones")
     public ResponseEntity<?> getZones(@RequestParam(required = false) Long districtId) {
         List<Zone> zones = (districtId != null) ? zoneRepository.findByDistrictId(districtId) : zoneRepository.findAll();
+        List<School> allSchools = schoolRepository.findAll();
+        List<Student> allStudents = filterActiveStudents(studentRepository.findAll());
+        List<User> allTeachers = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == ERole.ROLE_TEACHER || u.getRole() == ERole.ROLE_SECTION_HEAD || Boolean.TRUE.equals(u.getIsSectionHead()))
+                .collect(java.util.stream.Collectors.toList());
+
         List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
         for (Zone z : zones) {
             java.util.Map<String, Object> map = new java.util.HashMap<>();
@@ -644,6 +727,24 @@ public class PublicController {
             Optional<User> zd = userRepository.findFirstByRoleAndZoneId(ERole.ROLE_ZONAL_DIRECTOR, z.getId());
             String zdName = zd.map(u -> (u.getName() != null && !u.getName().trim().isEmpty() && !u.getName().equals(u.getUsername())) ? u.getName() : u.getUsername()).orElse(null);
             map.put("directorName", zdName);
+
+            java.util.Set<Long> zSchoolIds = allSchools.stream()
+                    .filter(sc -> sc.getDivision() != null && sc.getDivision().getZone() != null && z.getId().equals(sc.getDivision().getZone().getId()))
+                    .map(School::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+
+            long teacherCount = allTeachers.stream()
+                    .filter(u -> (u.getZone() != null && z.getId().equals(u.getZone().getId())) ||
+                                 (u.getSchool() != null && zSchoolIds.contains(u.getSchool().getId())))
+                    .count();
+            map.put("teachersCount", teacherCount);
+
+            long studentCount = allStudents.stream()
+                    .filter(st -> st.getSchool() != null && zSchoolIds.contains(st.getSchool().getId()))
+                    .count();
+            map.put("students", studentCount);
+            map.put("studentsCount", studentCount);
+
             result.add(map);
         }
         return ResponseEntity.ok(result);
@@ -652,6 +753,12 @@ public class PublicController {
     @GetMapping("/divisions")
     public ResponseEntity<?> getDivisions(@RequestParam(required = false) Long zoneId) {
         List<Division> divisions = (zoneId != null) ? divisionRepository.findByZoneId(zoneId) : divisionRepository.findAll();
+        List<School> allSchools = schoolRepository.findAll();
+        List<Student> allStudents = filterActiveStudents(studentRepository.findAll());
+        List<User> allTeachers = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == ERole.ROLE_TEACHER || u.getRole() == ERole.ROLE_SECTION_HEAD || Boolean.TRUE.equals(u.getIsSectionHead()))
+                .collect(java.util.stream.Collectors.toList());
+
         List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
         for (Division d : divisions) {
             java.util.Map<String, Object> map = new java.util.HashMap<>();
@@ -662,6 +769,24 @@ public class PublicController {
             Optional<User> dd = userRepository.findFirstByRoleAndDivisionId(ERole.ROLE_DIVISIONAL_DIRECTOR, d.getId());
             String ddName = dd.map(u -> (u.getName() != null && !u.getName().trim().isEmpty() && !u.getName().equals(u.getUsername())) ? u.getName() : u.getUsername()).orElse(null);
             map.put("directorName", ddName);
+
+            java.util.Set<Long> dSchoolIds = allSchools.stream()
+                    .filter(sc -> sc.getDivision() != null && d.getId().equals(sc.getDivision().getId()))
+                    .map(School::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+
+            long teacherCount = allTeachers.stream()
+                    .filter(u -> (u.getDivision() != null && d.getId().equals(u.getDivision().getId())) ||
+                                 (u.getSchool() != null && dSchoolIds.contains(u.getSchool().getId())))
+                    .count();
+            map.put("teachersCount", teacherCount);
+
+            long studentCount = allStudents.stream()
+                    .filter(st -> st.getSchool() != null && dSchoolIds.contains(st.getSchool().getId()))
+                    .count();
+            map.put("students", studentCount);
+            map.put("studentsCount", studentCount);
+
             result.add(map);
         }
         return ResponseEntity.ok(result);
@@ -680,6 +805,10 @@ public class PublicController {
         } else {
             schools = schoolRepository.findAll();
         }
+
+        List<User> allTeachers = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == ERole.ROLE_TEACHER || u.getRole() == ERole.ROLE_SECTION_HEAD || Boolean.TRUE.equals(u.getIsSectionHead()))
+                .collect(java.util.stream.Collectors.toList());
 
         List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
         for (School s : schools) {
@@ -720,7 +849,13 @@ public class PublicController {
             }
             map.put("sectionHead", headName);
 
-            // 3. Active Students count
+            // 3. Teachers count
+            long teacherCount = allTeachers.stream()
+                    .filter(u -> u.getSchool() != null && s.getId().equals(u.getSchool().getId()))
+                    .count();
+            map.put("teachersCount", teacherCount);
+
+            // 4. Active Students count
             List<Student> schoolStudents = studentRepository.findBySchoolId(s.getId());
             long activeCount = filterActiveStudents(schoolStudents).size();
             map.put("students", activeCount);
@@ -795,6 +930,293 @@ public class PublicController {
     public ResponseEntity<List<Integer>> getAlResultYears() {
         List<Integer> years = alNationalResultRepository.findDistinctYears();
         return ResponseEntity.ok(years != null ? years : java.util.Collections.emptyList());
+    }
+
+    @GetMapping("/evaluation-years")
+    public ResponseEntity<List<Integer>> getEvaluationYears(@RequestParam(required = false, defaultValue = "al") String evalType) {
+        java.util.Set<Integer> years = new java.util.TreeSet<>(java.util.Collections.reverseOrder());
+        if ("term".equalsIgnoreCase(evalType)) {
+            List<Integer> termYears = termTestMarkRepository.findDistinctYears();
+            if (termYears != null) years.addAll(termYears);
+        } else if ("unit".equalsIgnoreCase(evalType)) {
+            List<Integer> unitYears = unitTestMarkRepository.findDistinctYears();
+            if (unitYears != null) years.addAll(unitYears);
+        } else {
+            List<Integer> alYears = alNationalResultRepository.findDistinctYears();
+            if (alYears != null) years.addAll(alYears);
+            List<Integer> sAlYears = studentAlResultRepository.findDistinctYears();
+            if (sAlYears != null) years.addAll(sAlYears);
+        }
+        return ResponseEntity.ok(new java.util.ArrayList<>(years));
+    }
+
+    @GetMapping("/evaluation-results")
+    public ResponseEntity<?> getEvaluationResults(
+            @RequestParam(required = false, defaultValue = "al") String evalType,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer termOrUnit,
+            @RequestParam(required = false) Long districtId,
+            @RequestParam(required = false) Long zoneId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long schoolId,
+            @RequestParam(required = false) Long subjectId) {
+
+        List<java.util.Map<String, Object>> resultList = new java.util.ArrayList<>();
+
+        if ("term".equalsIgnoreCase(evalType)) {
+            List<TermTestMark> marks = termTestMarkRepository.findAll();
+            java.util.Map<String, java.util.Map<String, Object>> grouped = new java.util.HashMap<>();
+
+            for (TermTestMark m : marks) {
+                if (m.getStudent() == null || m.getSubject() == null) continue;
+                if (year != null && !year.equals(m.getYear())) continue;
+                if (termOrUnit != null && !termOrUnit.equals(m.getTerm())) continue;
+                if (subjectId != null && !subjectId.equals(m.getSubject().getId())) continue;
+
+                School s = m.getStudent().getSchool();
+                if (s == null) continue;
+                if (schoolId != null && !schoolId.equals(s.getId())) continue;
+                if (divisionId != null && (s.getDivision() == null || !divisionId.equals(s.getDivision().getId()))) continue;
+                if (zoneId != null && (s.getDivision() == null || s.getDivision().getZone() == null || !zoneId.equals(s.getDivision().getZone().getId()))) continue;
+                if (districtId != null && (s.getDivision() == null || s.getDivision().getZone() == null || s.getDivision().getZone().getDistrict() == null || !districtId.equals(s.getDivision().getZone().getDistrict().getId()))) continue;
+
+                String key = s.getId() + "_" + m.getSubject().getId() + "_" + m.getYear() + "_" + m.getTerm();
+                java.util.Map<String, Object> row = grouped.computeIfAbsent(key, k -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("school", s);
+                    map.put("subject", m.getSubject());
+                    map.put("year", m.getYear());
+                    map.put("termOrUnit", m.getTerm());
+                    map.put("aCount", 0);
+                    map.put("bCount", 0);
+                    map.put("cCount", 0);
+                    map.put("sCount", 0);
+                    map.put("fCount", 0);
+                    map.put("totalSat", 0);
+                    map.put("maleA", 0);
+                    map.put("maleB", 0);
+                    map.put("maleC", 0);
+                    map.put("maleS", 0);
+                    map.put("maleF", 0);
+                    map.put("maleTotal", 0);
+                    map.put("femaleA", 0);
+                    map.put("femaleB", 0);
+                    map.put("femaleC", 0);
+                    map.put("femaleS", 0);
+                    map.put("femaleF", 0);
+                    map.put("femaleTotal", 0);
+                    return map;
+                });
+
+                Double score = m.getMarks();
+                String grade = (score == null) ? "F" : (score >= 75 ? "A" : (score >= 65 ? "B" : (score >= 55 ? "C" : (score >= 35 ? "S" : "F"))));
+                boolean isFemale = m.getStudent().getGender() != null && ("FEMALE".equalsIgnoreCase(m.getStudent().getGender()) || "F".equalsIgnoreCase(m.getStudent().getGender()));
+
+                row.put("totalSat", (int) row.get("totalSat") + 1);
+                if (isFemale) {
+                    row.put("femaleTotal", (int) row.get("femaleTotal") + 1);
+                } else {
+                    row.put("maleTotal", (int) row.get("maleTotal") + 1);
+                }
+
+                if ("A".equals(grade)) {
+                    row.put("aCount", (int) row.get("aCount") + 1);
+                    if (isFemale) row.put("femaleA", (int) row.get("femaleA") + 1); else row.put("maleA", (int) row.get("maleA") + 1);
+                } else if ("B".equals(grade)) {
+                    row.put("bCount", (int) row.get("bCount") + 1);
+                    if (isFemale) row.put("femaleB", (int) row.get("femaleB") + 1); else row.put("maleB", (int) row.get("maleB") + 1);
+                } else if ("C".equals(grade)) {
+                    row.put("cCount", (int) row.get("cCount") + 1);
+                    if (isFemale) row.put("femaleC", (int) row.get("femaleC") + 1); else row.put("maleC", (int) row.get("maleC") + 1);
+                } else if ("S".equals(grade)) {
+                    row.put("sCount", (int) row.get("sCount") + 1);
+                    if (isFemale) row.put("femaleS", (int) row.get("femaleS") + 1); else row.put("maleS", (int) row.get("maleS") + 1);
+                } else {
+                    row.put("fCount", (int) row.get("fCount") + 1);
+                    if (isFemale) row.put("femaleF", (int) row.get("femaleF") + 1); else row.put("maleF", (int) row.get("maleF") + 1);
+                }
+            }
+            resultList.addAll(grouped.values());
+
+        } else if ("unit".equalsIgnoreCase(evalType)) {
+            List<UnitTestMark> marks = unitTestMarkRepository.findAll();
+            java.util.Map<String, java.util.Map<String, Object>> grouped = new java.util.HashMap<>();
+
+            for (UnitTestMark m : marks) {
+                if (m.getStudent() == null || m.getSubject() == null) continue;
+                if (year != null && !year.equals(m.getYear())) continue;
+                if (termOrUnit != null && !termOrUnit.equals(m.getUnitNumber())) continue;
+                if (subjectId != null && !subjectId.equals(m.getSubject().getId())) continue;
+
+                School s = m.getStudent().getSchool();
+                if (s == null) continue;
+                if (schoolId != null && !schoolId.equals(s.getId())) continue;
+                if (divisionId != null && (s.getDivision() == null || !divisionId.equals(s.getDivision().getId()))) continue;
+                if (zoneId != null && (s.getDivision() == null || s.getDivision().getZone() == null || !zoneId.equals(s.getDivision().getZone().getId()))) continue;
+                if (districtId != null && (s.getDivision() == null || s.getDivision().getZone() == null || s.getDivision().getZone().getDistrict() == null || !districtId.equals(s.getDivision().getZone().getDistrict().getId()))) continue;
+
+                String key = s.getId() + "_" + m.getSubject().getId() + "_" + m.getYear() + "_" + m.getUnitNumber();
+                java.util.Map<String, Object> row = grouped.computeIfAbsent(key, k -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("school", s);
+                    map.put("subject", m.getSubject());
+                    map.put("year", m.getYear());
+                    map.put("termOrUnit", m.getUnitNumber());
+                    map.put("aCount", 0);
+                    map.put("bCount", 0);
+                    map.put("cCount", 0);
+                    map.put("sCount", 0);
+                    map.put("fCount", 0);
+                    map.put("totalSat", 0);
+                    map.put("maleA", 0);
+                    map.put("maleB", 0);
+                    map.put("maleC", 0);
+                    map.put("maleS", 0);
+                    map.put("maleF", 0);
+                    map.put("maleTotal", 0);
+                    map.put("femaleA", 0);
+                    map.put("femaleB", 0);
+                    map.put("femaleC", 0);
+                    map.put("femaleS", 0);
+                    map.put("femaleF", 0);
+                    map.put("femaleTotal", 0);
+                    return map;
+                });
+
+                Double score = m.getMarks();
+                String grade = (score == null) ? "F" : (score >= 75 ? "A" : (score >= 65 ? "B" : (score >= 55 ? "C" : (score >= 35 ? "S" : "F"))));
+                boolean isFemale = m.getStudent().getGender() != null && ("FEMALE".equalsIgnoreCase(m.getStudent().getGender()) || "F".equalsIgnoreCase(m.getStudent().getGender()));
+
+                row.put("totalSat", (int) row.get("totalSat") + 1);
+                if (isFemale) {
+                    row.put("femaleTotal", (int) row.get("femaleTotal") + 1);
+                } else {
+                    row.put("maleTotal", (int) row.get("maleTotal") + 1);
+                }
+
+                if ("A".equals(grade)) {
+                    row.put("aCount", (int) row.get("aCount") + 1);
+                    if (isFemale) row.put("femaleA", (int) row.get("femaleA") + 1); else row.put("maleA", (int) row.get("maleA") + 1);
+                } else if ("B".equals(grade)) {
+                    row.put("bCount", (int) row.get("bCount") + 1);
+                    if (isFemale) row.put("femaleB", (int) row.get("femaleB") + 1); else row.put("maleB", (int) row.get("maleB") + 1);
+                } else if ("C".equals(grade)) {
+                    row.put("cCount", (int) row.get("cCount") + 1);
+                    if (isFemale) row.put("femaleC", (int) row.get("femaleC") + 1); else row.put("maleC", (int) row.get("maleC") + 1);
+                } else if ("S".equals(grade)) {
+                    row.put("sCount", (int) row.get("sCount") + 1);
+                    if (isFemale) row.put("femaleS", (int) row.get("femaleS") + 1); else row.put("maleS", (int) row.get("maleS") + 1);
+                } else {
+                    row.put("fCount", (int) row.get("fCount") + 1);
+                    if (isFemale) row.put("femaleF", (int) row.get("femaleF") + 1); else row.put("maleF", (int) row.get("maleF") + 1);
+                }
+            }
+            resultList.addAll(grouped.values());
+
+        } else {
+            // AL evaluation: first check individual StudentAlResult
+            List<StudentAlResult> sResults = studentAlResultRepository.findAll();
+            if (!sResults.isEmpty()) {
+                java.util.Map<String, java.util.Map<String, Object>> grouped = new java.util.HashMap<>();
+                for (StudentAlResult m : sResults) {
+                    if (m.getStudent() == null || m.getSubject() == null) continue;
+                    if (year != null && !year.equals(m.getYear())) continue;
+                    if (subjectId != null && !subjectId.equals(m.getSubject().getId())) continue;
+
+                    School s = m.getStudent().getSchool();
+                    if (s == null) continue;
+                    if (schoolId != null && !schoolId.equals(s.getId())) continue;
+                    if (divisionId != null && (s.getDivision() == null || !divisionId.equals(s.getDivision().getId()))) continue;
+                    if (zoneId != null && (s.getDivision() == null || s.getDivision().getZone() == null || !zoneId.equals(s.getDivision().getZone().getId()))) continue;
+                    if (districtId != null && (s.getDivision() == null || s.getDivision().getZone() == null || s.getDivision().getZone().getDistrict() == null || !districtId.equals(s.getDivision().getZone().getDistrict().getId()))) continue;
+
+                    String key = s.getId() + "_" + m.getSubject().getId() + "_" + m.getYear();
+                    java.util.Map<String, Object> row = grouped.computeIfAbsent(key, k -> {
+                        java.util.Map<String, Object> map = new java.util.HashMap<>();
+                        map.put("school", s);
+                        map.put("subject", m.getSubject());
+                        map.put("year", m.getYear());
+                        map.put("aCount", 0);
+                        map.put("bCount", 0);
+                        map.put("cCount", 0);
+                        map.put("sCount", 0);
+                        map.put("fCount", 0);
+                        map.put("totalSat", 0);
+                        map.put("maleA", 0);
+                        map.put("maleB", 0);
+                        map.put("maleC", 0);
+                        map.put("maleS", 0);
+                        map.put("maleF", 0);
+                        map.put("maleTotal", 0);
+                        map.put("femaleA", 0);
+                        map.put("femaleB", 0);
+                        map.put("femaleC", 0);
+                        map.put("femaleS", 0);
+                        map.put("femaleF", 0);
+                        map.put("femaleTotal", 0);
+                        return map;
+                    });
+
+                    String grade = (m.getGrade() != null) ? m.getGrade().toUpperCase().trim() : "F";
+                    boolean isFemale = m.getStudent().getGender() != null && ("FEMALE".equalsIgnoreCase(m.getStudent().getGender()) || "F".equalsIgnoreCase(m.getStudent().getGender()));
+
+                    row.put("totalSat", (int) row.get("totalSat") + 1);
+                    if (isFemale) row.put("femaleTotal", (int) row.get("femaleTotal") + 1); else row.put("maleTotal", (int) row.get("maleTotal") + 1);
+
+                    if ("A".equals(grade)) {
+                        row.put("aCount", (int) row.get("aCount") + 1);
+                        if (isFemale) row.put("femaleA", (int) row.get("femaleA") + 1); else row.put("maleA", (int) row.get("maleA") + 1);
+                    } else if ("B".equals(grade)) {
+                        row.put("bCount", (int) row.get("bCount") + 1);
+                        if (isFemale) row.put("femaleB", (int) row.get("femaleB") + 1); else row.put("maleB", (int) row.get("maleB") + 1);
+                    } else if ("C".equals(grade)) {
+                        row.put("cCount", (int) row.get("cCount") + 1);
+                        if (isFemale) row.put("femaleC", (int) row.get("femaleC") + 1); else row.put("maleC", (int) row.get("maleC") + 1);
+                    } else if ("S".equals(grade)) {
+                        row.put("sCount", (int) row.get("sCount") + 1);
+                        if (isFemale) row.put("femaleS", (int) row.get("femaleS") + 1); else row.put("maleS", (int) row.get("maleS") + 1);
+                    } else {
+                        row.put("fCount", (int) row.get("fCount") + 1);
+                        if (isFemale) row.put("femaleF", (int) row.get("femaleF") + 1); else row.put("maleF", (int) row.get("maleF") + 1);
+                    }
+                }
+                resultList.addAll(grouped.values());
+            }
+
+            // Also include alNationalResultRepository records
+            List<AlNationalResult> alRecords = alNationalResultRepository.findAll();
+            for (AlNationalResult r : alRecords) {
+                if (r.getSchool() == null || r.getSubject() == null) continue;
+                if (year != null && !year.equals(r.getYear())) continue;
+                if (subjectId != null && !subjectId.equals(r.getSubject().getId())) continue;
+
+                School s = r.getSchool();
+                if (schoolId != null && !schoolId.equals(s.getId())) continue;
+                if (divisionId != null && (s.getDivision() == null || !divisionId.equals(s.getDivision().getId()))) continue;
+                if (zoneId != null && (s.getDivision() == null || s.getDivision().getZone() == null || !zoneId.equals(s.getDivision().getZone().getId()))) continue;
+                if (districtId != null && (s.getDivision() == null || s.getDivision().getZone() == null || s.getDivision().getZone().getDistrict() == null || !districtId.equals(s.getDivision().getZone().getDistrict().getId()))) continue;
+
+                java.util.Map<String, Object> map = new java.util.HashMap<>();
+                map.put("school", s);
+                map.put("subject", r.getSubject());
+                map.put("year", r.getYear());
+                int a = r.getACount() != null ? r.getACount() : 0;
+                int b = r.getBCount() != null ? r.getBCount() : 0;
+                int c = r.getCCount() != null ? r.getCCount() : 0;
+                int sa = r.getSCount() != null ? r.getSCount() : 0;
+                int f = r.getFCount() != null ? r.getFCount() : 0;
+                int sat = a + b + c + sa + f;
+                map.put("aCount", a);
+                map.put("bCount", b);
+                map.put("cCount", c);
+                map.put("sCount", sa);
+                map.put("fCount", f);
+                map.put("totalSat", sat);
+                resultList.add(map);
+            }
+        }
+
+        return ResponseEntity.ok(resultList);
     }
 
     @GetMapping("/student-counts")
@@ -955,13 +1377,18 @@ public class PublicController {
         map.put("teachers", teacherDTOs);
         
         List<StudentCount> studentCounts = studentCountRepository.findBySchoolId(id);
+        List<Student> schoolStudents = filterActiveStudents(studentRepository.findBySchoolId(id));
+        Map<String, Object> cohorts = calculateLatestTwoCohorts(schoolStudents);
+        map.putAll(cohorts);
+
         if (studentCounts.isEmpty()) {
-            List<Student> schoolStudents = filterActiveStudents(studentRepository.findBySchoolId(id));
             if (!schoolStudents.isEmpty()) {
-                long m12 = schoolStudents.stream().filter(s -> (s.getGrade() != null && s.getGrade() == 12) && ("MALE".equalsIgnoreCase(s.getGender()) || "M".equalsIgnoreCase(s.getGender()))).count();
-                long f12 = schoolStudents.stream().filter(s -> (s.getGrade() != null && s.getGrade() == 12) && ("FEMALE".equalsIgnoreCase(s.getGender()) || "F".equalsIgnoreCase(s.getGender()))).count();
-                long m13 = schoolStudents.stream().filter(s -> (s.getGrade() == null || s.getGrade() == 13) && ("MALE".equalsIgnoreCase(s.getGender()) || "M".equalsIgnoreCase(s.getGender()))).count();
-                long f13 = schoolStudents.stream().filter(s -> (s.getGrade() == null || s.getGrade() == 13) && ("FEMALE".equalsIgnoreCase(s.getGender()) || "F".equalsIgnoreCase(s.getGender()))).count();
+                int y1 = (int) cohorts.get("cohort1Year");
+                int y2 = (int) cohorts.get("cohort2Year");
+                long m12 = schoolStudents.stream().filter(s -> (Integer.valueOf(y1).equals(s.getAlYear()) || (s.getAlYear() == null && s.getGrade() != null && s.getGrade() == 12)) && ("MALE".equalsIgnoreCase(s.getGender()) || "M".equalsIgnoreCase(s.getGender()))).count();
+                long f12 = schoolStudents.stream().filter(s -> (Integer.valueOf(y1).equals(s.getAlYear()) || (s.getAlYear() == null && s.getGrade() != null && s.getGrade() == 12)) && ("FEMALE".equalsIgnoreCase(s.getGender()) || "F".equalsIgnoreCase(s.getGender()))).count();
+                long m13 = schoolStudents.stream().filter(s -> (Integer.valueOf(y2).equals(s.getAlYear()) || (s.getAlYear() == null && (s.getGrade() == null || s.getGrade() == 13))) && ("MALE".equalsIgnoreCase(s.getGender()) || "M".equalsIgnoreCase(s.getGender()))).count();
+                long f13 = schoolStudents.stream().filter(s -> (Integer.valueOf(y2).equals(s.getAlYear()) || (s.getAlYear() == null && (s.getGrade() == null || s.getGrade() == 13))) && ("FEMALE".equalsIgnoreCase(s.getGender()) || "F".equalsIgnoreCase(s.getGender()))).count();
 
                 List<java.util.Map<String, Object>> dynCounts = new java.util.ArrayList<>();
                 dynCounts.add(java.util.Map.of("grade", 12, "gender", "MALE", "count", (int) m12));
@@ -992,22 +1419,14 @@ public class PublicController {
             if (dbYears != null && !dbYears.isEmpty()) {
                 yearSet.addAll(dbYears);
             } else {
-                yearSet.add(2027);
-                yearSet.add(2026);
-                yearSet.add(2025);
-                yearSet.add(2024);
-                yearSet.add(2023);
+                yearSet.add(getActiveAcademicYear());
             }
         } else if ("unit".equalsIgnoreCase(examType)) {
             List<Integer> dbYears = unitTestMarkRepository.findDistinctYears();
             if (dbYears != null && !dbYears.isEmpty()) {
                 yearSet.addAll(dbYears);
             } else {
-                yearSet.add(2027);
-                yearSet.add(2026);
-                yearSet.add(2025);
-                yearSet.add(2024);
-                yearSet.add(2023);
+                yearSet.add(getActiveAcademicYear());
             }
         } else {
             List<Integer> dbYears = studentAlResultRepository.findDistinctYears();
@@ -1017,11 +1436,7 @@ public class PublicController {
             List<Integer> alNatYears = alNationalResultRepository.findDistinctYears();
             if (alNatYears != null) yearSet.addAll(alNatYears);
             if (yearSet.isEmpty()) {
-                yearSet.add(2025);
-                yearSet.add(2024);
-                yearSet.add(2023);
-                yearSet.add(2022);
-                yearSet.add(2021);
+                yearSet.add(getActiveAcademicYear());
             }
         }
 

@@ -26,7 +26,7 @@ const ResourcesExplorer = () => {
   useEffect(() => {
     const fetchRefData = async () => {
       try {
-        const subjRes = await fetch('http://localhost:8080/api/public/subjects');
+        const subjRes = await fetch('/api/public/subjects');
         if(subjRes.ok) setSubjects(await subjRes.json());
       } catch (err) {
         console.error("Error fetching subjects", err);
@@ -40,7 +40,7 @@ const ResourcesExplorer = () => {
     const fetchResources = async () => {
       setLoading(true);
       try {
-        let url = new URL('http://localhost:8080/api/public/resources');
+        let url = new URL('/api/public/resources', window.location.origin);
         if (filters.type !== 'all') url.searchParams.append('type', filters.type);
         if (filters.level !== 'all') url.searchParams.append('level', filters.level);
         if (filters.subjectId !== 'all') url.searchParams.append('subjectId', filters.subjectId);

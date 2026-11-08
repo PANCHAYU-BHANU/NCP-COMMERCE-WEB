@@ -23,7 +23,7 @@ const MediaGallery = () => {
   const fetchMedia = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8080/api/public/media`);
+      const res = await fetch(`/api/public/media`);
       if (res.ok) {
         const data = await res.json();
         setMediaItems(data);
@@ -60,7 +60,7 @@ const MediaGallery = () => {
     .map(item => ({
       id: item.id,
       title: item.title,
-      url: `http://localhost:8080${item.url}`
+      url: item.url.startsWith('http') ? item.url : (item.url.startsWith('/') ? item.url : `/${item.url}`)
     }));
 
   return (

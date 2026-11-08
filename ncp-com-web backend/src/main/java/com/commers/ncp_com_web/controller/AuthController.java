@@ -199,12 +199,14 @@ public class AuthController {
                 response.setLocation("North Central Province");
             }
             response.setExamLevel(user.getExamLevel());
+            response.setProfilePic(user.getProfilePic());
         }
 
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/signup")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('PROVINCIAL_DIRECTOR') or hasRole('ADMIN')")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
         if (userRepository.existsByUsername(signUpRequest.getUsername())) {
             return ResponseEntity
@@ -383,27 +385,8 @@ public class AuthController {
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
     }
 
-    @GetMapping("/test/roles")
-    public ResponseEntity<?> testRoles() {
-        return ResponseEntity.ok(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getAuthorities());
-    }
-
-    @GetMapping("/test/users")
-    public ResponseEntity<?> testUsers() {
-        return ResponseEntity.ok(userRepository.findAll());
-    }
-
-    @GetMapping("/test/reset-passwords")
-    public ResponseEntity<?> resetPasswords() {
-        List<User> users = userRepository.findAll();
-        for (User user : users) {
-            user.setPassword(encoder.encode("password"));
-            userRepository.save(user);
-        }
-        return ResponseEntity.ok("All passwords reset to 'password'");
-    }
-
     @GetMapping("/users")
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<User> users = userRepository.findAll();
         List<UserResponse> userResponses = users.stream().map(user -> {
@@ -480,6 +463,7 @@ public class AuthController {
             }
             resp.setExamLevel(user.getExamLevel());
             resp.setIsSectionHead(user.getIsSectionHead() != null ? user.getIsSectionHead() : false);
+            resp.setProfilePic(user.getProfilePic());
             if (user.getSubjects() != null && !user.getSubjects().isEmpty()) {
                 resp.setSubjects(user.getSubjects().stream().map(Subject::getName).collect(Collectors.toList()));
             }
@@ -522,7 +506,15 @@ public class AuthController {
         }
 
         if (updateRequest.getPassword() != null && !updateRequest.getPassword().trim().isEmpty()) {
-            user.setPassword(encoder.encode(updateRequest.getPassword().trim()));
+            String p = updateRequest.getPassword().trim();
+            if (p.length() < 8 || 
+                !p.matches(".*[A-Z].*") || 
+                !p.matches(".*[a-z].*") || 
+                !p.matches(".*[0-9].*") || 
+                !p.matches(".*[!@#$%^&*(),.?\":{}|<>\\-_].*")) {
+                return ResponseEntity.badRequest().body(new MessageResponse("Error: Password must be at least 8 characters long and include uppercase, lowercase, a number, and a special character (!@#$%^&*)."));
+            }
+            user.setPassword(encoder.encode(p));
         }
 
         if (updateRequest.getRole() != null && !updateRequest.getRole().trim().isEmpty()) {
@@ -618,11 +610,30 @@ public class AuthController {
     }
 
     @PutMapping("/users/{id}/password")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('PROVINCIAL_DIRECTOR') or hasRole('ADMIN')")
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> changeUserPassword(@PathVariable Long id, @RequestBody java.util.Map<String, String> request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserDetailsImpl currentUser = (auth != null && auth.getPrincipal() instanceof UserDetailsImpl) 
+                ? (UserDetailsImpl) auth.getPrincipal() : null;
+
+        if (currentUser == null) {
+            return ResponseEntity.status(401).body(new MessageResponse("Error: Unauthorized."));
+        }
+
+        boolean isSuperAdmin = currentUser.getAuthorities().stream().anyMatch(a -> 
+                a.getAuthority().equals("ROLE_PROVINCIAL_DIRECTOR") || a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isSuperAdmin && !currentUser.getId().equals(id)) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: You can only change your own password."));
+        }
+
         String newPassword = request.get("newPassword");
-        if (newPassword == null || newPassword.trim().length() < 6) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Password must be at least 6 characters long!"));
+        if (newPassword == null || newPassword.length() < 8 || 
+            !newPassword.matches(".*[A-Z].*") || 
+            !newPassword.matches(".*[a-z].*") || 
+            !newPassword.matches(".*[0-9].*") || 
+            !newPassword.matches(".*[!@#$%^&*(),.?\":{}|<>\\-_].*")) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: Password must be at least 8 characters long and include uppercase, lowercase, a number, and a special character (!@#$%^&*)."));
         }
 
         User user = userRepository.findById(id).orElse(null);

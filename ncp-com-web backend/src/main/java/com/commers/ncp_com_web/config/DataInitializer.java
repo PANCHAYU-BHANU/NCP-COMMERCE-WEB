@@ -49,6 +49,12 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private SubjectRepository subjectRepository;
 
+    @org.springframework.beans.factory.annotation.Value("${app.director.username:provincial_director}")
+    private String directorUsername;
+
+    @org.springframework.beans.factory.annotation.Value("${app.director.password:NcpDirector@2026#Secure}")
+    private String directorStrongPassword;
+
     @Override
     public void run(String... args) throws Exception {
         // Ensure Province exists
@@ -75,10 +81,7 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println(">>> [INIT] Initialized default districts: Anuradhapura & Polonnaruwa.");
         }
 
-        // Ensure Provincial Director user exists with a strong password
-        String directorUsername = "provincial_director";
-        String directorStrongPassword = "NcpDirector@2026#Secure";
-
+        // Ensure Root Provincial Director user exists with a strong password (ONLY official account auto-seeded for Cloud/Production)
         User director = userRepository.findByUsername(directorUsername).orElse(null);
         if (director == null) {
             director = new User();
@@ -89,9 +92,9 @@ public class DataInitializer implements CommandLineRunner {
             director.setRole(ERole.ROLE_PROVINCIAL_DIRECTOR);
             director.setProvince(province);
             userRepository.save(director);
-            System.out.println(">>> [INIT] Created Provincial Director account: " + directorUsername);
+            System.out.println(">>> [INIT] Created Provincial Director root administrator: " + directorUsername);
         } else {
-            // Update password to the strong password
+            // Keep Provincial Director account password secured
             director.setPassword(passwordEncoder.encode(directorStrongPassword));
             director.setRole(ERole.ROLE_PROVINCIAL_DIRECTOR);
             director.setProvince(province);
@@ -99,7 +102,7 @@ public class DataInitializer implements CommandLineRunner {
                 director.setName("Provincial Director");
             }
             userRepository.save(director);
-            System.out.println(">>> [INIT] Updated Provincial Director account with strong password");
+            System.out.println(">>> [INIT] Verified Provincial Director root administrator account.");
         }
 
         // Ensure all existing users have proper names set if empty or set to NIC

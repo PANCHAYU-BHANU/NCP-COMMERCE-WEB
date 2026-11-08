@@ -41,7 +41,7 @@ const LocationManagement = () => {
         fetchDivisions(currentUser.zoneId);
       } else {
         // Fallback: fetch zones so they can select their appointed zone if not pre-linked
-        fetch('http://localhost:8080/api/public/zones')
+        fetch('/api/public/zones')
           .then(res => res.json())
           .then(data => {
             if (Array.isArray(data)) setZones(data);
@@ -54,7 +54,7 @@ const LocationManagement = () => {
         fetchSchools(currentUser.divisionId);
       } else {
         // Fallback: fetch divisions
-        fetch('http://localhost:8080/api/public/divisions')
+        fetch('/api/public/divisions')
           .then(res => res.json())
           .then(data => {
             if (Array.isArray(data)) setDivisions(data);
@@ -84,7 +84,7 @@ const LocationManagement = () => {
 
   const fetchDistricts = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/public/districts');
+      const res = await fetch('/api/public/districts');
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
         setDistricts(data);
@@ -108,7 +108,7 @@ const LocationManagement = () => {
 
   const fetchZones = async (districtId) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/public/zones?districtId=${districtId}`);
+      const res = await fetch(`/api/public/zones?districtId=${districtId}`);
       const data = await res.json();
       setZones(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -119,7 +119,7 @@ const LocationManagement = () => {
 
   const fetchDivisions = async (zoneId) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/public/divisions?zoneId=${zoneId}`);
+      const res = await fetch(`/api/public/divisions?zoneId=${zoneId}`);
       const data = await res.json();
       setDivisions(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -130,7 +130,7 @@ const LocationManagement = () => {
 
   const fetchSchools = async (divisionId) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/public/schools?divisionId=${divisionId}`);
+      const res = await fetch(`/api/public/schools?divisionId=${divisionId}`);
       const data = await res.json();
       setSchools(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -149,7 +149,7 @@ const LocationManagement = () => {
     setLoading(true);
     try {
       const token = currentUser?.token || currentUser?.accessToken;
-      const res = await fetch(`http://localhost:8080/api/locations/zone?districtId=${selectedDistrict}&name=${encodeURIComponent(newZoneName.trim())}`, {
+      const res = await fetch(`/api/locations/zone?districtId=${selectedDistrict}&name=${encodeURIComponent(newZoneName.trim())}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -177,7 +177,7 @@ const LocationManagement = () => {
     setLoading(true);
     try {
       const token = currentUser?.token || currentUser?.accessToken;
-      const res = await fetch(`http://localhost:8080/api/locations/division?zoneId=${zoneIdToUse}&name=${encodeURIComponent(newDivisionName.trim())}`, {
+      const res = await fetch(`/api/locations/division?zoneId=${zoneIdToUse}&name=${encodeURIComponent(newDivisionName.trim())}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -205,7 +205,7 @@ const LocationManagement = () => {
     setLoading(true);
     try {
       const token = currentUser?.token || currentUser?.accessToken;
-      const res = await fetch(`http://localhost:8080/api/locations/school?divisionId=${divisionIdToUse}&name=${encodeURIComponent(newSchoolName.trim())}`, {
+      const res = await fetch(`/api/locations/school?divisionId=${divisionIdToUse}&name=${encodeURIComponent(newSchoolName.trim())}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -238,7 +238,7 @@ const LocationManagement = () => {
     setLoading(true);
     try {
       const token = currentUser?.token || currentUser?.accessToken;
-      const res = await fetch(`http://localhost:8080/api/locations/zone/${id}`, {
+      const res = await fetch(`/api/locations/zone/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -270,7 +270,7 @@ const LocationManagement = () => {
     setLoading(true);
     try {
       const token = currentUser?.token || currentUser?.accessToken;
-      const res = await fetch(`http://localhost:8080/api/locations/division/${id}`, {
+      const res = await fetch(`/api/locations/division/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -303,7 +303,7 @@ const LocationManagement = () => {
     setLoading(true);
     try {
       const token = currentUser?.token || currentUser?.accessToken;
-      const res = await fetch(`http://localhost:8080/api/locations/school/${id}`, {
+      const res = await fetch(`/api/locations/school/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

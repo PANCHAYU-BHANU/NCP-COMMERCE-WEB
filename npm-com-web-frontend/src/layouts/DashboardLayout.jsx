@@ -26,8 +26,12 @@ import {
   Sparkles,
   Calendar,
   Clock,
-  Compass
+  Compass,
+  User,
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
+import TeacherProfileModal from '../components/TeacherProfileModal';
 
 const DashboardLayout = () => {
   const { currentUser, logout } = useAuth();
@@ -42,8 +46,39 @@ const DashboardLayout = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [activeCycleYear, setActiveCycleYear] = useState(null);
 
+  // Teacher Profile state & persistent alert
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+  const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
+  const [missingCount, setMissingCount] = useState(0);
+
+  const isTeacher = currentUser?.role === 'TEACHER' || currentUser?.role === 'SECTION_HEAD';
+
+  const fetchMyProfileStatus = async () => {
+    if (!currentUser || !isTeacher) return;
+    const token = JSON.parse(localStorage.getItem('auth'))?.token || currentUser?.token || currentUser?.accessToken;
+    try {
+      const res = await fetch('/api/teacher-profile/me', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfileData(data.profile || {});
+        const incomplete = !data.isCompleted;
+        setIsProfileIncomplete(incomplete);
+        setMissingCount(Array.isArray(data.missingFields) ? data.missingFields.length : 0);
+      }
+    } catch (err) {
+      console.warn('Could not check teacher profile completion:', err);
+    }
+  };
+
   useEffect(() => {
-    fetch('http://localhost:8080/api/public/statistics/overview')
+    fetchMyProfileStatus();
+  }, [currentUser]);
+
+  useEffect(() => {
+    fetch('/api/public/statistics/overview')
       .then(r => r.json())
       .then(data => {
         if (data && data.activeYear) {
@@ -175,6 +210,15 @@ const DashboardLayout = () => {
       group: 'FACULTY & GOVERNANCE',
       items: [
         {
+          name: 'My Teacher Profile',
+          siName: 'මගේ ගුරු පැතිකඩ',
+          onClick: () => setIsProfileModalOpen(true),
+          icon: User,
+          tag: isProfileIncomplete ? 'Pending' : 'Complete',
+          tagAlert: isProfileIncomplete,
+          roles: ['TEACHER', 'SECTION_HEAD']
+        },
+        {
           name: 'Teachers Directory',
           siName: 'ගුරු නාමාවලිය',
           path: '/dashboard/teachers',
@@ -193,6 +237,14 @@ const DashboardLayout = () => {
     {
       group: 'PORTAL CONTENT & ASSETS',
       items: [
+        {
+          name: 'Commerce Subjects',
+          siName: 'විෂය මාලාව කළමනාකරණය',
+          path: '/subjects?manage=true',
+          icon: BookOpen,
+          tag: 'Curriculum',
+          roles: ['PROVINCIAL_DIRECTOR', 'ADMIN']
+        },
         {
           name: 'Educational Resources',
           siName: 'අධ්‍යාපනික සම්පත් හා ප්‍රශ්න පත්‍ර',
@@ -278,9 +330,19 @@ const DashboardLayout = () => {
             <div className="px-4 py-3 border-b border-slate-800/60">
               <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-800/70 via-slate-800/40 to-slate-900/80 border border-slate-700/60 shadow-lg relative overflow-hidden group">
                 <div className="flex items-center space-x-3 relative z-10">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-black text-base shadow-md flex-shrink-0 border border-white/20">
-                    {initialLetter}
-                  </div>
+                  {currentUser?.profilePic || profileData?.profilePic ? (
+                    <img
+                      src={(currentUser?.profilePic || profileData?.profilePic).startsWith('http') 
+                        ? (currentUser?.profilePic || profileData?.profilePic) 
+                        : ((currentUser?.profilePic || profileData?.profilePic).startsWith('/') ? (currentUser?.profilePic || profileData?.profilePic) : `/${currentUser?.profilePic || profileData?.profilePic}`)}
+                      alt={displayName}
+                      className="w-10 h-10 rounded-xl object-cover shadow-md flex-shrink-0 border border-amber-400/80 bg-slate-800"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-black text-base shadow-md flex-shrink-0 border border-white/20">
+                      {initialLetter}
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center space-x-1.5">
                       <p className="text-xs font-black text-white truncate">{displayName}</p>
@@ -317,8 +379,44 @@ const DashboardLayout = () => {
                       const isRoot = item.path === '/dashboard';
                       const isActive = isRoot 
                         ? location.pathname === '/dashboard' || location.pathname === '/dashboard/'
-                        : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+                        : item.path && (location.pathname === item.path || location.pathname.startsWith(`${item.path}/`));
                       const Icon = item.icon;
+
+                      if (item.onClick) {
+                        return (
+                          <button
+                            key={item.name}
+                            type="button"
+                            onClick={() => {
+                              item.onClick();
+                              if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                                setSidebarOpen(false);
+                              }
+                            }}
+                            className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 group text-slate-300 hover:bg-slate-800/80 hover:text-white cursor-pointer"
+                          >
+                            <div className="flex items-center min-w-0 space-x-3">
+                              <Icon 
+                                size={18} 
+                                className="transition-transform duration-200 group-hover:scale-110 flex-shrink-0 text-slate-400 group-hover:text-amber-400" 
+                              />
+                              <div className="truncate text-left">
+                                <span className="text-xs font-semibold block leading-tight">{item.name}</span>
+                              </div>
+                            </div>
+
+                            {item.tag && (
+                              <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full ${
+                                item.tagAlert
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40 animate-pulse'
+                                  : 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                              }`}>
+                                {item.tag}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      }
 
                       return (
                         <Link
@@ -473,9 +571,19 @@ const DashboardLayout = () => {
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center space-x-2 px-2.5 py-1 rounded-xl hover:bg-slate-100 transition-all border border-slate-200/90 cursor-pointer shadow-2xs bg-white h-9.5"
               >
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-2xs">
-                  {initialLetter}
-                </div>
+                {currentUser?.profilePic || profileData?.profilePic ? (
+                  <img
+                    src={(currentUser?.profilePic || profileData?.profilePic).startsWith('http') 
+                      ? (currentUser?.profilePic || profileData?.profilePic) 
+                      : ((currentUser?.profilePic || profileData?.profilePic).startsWith('/') ? (currentUser?.profilePic || profileData?.profilePic) : `/${currentUser?.profilePic || profileData?.profilePic}`)}
+                    alt={displayName}
+                    className="w-7 h-7 rounded-lg object-cover shadow-2xs border border-amber-400/80 bg-slate-800"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-2xs">
+                    {initialLetter}
+                  </div>
+                )}
                 <div className="hidden md:block text-left pr-0.5">
                   <p className="text-xs font-black text-slate-900 leading-tight">{displayName}</p>
                   <p className="text-[10px] font-bold text-blue-600 leading-none">{roleMeta.title}</p>
@@ -490,7 +598,7 @@ const DashboardLayout = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 divide-y divide-slate-100"
+                    className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 divide-y divide-slate-100"
                   >
                     <div className="px-4 py-3">
                       <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Signed In Account</p>
@@ -510,6 +618,30 @@ const DashboardLayout = () => {
                     </div>
 
                     <div className="py-1">
+                      {isTeacher && (
+                        <button
+                          onClick={() => {
+                            setProfileOpen(false);
+                            setIsProfileModalOpen(true);
+                          }}
+                          className="flex items-center justify-between w-full px-4 py-2 text-xs font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-800 transition cursor-pointer"
+                        >
+                          <div className="flex items-center">
+                            <User size={14} className="mr-2.5 text-amber-600" />
+                            <span>My Teacher Profile (මගේ පැතිකඩ)</span>
+                          </div>
+                          {isProfileIncomplete ? (
+                            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                              Pending
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              Complete
+                            </span>
+                          )}
+                        </button>
+                      )}
+
                       <Link
                         to="/dashboard"
                         onClick={() => setProfileOpen(false)}
@@ -547,9 +679,52 @@ const DashboardLayout = () => {
 
         {/* ── 3. MAIN DASHBOARD CONTENT AREA ── */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-100/90 p-2.5 sm:p-5 lg:p-6">
+          
+          {/* Persistent Incomplete Profile Alert for Teachers */}
+          {isTeacher && isProfileIncomplete && (
+            <div className="mb-4 bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-orange-500/15 border-2 border-amber-400/80 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                  <AlertCircle className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-sm sm:text-base font-black text-amber-950">
+                      අවධානය පිණිසයි: ඔබගේ ගුරු සේවා පැතිකඩ (Teacher Profile) තවමත් සම්පූර්ණ කර නොමැත!
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-200 text-amber-900 border border-amber-300">
+                      {missingCount > 0 ? `${missingCount} Fields Pending` : 'Action Required'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-900/90 font-medium mt-1 leading-relaxed">
+                    විදුහල්පති, කොට්ඨාස, කලාප සහ පළාත් අධ්‍යක්ෂ මණ්ඩලයේ විස්තරාත්මක වාර්තා (Executive Dossier) සඳහා කරුණාකර ඔබගේ අත්‍යවශ්‍ය තොරතුරු, සේවා ශ්‍රේණිය, අධ්‍යාපන/වෘත්තීය සුදුසුකම් සහ WhatsApp අංකය ඇතුළත් කරන්න.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                <button
+                  onClick={() => setIsProfileModalOpen(true)}
+                  className="w-full md:w-auto px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <Sparkles size={15} />
+                  <span>පැතිකඩ සම්පූර්ණ කරන්න / Complete Profile Now</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           <Outlet />
         </main>
       </div>
+
+      {/* ── TEACHER PROFILE EDIT MODAL ── */}
+      {isTeacher && (
+        <TeacherProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          onProfileUpdated={fetchMyProfileStatus}
+        />
+      )}
 
     </div>
   );

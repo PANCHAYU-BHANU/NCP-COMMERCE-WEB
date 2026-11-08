@@ -28,8 +28,10 @@ const StudentStats = () => {
     totalStudents: 0,
     boys: 0,
     girls: 0,
-    grade12: 0,
-    grade13: 0
+    cohort1Year: null,
+    cohort1Count: 0,
+    cohort2Year: null,
+    cohort2Count: 0
   });
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,14 +55,19 @@ const StudentStats = () => {
           const total = res.data.length;
           const boys = res.data.filter(s => s.gender === 'MALE' || s.gender === 'M').length;
           const girls = res.data.filter(s => s.gender === 'FEMALE' || s.gender === 'F').length;
-          const gr12 = res.data.filter(s => s.grade === 12).length;
-          const gr13 = res.data.filter(s => !s.grade || s.grade === 13).length;
+          const distinctYears = Array.from(new Set(res.data.map(s => s.alYear).filter(Boolean))).sort((a,b) => b - a);
+          const c1Year = distinctYears[0] || null;
+          const c2Year = distinctYears[1] || null;
+          const c1Count = c1Year ? res.data.filter(s => s.alYear === c1Year).length : 0;
+          const c2Count = c2Year ? res.data.filter(s => s.alYear === c2Year).length : 0;
           setLiveCensus({
             totalStudents: total,
             boys,
             girls,
-            grade12: gr12,
-            grade13: gr13
+            cohort1Year: c1Year,
+            cohort1Count: c1Count,
+            cohort2Year: c2Year,
+            cohort2Count: c2Count
           });
         }
       })
@@ -145,14 +152,27 @@ const StudentStats = () => {
 
 
 
+  // Extract distinct cohorts dynamically that actually have registered students
+  const distinctCohorts = React.useMemo(() => {
+    const countsByYear = {};
+    registeredStudents.forEach(s => {
+      const yr = s.alYear || (s.grade === 12 ? liveCensus.cohort1Year : liveCensus.cohort2Year);
+      if (yr) {
+        countsByYear[yr] = (countsByYear[yr] || 0) + 1;
+      }
+    });
+    return Object.entries(countsByYear)
+      .map(([yr, count]) => ({ year: parseInt(yr, 10), count }))
+      .sort((a, b) => b.year - a.year);
+  }, [registeredStudents, liveCensus]);
+
   // Filtered Students
   const filteredStudents = registeredStudents.filter(student => {
     const matchesSearch = (student.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (student.indexNumber || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesGrade = gradeFilter === 'ALL' || 
-                         (gradeFilter === '12' && student.grade === 12) ||
-                         (gradeFilter === '13' && (!student.grade || student.grade === 13));
-    return matchesSearch && matchesGrade;
+    if (gradeFilter === 'ALL') return matchesSearch;
+    const studentYear = student.alYear ? String(student.alYear) : '';
+    return matchesSearch && (studentYear === gradeFilter);
   });
 
   return (
@@ -177,7 +197,11 @@ const StudentStats = () => {
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span>Auto Sync Active</span>
           </span>
-          <span className="text-slate-400 text-[10px] font-semibold hidden sm:inline">Batches: 2027 & 2026</span>
+          <span className="text-slate-400 text-[10px] font-semibold hidden sm:inline">
+            {liveCensus.cohort1Year 
+              ? `Batches: ${liveCensus.cohort1Year}${liveCensus.cohort2Year ? ` & ${liveCensus.cohort2Year}` : ''}`
+              : 'No Active Batches Enrolled'}
+          </span>
         </div>
       </div>
 
@@ -291,8 +315,9 @@ const StudentStats = () => {
           </h3>
           <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">Total Students</p>
           <div className="mt-2.5 pt-2 border-t border-slate-100 hidden sm:flex text-[11px] font-semibold text-slate-600 justify-between">
-            <span>2027 A/L: <strong>{liveCensus.grade12}</strong></span>
-            <span>2026 A/L: <strong>{liveCensus.grade13}</strong></span>
+            {liveCensus.cohort1Year && <span>{liveCensus.cohort1Year} A/L: <strong>{liveCensus.cohort1Count}</strong></span>}
+            {liveCensus.cohort2Year && <span>{liveCensus.cohort2Year} A/L: <strong>{liveCensus.cohort2Count}</strong></span>}
+            {!liveCensus.cohort1Year && <span>Census Status: <strong>Synced</strong></span>}
           </div>
         </div>
 
@@ -303,15 +328,17 @@ const StudentStats = () => {
               <GraduationCap size={16} className="sm:w-5 sm:h-5" />
             </div>
             <span className="text-[9px] sm:text-[10px] font-bold uppercase text-indigo-700 bg-indigo-50 px-1.5 sm:px-2 py-0.5 rounded-full border border-indigo-200">
-              2027 A/L
+              {liveCensus.cohort1Year ? `${liveCensus.cohort1Year} A/L` : 'Senior Cohort'}
             </span>
           </div>
           <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            {liveCensus.grade12}
+            {liveCensus.cohort1Count}
           </h3>
-          <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">2027 Batch</p>
+          <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">
+            {liveCensus.cohort1Year ? `${liveCensus.cohort1Year} Batch` : 'Senior Batch'}
+          </p>
           <div className="mt-2.5 pt-2 border-t border-slate-100 hidden sm:flex text-[11px] font-semibold text-slate-600 justify-between">
-            <span>Status: <strong>Term 1</strong></span>
+            <span>Status: <strong>{liveCensus.cohort1Count > 0 ? 'Active Candidates' : 'No Enrolled Students'}</strong></span>
           </div>
         </div>
 
@@ -322,15 +349,17 @@ const StudentStats = () => {
               <GraduationCap size={16} className="sm:w-5 sm:h-5" />
             </div>
             <span className="text-[9px] sm:text-[10px] font-bold uppercase text-amber-800 bg-amber-50 px-1.5 sm:px-2 py-0.5 rounded-full border border-amber-200">
-              2026 A/L
+              {liveCensus.cohort2Count > 0 && liveCensus.cohort2Year ? `${liveCensus.cohort2Year} A/L` : 'Secondary Cohort'}
             </span>
           </div>
           <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            {liveCensus.grade13}
+            {liveCensus.cohort2Count}
           </h3>
-          <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">2026 Batch</p>
+          <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">
+            {liveCensus.cohort2Count > 0 && liveCensus.cohort2Year ? `${liveCensus.cohort2Year} Batch` : 'Secondary Cohort'}
+          </p>
           <div className="mt-2.5 pt-2 border-t border-slate-100 hidden sm:flex text-[11px] font-semibold text-slate-600 justify-between">
-            <span>Status: <strong>Revision</strong></span>
+            <span>Status: <strong>{liveCensus.cohort2Count > 0 ? 'Enrolled Candidates' : 'No Enrolled Students'}</strong></span>
           </div>
         </div>
 
@@ -341,17 +370,28 @@ const StudentStats = () => {
               ⚧
             </div>
             <span className="text-[9px] sm:text-[10px] font-bold uppercase text-emerald-700 bg-emerald-50 px-1.5 sm:px-2 py-0.5 rounded-full border border-emerald-200">
-              Gender
+              Gender Split
             </span>
           </div>
-          <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            {liveCensus.girls + liveCensus.boys > 0 ? `${Math.round((liveCensus.girls / (liveCensus.girls + liveCensus.boys || 1)) * 100)}%` : '0%'}
-          </h3>
-          <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">Female Ratio</p>
-          <div className="mt-2.5 pt-2 border-t border-slate-100 hidden sm:flex text-[11px] font-semibold text-slate-600 justify-between">
-            <span>👩 Girls: <strong>{liveCensus.girls}</strong></span>
-            <span>👨 Boys: <strong>{liveCensus.boys}</strong></span>
-          </div>
+          {(() => {
+            const total = liveCensus.girls + liveCensus.boys;
+            const fPct = total > 0 ? Math.round((liveCensus.girls / total) * 100) : 0;
+            const mPct = total > 0 ? Math.round((liveCensus.boys / total) * 100) : 0;
+            return (
+              <>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-base sm:text-2xl font-black text-pink-600">♀ {fPct}%</span>
+                  <span className="text-slate-300 font-bold">/</span>
+                  <span className="text-base sm:text-2xl font-black text-blue-600">♂ {mPct}%</span>
+                </div>
+                <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">Female / Male Demographics</p>
+                <div className="mt-2.5 pt-2 border-t border-slate-100 hidden sm:flex text-[11px] font-semibold text-slate-600 justify-between">
+                  <span>👩 Girls: <strong>{liveCensus.girls} ({fPct}%)</strong></span>
+                  <span>👨 Boys: <strong>{liveCensus.boys} ({mPct}%)</strong></span>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -404,28 +444,24 @@ const StudentStats = () => {
               className="w-full pl-8 pr-3 py-1.5 sm:py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-hidden bg-slate-50 font-bold"
             />
           </div>
-          <div className="grid grid-cols-3 sm:flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-bold gap-1 shrink-0">
+          <div className="flex flex-wrap rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-bold gap-1 shrink-0">
             <button
               type="button"
               onClick={() => setGradeFilter('ALL')}
-              className={`px-2 sm:px-3 py-1.5 rounded-lg transition-all text-center whitespace-nowrap cursor-pointer ${gradeFilter === 'ALL' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all text-center whitespace-nowrap cursor-pointer ${gradeFilter === 'ALL' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
             >
               All ({registeredStudents.length})
             </button>
-            <button
-              type="button"
-              onClick={() => setGradeFilter('12')}
-              className={`px-2 sm:px-3 py-1.5 rounded-lg transition-all text-center whitespace-nowrap cursor-pointer ${gradeFilter === '12' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
-            >
-              Grade 12 ({liveCensus.grade12})
-            </button>
-            <button
-              type="button"
-              onClick={() => setGradeFilter('13')}
-              className={`px-2 sm:px-3 py-1.5 rounded-lg transition-all text-center whitespace-nowrap cursor-pointer ${gradeFilter === '13' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
-            >
-              Grade 13 ({liveCensus.grade13})
-            </button>
+            {distinctCohorts.map(c => (
+              <button
+                key={c.year}
+                type="button"
+                onClick={() => setGradeFilter(String(c.year))}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all text-center whitespace-nowrap cursor-pointer ${gradeFilter === String(c.year) ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                {c.year} A/L ({c.count})
+              </button>
+            ))}
           </div>
         </div>
 
@@ -465,9 +501,9 @@ const StudentStats = () => {
                       </td>
                       <td className="py-3 px-4">
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                          st.grade === 12 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
+                          st.alYear === liveCensus.cohort1Year ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
                         }`}>
-                          {st.grade === 12 ? '2027 A/L' : '2026 A/L'}
+                          {st.alYear ? `${st.alYear} A/L` : `${liveCensus.cohort1Year} A/L`}
                         </span>
                       </td>
                       <td className="py-3 px-4">

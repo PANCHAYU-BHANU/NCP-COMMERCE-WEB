@@ -29,7 +29,7 @@ const ZonesExplorer = () => {
   const fetchDistricts = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8080/api/public/districts');
+      const res = await fetch('/api/public/districts');
       if (res.ok) setDistricts(await res.json());
     } catch (e) {
       console.error(e);
@@ -40,7 +40,7 @@ const ZonesExplorer = () => {
   const fetchZones = async (districtId) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8080/api/public/zones?districtId=${districtId}`);
+      const res = await fetch(`/api/public/zones?districtId=${districtId}`);
       if (res.ok) setZones(await res.json());
     } catch (e) {
       console.error(e);
@@ -51,7 +51,7 @@ const ZonesExplorer = () => {
   const fetchDivisions = async (zoneId) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8080/api/public/divisions?zoneId=${zoneId}`);
+      const res = await fetch(`/api/public/divisions?zoneId=${zoneId}`);
       if (res.ok) setDivisions(await res.json());
     } catch (e) {
       console.error(e);
@@ -62,7 +62,7 @@ const ZonesExplorer = () => {
   const fetchSchools = async (divisionId) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8080/api/public/schools?divisionId=${divisionId}`);
+      const res = await fetch(`/api/public/schools?divisionId=${divisionId}`);
       if (res.ok) setSchools(await res.json());
     } catch (e) {
       console.error(e);

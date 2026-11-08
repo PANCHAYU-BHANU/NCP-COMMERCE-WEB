@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BookOpen, Calculator, TrendingUp, Cpu, Briefcase, FileDown, BarChart3, CheckCircle2, Award, Sparkles, Layers } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calculator, TrendingUp, Cpu, Briefcase, FileDown, BarChart3, CheckCircle2, Award, Sparkles, Layers, Plus, Settings } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
 import QuickAnalyticsModal from '../../components/QuickAnalyticsModal';
+import SubjectManagementModal from '../../components/SubjectManagementModal';
 
 const getSubjectVisuals = (name = '', code = '', idx = 0) => {
   const lower = name.toLowerCase();
@@ -59,9 +61,21 @@ const getSubjectVisuals = (name = '', code = '', idx = 0) => {
 
 const SubjectsPage = () => {
   const { lang } = useLanguage();
+  const { currentUser } = useAuth();
+  const isProvincialAdmin = ['PROVINCIAL_DIRECTOR', 'ADMIN'].includes(currentUser?.role);
+  const location = useLocation();
+
   const [activeTab, setActiveTab] = useState('al');
   const [dbSubjects, setDbSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('manage') === 'true' && isProvincialAdmin) {
+      setIsSubjectModalOpen(true);
+    }
+  }, [location.search, isProvincialAdmin]);
 
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
@@ -79,7 +93,7 @@ const SubjectsPage = () => {
   const fetchSubjects = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:8080/api/public/subjects');
+      const res = await fetch('/api/public/subjects');
       const data = await res.json();
       if (Array.isArray(data)) {
         setDbSubjects(data);
@@ -163,7 +177,7 @@ const SubjectsPage = () => {
 
       {/* ── 2. DYNAMIC SUBJECT CARDS GRID ── */}
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-8 pb-3 border-b border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-3 border-b border-slate-200">
           <div>
             <h2 className="text-2xl font-black text-slate-900 flex items-center space-x-2">
               <BookOpen className="w-6 h-6 text-blue-600" />
@@ -177,6 +191,16 @@ const SubjectsPage = () => {
               {lang === 'si' ? 'විෂය ඒකක, පසුගිය ප්‍රශ්න පත්‍ර සහ විභාග විශ්ලේෂණ පහතින් ලබාගන්න.' : 'Select any subject to explore syllabus modules, past examination papers, and analytics.'}
             </p>
           </div>
+
+          {isProvincialAdmin && (
+            <button
+              onClick={() => setIsSubjectModalOpen(true)}
+              className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md border border-blue-400/30 transition-all cursor-pointer active:scale-95 self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{lang === 'si' ? 'නව විෂයයක් එක් කරන්න / කළමනාකරණය' : 'Add & Manage Subjects'}</span>
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -320,6 +344,15 @@ const SubjectsPage = () => {
         subjectId={modalConfig.subjectId}
         initialYear={modalConfig.year}
       />
+
+      {/* Provincial Director Subject & Curriculum Management Modal */}
+      {isProvincialAdmin && (
+        <SubjectManagementModal
+          isOpen={isSubjectModalOpen}
+          onClose={() => setIsSubjectModalOpen(false)}
+          onSubjectsUpdated={fetchSubjects}
+        />
+      )}
     </div>
   );
 };

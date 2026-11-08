@@ -85,7 +85,7 @@ const DistrictStatistics = ({ districtId, districtName, theme, selectedZone }) =
   React.useEffect(() => {
     // 1 for Anuradhapura, 2 for Polonnaruwa (assuming ID structure)
     const id = districtId === 'anuradhapura' ? 1 : 2;
-    fetch(`http://localhost:8080/api/public/statistics/district/${id}`)
+    fetch(`/api/public/statistics/district/${id}`)
       .then(res => res.json())
       .then(data => {
         setDistrictStats({

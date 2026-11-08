@@ -50,8 +50,16 @@ const AnalyticsDashboard = () => {
               students: data.students ?? 0,
               teachers: data.teachers ?? 0,
               passRate: data.passRateCurrent ?? 0,
-              grade12Students: data.grade12Students ?? 0,
-              grade13Students: data.grade13Students ?? 0,
+              grade12Students: data.cohort1Count ?? data.grade12Students ?? 0,
+              grade13Students: data.cohort2Count ?? data.grade13Students ?? 0,
+              cohort1Year: data.cohort1Year || data.activeYear,
+              cohort1Count: data.cohort1Count ?? data.grade12Students ?? 0,
+              cohort2Year: data.cohort2Year || (data.activeYear ? data.activeYear - 1 : undefined),
+              cohort2Count: data.cohort2Count ?? data.grade13Students ?? 0,
+              accCandidates: data.accCandidates ?? 0,
+              bsCandidates: data.bsCandidates ?? 0,
+              ecoCandidates: data.ecoCandidates ?? 0,
+              itCandidates: data.itCandidates ?? 0,
               boys: data.boys ?? 0,
               girls: data.girls ?? 0,
               schoolName: data.schoolName || currentUser?.schoolName || 'Appointed School',
@@ -72,8 +80,16 @@ const AnalyticsDashboard = () => {
               students: data.students ?? 0,
               teachers: data.teachers ?? 0,
               passRate: data.passRateCurrent ?? 0,
-              grade12Students: data.grade12Students ?? 0,
-              grade13Students: data.grade13Students ?? 0,
+              grade12Students: data.cohort1Count ?? data.grade12Students ?? 0,
+              grade13Students: data.cohort2Count ?? data.grade13Students ?? 0,
+              cohort1Year: data.cohort1Year || data.activeYear,
+              cohort1Count: data.cohort1Count ?? data.grade12Students ?? 0,
+              cohort2Year: data.cohort2Year || (data.activeYear ? data.activeYear - 1 : undefined),
+              cohort2Count: data.cohort2Count ?? data.grade13Students ?? 0,
+              accCandidates: data.accCandidates ?? 0,
+              bsCandidates: data.bsCandidates ?? 0,
+              ecoCandidates: data.ecoCandidates ?? 0,
+              itCandidates: data.itCandidates ?? 0,
               boys: data.boys ?? 0,
               girls: data.girls ?? 0,
               activeYear: data.activeYear
@@ -93,8 +109,16 @@ const AnalyticsDashboard = () => {
               students: data.students ?? 0,
               teachers: data.teachers ?? 0,
               passRate: data.passRateCurrent ?? 0,
-              grade12Students: data.grade12Students ?? 0,
-              grade13Students: data.grade13Students ?? 0,
+              grade12Students: data.cohort1Count ?? data.grade12Students ?? 0,
+              grade13Students: data.cohort2Count ?? data.grade13Students ?? 0,
+              cohort1Year: data.cohort1Year || data.activeYear,
+              cohort1Count: data.cohort1Count ?? data.grade12Students ?? 0,
+              cohort2Year: data.cohort2Year || (data.activeYear ? data.activeYear - 1 : undefined),
+              cohort2Count: data.cohort2Count ?? data.grade13Students ?? 0,
+              accCandidates: data.accCandidates ?? 0,
+              bsCandidates: data.bsCandidates ?? 0,
+              ecoCandidates: data.ecoCandidates ?? 0,
+              itCandidates: data.itCandidates ?? 0,
               boys: data.boys ?? 0,
               girls: data.girls ?? 0,
               activeYear: data.activeYear
@@ -114,8 +138,16 @@ const AnalyticsDashboard = () => {
               students: data.provincial.students ?? 0,
               teachers: data.provincial.teachers ?? 0,
               passRate: data.provincial.passRateCurrent ?? 0,
-              grade12Students: data.provincial.grade12Students ?? 0,
-              grade13Students: data.provincial.grade13Students ?? 0,
+              grade12Students: data.provincial.cohort1Count ?? data.provincial.grade12Students ?? 0,
+              grade13Students: data.provincial.cohort2Count ?? data.provincial.grade13Students ?? 0,
+              cohort1Year: data.provincial.cohort1Year || data.activeYear,
+              cohort1Count: data.provincial.cohort1Count ?? data.provincial.grade12Students ?? 0,
+              cohort2Year: data.provincial.cohort2Year || (data.activeYear ? data.activeYear - 1 : undefined),
+              cohort2Count: data.provincial.cohort2Count ?? data.provincial.grade13Students ?? 0,
+              accCandidates: data.provincial.accCandidates ?? 0,
+              bsCandidates: data.provincial.bsCandidates ?? 0,
+              ecoCandidates: data.provincial.ecoCandidates ?? 0,
+              itCandidates: data.provincial.itCandidates ?? 0,
               boys: data.provincial.boys ?? 0,
               girls: data.provincial.girls ?? 0,
               activeYear: data.activeYear
@@ -191,11 +223,34 @@ const AnalyticsDashboard = () => {
 
   const alResultsData = yearlyProgression;
 
-  // 3. Subject Elective & Gender Demographics
-  const studentElectives = [
-    { name: 'Accounting + BS + Economics (Traditional)', value: Math.round(statsData.students * 0.78), color: '#2563eb' },
-    { name: 'Accounting + BS + ICT (Tech Integrated)', value: Math.round(statsData.students * 0.22), color: '#06b6d4' },
+  // 3. Dynamic 4 A/L Subjects Breakdown (Individual Subject Distribution)
+  const accCount = statsData.accCandidates || 0;
+  const bsCount = statsData.bsCandidates || 0;
+  const ecoCount = statsData.ecoCandidates || 0;
+  const itCount = statsData.itCandidates || 0;
+  const totalStudents = statsData.students || 0;
+
+  const fourSubjects = [
+    { key: 'acc', name: 'Accounting', siName: 'ගිණුම්කරණය', value: accCount, color: '#2563eb' },
+    { key: 'bs', name: 'Business Studies', siName: 'ව්‍යාපාර අධ්‍යයනය', value: bsCount, color: '#8b5cf6' },
+    { key: 'eco', name: 'Economics', siName: 'ආර්ථික විද්‍යාව', value: ecoCount, color: '#f59e0b' },
+    { key: 'it', name: 'Information Tech (ICT)', siName: 'තොරතුරු තාක්ෂණය', value: itCount, color: '#06b6d4' }
   ];
+
+  const totalEvaluatedMarks = accCount + bsCount + ecoCount + itCount;
+
+  let subjectChartData = [];
+  if (totalEvaluatedMarks > 0) {
+    subjectChartData = fourSubjects.filter(s => s.value > 0);
+  } else if (totalStudents > 0) {
+    subjectChartData = [
+      { name: 'Enrolled Commerce Students', value: totalStudents, color: '#3b82f6' }
+    ];
+  } else {
+    subjectChartData = [
+      { name: 'No Enrolled Candidates', value: 1, color: '#cbd5e1' }
+    ];
+  }
 
   const genderDemographics = [
     { name: 'Female Commerce Students', value: statsData.girls, percentage: statsData.students > 0 ? `${Math.round((statsData.girls / statsData.students) * 100)}%` : '0%', color: '#ec4899' },
@@ -268,7 +323,7 @@ const AnalyticsDashboard = () => {
             <p className="text-blue-200/90 text-xs font-medium sm:hidden flex items-center gap-1.5">
               <span>📍 {currentUser?.location || 'North Central Province'}</span>
               <span>•</span>
-              <span>2027 A/L Active</span>
+              <span>{statsData.cohort1Year || statsData.activeYear || 'Active'} A/L Active</span>
             </p>
 
             {/* Desktop detailed description */}
@@ -371,7 +426,9 @@ const AnalyticsDashboard = () => {
             </span>
           </div>
           <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            {isTeacher || isPrincipal ? '2 Classes' : statsData.schools.toLocaleString()}
+            {isTeacher || isPrincipal 
+              ? `${[statsData.cohort1Count > 0, statsData.cohort2Count > 0].filter(Boolean).length} ${[statsData.cohort1Count > 0, statsData.cohort2Count > 0].filter(Boolean).length === 1 ? 'Cohort' : 'Cohorts'}` 
+              : statsData.schools.toLocaleString()}
           </h3>
           <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">
             {isTeacher || isPrincipal ? 'Commerce Cohorts' : isZonal ? 'Schools in Zone' : 'Commerce Schools'}
@@ -379,8 +436,16 @@ const AnalyticsDashboard = () => {
           <div className="mt-2.5 pt-2 border-t border-slate-100 hidden sm:flex items-center justify-between text-[11px] font-bold text-slate-600">
             {isTeacher || isPrincipal ? (
               <>
-                <span>Grade 12</span>
-                <span>Grade 13</span>
+                {statsData.cohort1Count > 0 ? (
+                  <span>{statsData.cohort1Year} A/L: <strong>{statsData.cohort1Count}</strong></span>
+                ) : (
+                  <span>Status: <strong>No Batch</strong></span>
+                )}
+                {statsData.cohort2Count > 0 ? (
+                  <span>{statsData.cohort2Year} A/L: <strong>{statsData.cohort2Count}</strong></span>
+                ) : (
+                  <span>Batch: <strong>Single Cohort</strong></span>
+                )}
               </>
             ) : isZonal ? (
               <>
@@ -427,11 +492,11 @@ const AnalyticsDashboard = () => {
           </div>
           <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">{statsData.teachers.toLocaleString()}</h3>
           <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5 line-clamp-1">
-            {isTeacher || isPrincipal ? 'Faculty at School' : isZonal ? 'Teachers in Zone' : 'Commerce Teachers'}
+            {isTeacher || isPrincipal ? 'Commerce Faculty at School' : isZonal ? 'Teachers in Zone' : 'Commerce Teachers'}
           </p>
           <div className="mt-2.5 pt-2 border-t border-slate-100 hidden sm:flex items-center justify-between text-[11px] font-bold text-slate-600">
-            <span>ACC & BS</span>
-            <span>ECO & ICT</span>
+            <span>Appointed Faculty</span>
+            <span>{statsData.teachers > 0 ? `${statsData.teachers} Registered` : 'Pending Allocation'}</span>
           </div>
         </motion.div>
 
@@ -516,7 +581,7 @@ const AnalyticsDashboard = () => {
           </div>
         </motion.div>
 
-        {/* Chart 2: Student Demographics & Electives (4 Cols) */}
+        {/* Chart 2: Commerce 4 A/L Subjects Breakdown (4 Cols) */}
         <motion.div 
           variants={itemVariants}
           className="lg:col-span-4 bg-white p-6 sm:p-7 rounded-3xl shadow-sm border border-slate-200/90 flex flex-col justify-between"
@@ -524,17 +589,17 @@ const AnalyticsDashboard = () => {
           <div>
             <div className="flex items-center space-x-2 mb-1">
               <div className="w-2.5 h-2.5 rounded-full bg-teal-500" />
-              <h2 className="text-base font-black text-slate-900">Student Stream Demographics</h2>
+              <h2 className="text-base font-black text-slate-900">Commerce A/L Subjects Breakdown</h2>
             </div>
             <p className="text-xs font-medium text-slate-500 mb-4">
-              Elective distribution: Economics vs ICT & Gender Split.
+              Individual candidate evaluation across 4 Commerce subjects.
             </p>
 
             <div className="h-[200px] w-full flex items-center justify-center relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={studentElectives}
+                    data={subjectChartData}
                     cx="50%"
                     cy="50%"
                     innerRadius={55}
@@ -542,7 +607,7 @@ const AnalyticsDashboard = () => {
                     paddingAngle={4}
                     dataKey="value"
                   >
-                    {studentElectives.map((entry, index) => (
+                    {subjectChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -556,25 +621,29 @@ const AnalyticsDashboard = () => {
             </div>
           </div>
 
-          <div className="space-y-2.5 pt-3 border-t border-slate-100">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-blue-600" />
-                <span>Accounting + BS + Economics</span>
-              </span>
-              <span className="font-black text-slate-900">{Math.round(statsData.students * 0.78).toLocaleString()}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-cyan-500" />
-                <span>Accounting + BS + ICT</span>
-              </span>
-              <span className="font-black text-slate-900">{Math.round(statsData.students * 0.22).toLocaleString()}</span>
-            </div>
-            <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs font-bold text-slate-600 mt-2">
-              <span>👩 Female: <strong>{statsData.girls.toLocaleString()}</strong></span>
-              <span>👨 Male: <strong>{statsData.boys.toLocaleString()}</strong></span>
-            </div>
+          <div className="space-y-2 pt-3 border-t border-slate-100">
+            {fourSubjects.map(sub => (
+              <div key={sub.key} className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: sub.color }} />
+                  <span>{sub.name} <span className="text-[10px] text-slate-400 font-normal">({sub.siName})</span></span>
+                </span>
+                <span className="font-black text-slate-900">
+                  {sub.value > 0 ? `${sub.value.toLocaleString()} candidates` : '0'}
+                </span>
+              </div>
+            ))}
+            {(() => {
+              const total = statsData.girls + statsData.boys;
+              const fPct = total > 0 ? Math.round((statsData.girls / total) * 100) : 0;
+              const mPct = total > 0 ? Math.round((statsData.boys / total) * 100) : 0;
+              return (
+                <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs font-bold text-slate-600 mt-2">
+                  <span>👩 Female: <strong>{statsData.girls.toLocaleString()} ({fPct}%)</strong></span>
+                  <span>👨 Male: <strong>{statsData.boys.toLocaleString()} ({mPct}%)</strong></span>
+                </div>
+              );
+            })()}
           </div>
         </motion.div>
 
@@ -604,45 +673,51 @@ const AnalyticsDashboard = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Cohort 1: Grade 12 */}
+              {/* Cohort 1: Latest Year */}
               <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50/80 to-indigo-50/40 border border-blue-200/80 space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-black uppercase text-blue-800 tracking-wider">Grade 12 Cohort</span>
+                  <span className="text-xs font-black uppercase text-blue-800 tracking-wider">
+                    {statsData.cohort1Year || statsData.activeYear || 2027} A/L Cohort
+                  </span>
                   <span className="text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-md">
-                    {statsData.activeYear ? `${statsData.activeYear} A/L` : 'Grade 12'}
+                    Active Candidate Batch
                   </span>
                 </div>
                 <div>
-                  <span className="text-2xl font-black text-slate-900">{statsData.grade12Students || 0}</span>
+                  <span className="text-2xl font-black text-slate-900">{statsData.cohort1Count ?? statsData.grade12Students ?? 0}</span>
                   <span className="text-xs font-bold text-slate-500 ml-1.5">Enrolled Candidates</span>
                 </div>
                 <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                  Active in Term 1 evaluations & Modular Unit tests across Accounting, Business Studies, Economics, and ICT.
+                  Active in Term evaluations & Modular Unit tests across Accounting, Business Studies, Economics, and ICT.
                 </p>
                 <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between text-[11px] font-bold text-blue-900">
-                  <span>Unit Tests: <strong>Active</strong></span>
-                  <span>Batch Status: <strong>On Track</strong></span>
+                  <span>Evaluation Status: <strong>In Progress</strong></span>
+                  <span>A/L Year: <strong>{statsData.cohort1Year || statsData.activeYear || 2027}</strong></span>
                 </div>
               </div>
 
-              {/* Cohort 2: Grade 13 */}
+              {/* Cohort 2: Previous Year */}
               <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/80 to-orange-50/40 border border-amber-200/80 space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-black uppercase text-amber-800 tracking-wider">Grade 13 Cohort</span>
+                  <span className="text-xs font-black uppercase text-amber-800 tracking-wider">
+                    {statsData.cohort2Count > 0 ? `${statsData.cohort2Year} A/L Cohort` : 'Secondary Cohort'}
+                  </span>
                   <span className="text-[10px] font-black bg-amber-500 text-slate-950 px-2 py-0.5 rounded-md">
-                    {statsData.activeYear ? `${statsData.activeYear - 1} A/L` : 'Grade 13'}
+                    {statsData.cohort2Count > 0 ? 'Senior Candidate Batch' : 'No Enrolled Batch'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-2xl font-black text-slate-900">{statsData.grade13Students || 0}</span>
+                  <span className="text-2xl font-black text-slate-900">{statsData.cohort2Count ?? 0}</span>
                   <span className="text-xs font-bold text-slate-500 ml-1.5">Enrolled Candidates</span>
                 </div>
                 <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                  Final year revision, Provincial trial examinations, and National benchmark preparation.
+                  {statsData.cohort2Count > 0 
+                    ? 'Final year revision, Provincial trial examinations, and National benchmark preparation.'
+                    : 'Currently no secondary senior candidate batch enrolled in this academic cycle.'}
                 </p>
                 <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between text-[11px] font-bold text-amber-900">
-                  <span>Pass Target: <strong>100%</strong></span>
-                  <span>Trial Phase: <strong>Upcoming</strong></span>
+                  <span>Enrolled: <strong>{statsData.cohort2Count > 0 ? 'Active' : 'None'}</strong></span>
+                  <span>A/L Year: <strong>{statsData.cohort2Count > 0 ? statsData.cohort2Year : 'N/A'}</strong></span>
                 </div>
               </div>
             </div>
@@ -848,10 +923,10 @@ const AnalyticsDashboard = () => {
 
             <div className="mt-4 pt-4 border-t border-slate-100 text-center">
               <Link
-                to="/rankings?exam=term&year=2027"
+                to={`/rankings?exam=term${statsData.cohort1Year || statsData.activeYear ? `&year=${statsData.cohort1Year || statsData.activeYear}` : ''}`}
                 className="inline-flex items-center space-x-1.5 text-xs font-black text-blue-600 hover:text-blue-700"
               >
-                <span>Explore 2027 Active Student Rankings</span>
+                <span>Explore {statsData.cohort1Year || statsData.activeYear || ''} Active Student Rankings</span>
                 <ArrowUpRight size={14} />
               </Link>
             </div>
@@ -877,7 +952,7 @@ const AnalyticsDashboard = () => {
             </div>
             <h3 className="text-sm font-black text-slate-900 mb-1 group-hover:text-blue-700">Enter Term Test Marks</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Upload Excel sheets or enter marks directly for 2027 & 2026 batches.
+              Upload Excel sheets or enter marks directly for active candidate cohorts.
             </p>
           </Link>
 
@@ -890,7 +965,7 @@ const AnalyticsDashboard = () => {
             </div>
             <h3 className="text-sm font-black text-slate-900 mb-1 group-hover:text-purple-700">Student Census Records</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Update Grade 12 & 13 boy/girl counts across schools and divisions.
+              Inspect candidate cohorts and boy/girl demographics across schools and divisions.
             </p>
           </Link>
 

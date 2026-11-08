@@ -85,7 +85,7 @@ const ContentManagement = () => {
   const fetchLiveStats = async () => {
     setLoadingLiveStats(true);
     try {
-      const res = await fetch('http://localhost:8080/api/public/statistics/overview');
+      const res = await fetch('/api/public/statistics/overview');
       const data = await res.json();
       if (data && data.provincial) {
         setLiveStats({
@@ -114,7 +114,7 @@ const ContentManagement = () => {
   const fetchResources = async () => {
     try {
       const token = currentUser?.token || currentUser?.accessToken;
-      const res = await fetch('http://localhost:8080/api/resources/list', {
+      const res = await fetch('/api/resources/list', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -128,7 +128,7 @@ const ContentManagement = () => {
 
   const fetchSubjects = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/public/subjects');
+      const res = await fetch('/api/public/subjects');
       const data = await res.json();
       setSubjects(data);
       if (data.length > 0) {
@@ -142,7 +142,7 @@ const ContentManagement = () => {
   const fetchNews = async () => {
     try {
       const token = currentUser?.token || currentUser?.accessToken;
-      const res = await fetch('http://localhost:8080/api/cms/news', {
+      const res = await fetch('/api/cms/news', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -157,7 +157,7 @@ const ContentManagement = () => {
   const fetchEvents = async () => {
     try {
       const token = currentUser?.token || currentUser?.accessToken;
-      const res = await fetch('http://localhost:8080/api/cms/events', {
+      const res = await fetch('/api/cms/events', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -174,7 +174,7 @@ const ContentManagement = () => {
     setLoading(true);
     try {
       const token = currentUser?.token || currentUser?.accessToken;
-      const url = newsFormData.id ? `http://localhost:8080/api/cms/news/${newsFormData.id}` : 'http://localhost:8080/api/cms/news';
+      const url = newsFormData.id ? `/api/cms/news/${newsFormData.id}` : '/api/cms/news';
       const method = newsFormData.id ? 'PUT' : 'POST';
       
       const res = await fetch(url, {
@@ -222,7 +222,7 @@ const ContentManagement = () => {
       }
       formData.append('examLevel', eventFormData.examLevel || 'GENERAL');
 
-      const url = eventFormData.id ? `http://localhost:8080/api/cms/events/${eventFormData.id}` : 'http://localhost:8080/api/cms/events';
+      const url = eventFormData.id ? `/api/cms/events/${eventFormData.id}` : '/api/cms/events';
       const method = eventFormData.id ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -253,7 +253,7 @@ const ContentManagement = () => {
     try {
       const token = currentUser?.token || currentUser?.accessToken;
       
-      const res = await fetch(`http://localhost:8080/api/cms/news/${id}`, {
+      const res = await fetch(`/api/cms/news/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -283,7 +283,7 @@ const ContentManagement = () => {
     try {
       const token = currentUser?.token || currentUser?.accessToken;
       
-      const res = await fetch(`http://localhost:8080/api/cms/events/${id}`, {
+      const res = await fetch(`/api/cms/events/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -335,7 +335,7 @@ const ContentManagement = () => {
     try {
       const token = currentUser?.token || currentUser?.accessToken;
       
-      const res = await fetch('http://localhost:8080/api/cms/media', {
+      const res = await fetch('/api/cms/media', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -384,7 +384,7 @@ const ContentManagement = () => {
     try {
       const token = currentUser?.token || currentUser?.accessToken;
       
-      const res = await fetch('http://localhost:8080/api/resources/upload', {
+      const res = await fetch('/api/resources/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

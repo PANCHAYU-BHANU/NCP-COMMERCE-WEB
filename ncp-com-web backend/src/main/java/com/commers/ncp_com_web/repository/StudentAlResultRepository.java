@@ -13,12 +13,16 @@ public interface StudentAlResultRepository extends JpaRepository<StudentAlResult
 
     List<StudentAlResult> findByStudentId(Long studentId);
     List<StudentAlResult> findByStudentIdAndYear(Long studentId, Integer year);
+    java.util.Optional<StudentAlResult> findByStudentIdAndYearAndSubjectId(Long studentId, Integer year, Long subjectId);
 
     @Query("SELECT DISTINCT r.year FROM StudentAlResult r WHERE r.year IS NOT NULL ORDER BY r.year DESC")
     List<Integer> findDistinctYears();
 
     @Query("SELECT MAX(r.year) FROM StudentAlResult r")
     Integer findMaxYear();
+
+    @Query("SELECT DISTINCT r.student.id FROM StudentAlResult r WHERE r.student.id IN :studentIds AND r.subject.id = :subjectId")
+    List<Long> findDistinctStudentIdsBySubjectId(@Param("studentIds") List<Long> studentIds, @Param("subjectId") Long subjectId);
 
     @Query("SELECT DISTINCT r.student.id FROM StudentAlResult r WHERE r.year <= :year")
     List<Long> findStudentIdsWithAlResultsUpToYear(@Param("year") Integer year);

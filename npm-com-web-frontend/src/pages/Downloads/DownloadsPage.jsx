@@ -36,8 +36,8 @@ const DownloadsPage = () => {
   const fetchData = async () => {
     try {
       const [resResources, resSubjects] = await Promise.all([
-        fetch('http://localhost:8080/api/public/resources'),
-        fetch('http://localhost:8080/api/public/subjects')
+        fetch('/api/public/resources'),
+        fetch('/api/public/subjects')
       ]);
       const dataResources = await resResources.json();
       const dataSubjects = await resSubjects.json();

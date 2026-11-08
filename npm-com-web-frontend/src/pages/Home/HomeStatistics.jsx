@@ -76,7 +76,7 @@ const HomeStatistics = () => {
   });
 
   React.useEffect(() => {
-    fetch('http://localhost:8080/api/public/statistics/overview')
+    fetch('/api/public/statistics/overview')
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(err => console.error("Error fetching stats:", err));

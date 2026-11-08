@@ -30,12 +30,19 @@ const ResultsExplorer = () => {
   const initialZone = searchParams.get('zone') || searchParams.get('zoneId') || 'all';
   const initialDivision = searchParams.get('division') || searchParams.get('divisionId') || 'all';
   const initialSchool = searchParams.get('school') || searchParams.get('schoolId') || 'all';
-  const initialYear = searchParams.get('year') || '2025';
+  const paramType = searchParams.get('type') || 'term';
+
+  // Evaluation & Assessment Type State
+  const [evalType, setEvalType] = useState(paramType);
+  const [termOrUnit, setTermOrUnit] = useState('1');
+  const [availableYears, setAvailableYears] = useState([]);
+  const [unitDefinitions, setUnitDefinitions] = useState([]);
+  const [yearlyProgression, setYearlyProgression] = useState([]);
 
   // Filters State
   const [filters, setFilters] = useState({
     subjectId: 'all',
-    year: initialYear,
+    year: 'all',
     districtId: initialDistrict,
     zoneId: initialZone,
     divisionId: initialDivision,
@@ -59,25 +66,25 @@ const ResultsExplorer = () => {
   const [selectedCompDivision, setSelectedCompDivision] = useState('all');
   const [regionalBreakdownType, setRegionalBreakdownType] = useState('zones'); // 'zones' | 'divisions'
 
-  const examType = searchParams.get('type') || 'al';
+  const examType = evalType;
 
   // Fetch Reference Data on mount
   useEffect(() => {
     const fetchRefData = async () => {
       try {
-        const distRes = await fetch('http://localhost:8080/api/public/districts');
+        const distRes = await fetch('/api/public/districts');
         if(distRes.ok) setDistricts(await distRes.json());
         
         // Fetch all zones in province for comprehensive zonal comparisons
-        const allZonesRes = await fetch('http://localhost:8080/api/public/zones');
+        const allZonesRes = await fetch('/api/public/zones');
         if(allZonesRes.ok) setAllZonesList(await allZonesRes.json());
 
         // Fetch all divisions in province for division comparisons
-        const allDivsRes = await fetch('http://localhost:8080/api/public/divisions');
+        const allDivsRes = await fetch('/api/public/divisions');
         if(allDivsRes.ok) setAllDivisionsList(await allDivsRes.json());
 
         // Fetch National Benchmark Statistics
-        const natRes = await fetch('http://localhost:8080/api/public/national-statistics');
+        const natRes = await fetch('/api/public/national-statistics');
         if (natRes.ok) {
           const natData = await natRes.json();
           if (Array.isArray(natData) && natData.length > 0) setNationalStats(natData);
@@ -90,7 +97,7 @@ const ResultsExplorer = () => {
           ]);
         } else {
           const fetchType = (examType === 'unit' || examType === 'term') ? 'AL' : examType.toUpperCase();
-          const subjRes = await fetch(`http://localhost:8080/api/public/subjects?type=${fetchType}`);
+          const subjRes = await fetch(`/api/public/subjects?type=${fetchType}`);
           if(subjRes.ok) {
             const data = await subjRes.json();
             setSubjects((Array.isArray(data) ? data : []).filter(s => !s.name?.toLowerCase().includes('statistics')));
@@ -125,7 +132,7 @@ const ResultsExplorer = () => {
   useEffect(() => {
     const fetchCascade = async () => {
       if (filters.districtId !== 'all') {
-        const res = await fetch(`http://localhost:8080/api/public/zones?districtId=${filters.districtId}`);
+        const res = await fetch(`/api/public/zones?districtId=${filters.districtId}`);
         if(res.ok) setZones(await res.json());
       } else { setZones([]); setDivisions([]); setSchools([]); }
     };
@@ -145,7 +152,7 @@ const ResultsExplorer = () => {
   useEffect(() => {
     const fetchCascade = async () => {
       if (filters.zoneId !== 'all') {
-        const res = await fetch(`http://localhost:8080/api/public/divisions?zoneId=${filters.zoneId}`);
+        const res = await fetch(`/api/public/divisions?zoneId=${filters.zoneId}`);
         if(res.ok) setDivisions(await res.json());
       } else { setDivisions([]); setSchools([]); }
     };
@@ -165,7 +172,7 @@ const ResultsExplorer = () => {
   useEffect(() => {
     const fetchCascade = async () => {
       if (filters.divisionId !== 'all') {
-        const res = await fetch(`http://localhost:8080/api/public/schools?divisionId=${filters.divisionId}`);
+        const res = await fetch(`/api/public/schools?divisionId=${filters.divisionId}`);
         if(res.ok) setSchools(await res.json());
       } else { setSchools([]); }
     };
@@ -182,12 +189,58 @@ const ResultsExplorer = () => {
     }
   }, [schools]);
 
-  // Fetch Results Data based on filters
+  // 1. Fetch available years dynamically from DB for active evaluation type
+  useEffect(() => {
+    fetch(`/api/public/evaluation-years?evalType=${evalType}`)
+      .then(res => res.json())
+      .then(years => {
+        if (Array.isArray(years)) {
+          setAvailableYears(years);
+          if (years.length > 0) {
+            setFilters(prev => ({
+              ...prev,
+              year: years.includes(parseInt(prev.year, 10)) ? prev.year : String(years[0])
+            }));
+          } else {
+            setFilters(prev => ({ ...prev, year: 'all' }));
+          }
+        }
+      })
+      .catch(console.error);
+
+    if (evalType === 'unit') {
+      fetch('/api/public/unit-definitions')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setUnitDefinitions(data);
+        })
+        .catch(console.error);
+    }
+  }, [evalType]);
+
+  // 2. Fetch real 5-year comparison progression from DB
+  useEffect(() => {
+    fetch('/api/public/statistics/yearly-comparison?level=provincial&limit=5')
+      .then(res => res.json())
+      .then(res => {
+        if (res && res.data && Array.isArray(res.data)) {
+          setYearlyProgression(res.data);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  // 3. Fetch Evaluation Results Data based on filters
   useEffect(() => {
     const fetchResults = async () => {
       setLoading(true);
       try {
-        let url = new URL('http://localhost:8080/api/public/al-results');
+        let url = new URL('/api/public/evaluation-results', window.location.origin);
+        const activeEvalType = viewMode === 'variance' ? 'al' : evalType;
+        url.searchParams.append('evalType', activeEvalType);
+        if (activeEvalType === 'term' || activeEvalType === 'unit') {
+          url.searchParams.append('termOrUnit', termOrUnit);
+        }
         if (filters.schoolId !== 'all') url.searchParams.append('schoolId', filters.schoolId);
         else if (filters.divisionId !== 'all') url.searchParams.append('divisionId', filters.divisionId);
         else if (filters.zoneId !== 'all') url.searchParams.append('zoneId', filters.zoneId);
@@ -214,7 +267,7 @@ const ResultsExplorer = () => {
       }
     };
     fetchResults();
-  }, [filters]);
+  }, [filters, evalType, termOrUnit, viewMode]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -254,23 +307,40 @@ const ResultsExplorer = () => {
     acc.F = (acc.F || 0) + f;
     acc.total = (acc.total || 0) + sat;
 
-    const g = curr.gender ? String(curr.gender).toUpperCase() : null;
-    if (g === 'MALE') {
-      acc.male.A += a;
-      acc.male.B += b;
-      acc.male.C += c;
-      acc.male.S += s;
-      acc.male.F += f;
-      acc.male.total += sat;
+    if (curr.maleTotal !== undefined || curr.femaleTotal !== undefined) {
       acc.hasGender = true;
-    } else if (g === 'FEMALE') {
-      acc.female.A += a;
-      acc.female.B += b;
-      acc.female.C += c;
-      acc.female.S += s;
-      acc.female.F += f;
-      acc.female.total += sat;
-      acc.hasGender = true;
+      acc.male.A += curr.maleA || 0;
+      acc.male.B += curr.maleB || 0;
+      acc.male.C += curr.maleC || 0;
+      acc.male.S += curr.maleS || 0;
+      acc.male.F += curr.maleF || 0;
+      acc.male.total += curr.maleTotal || 0;
+
+      acc.female.A += curr.femaleA || 0;
+      acc.female.B += curr.femaleB || 0;
+      acc.female.C += curr.femaleC || 0;
+      acc.female.S += curr.femaleS || 0;
+      acc.female.F += curr.femaleF || 0;
+      acc.female.total += curr.femaleTotal || 0;
+    } else {
+      const g = curr.gender ? String(curr.gender).toUpperCase() : null;
+      if (g === 'MALE') {
+        acc.male.A += a;
+        acc.male.B += b;
+        acc.male.C += c;
+        acc.male.S += s;
+        acc.male.F += f;
+        acc.male.total += sat;
+        acc.hasGender = true;
+      } else if (g === 'FEMALE') {
+        acc.female.A += a;
+        acc.female.B += b;
+        acc.female.C += c;
+        acc.female.S += s;
+        acc.female.F += f;
+        acc.female.total += sat;
+        acc.hasGender = true;
+      }
     }
 
     return acc;
@@ -296,28 +366,9 @@ const ResultsExplorer = () => {
     ? Math.min(100.0, Number(((totalPassGrades / effectiveSat) * 100).toFixed(1)))
     : 0;
 
-  // Gender Analytics Calculation
-  let maleStats = aggregatedResults.male;
-  let femaleStats = aggregatedResults.female;
-  if (!aggregatedResults.hasGender || (maleStats.total === 0 && femaleStats.total === 0)) {
-    // Statistically verified NCP commerce gender ratio
-    femaleStats = {
-      total: Math.round(effectiveSat * 0.58),
-      A: Math.round(aggregatedResults.A * 0.62),
-      B: Math.round(aggregatedResults.B * 0.59),
-      C: Math.round(aggregatedResults.C * 0.58),
-      S: Math.round(aggregatedResults.S * 0.55),
-      F: Math.round(aggregatedResults.F * 0.52),
-    };
-    maleStats = {
-      total: Math.max(0, effectiveSat - femaleStats.total),
-      A: Math.max(0, aggregatedResults.A - femaleStats.A),
-      B: Math.max(0, aggregatedResults.B - femaleStats.B),
-      C: Math.max(0, aggregatedResults.C - femaleStats.C),
-      S: Math.max(0, aggregatedResults.S - femaleStats.S),
-      F: Math.max(0, aggregatedResults.F - femaleStats.F),
-    };
-  }
+  // Real Gender Analytics (zero mock fallback)
+  const maleStats = aggregatedResults.male;
+  const femaleStats = aggregatedResults.female;
 
   const maleTotalGrades = (maleStats.A + maleStats.B + maleStats.C + maleStats.S + maleStats.F) || maleStats.total;
   const malePass = (maleStats.A + maleStats.B + maleStats.C + maleStats.S);
@@ -342,57 +393,43 @@ const ResultsExplorer = () => {
 
   // ── 3. PERFORMANCE VARIANCE & COMPARATIVE ANALYSIS ──
   const fiveYearTrendData = useMemo(() => {
-    // 1. Sri Lanka National Pass Rates per year
-    const defaultNatMap = {
-      2021: 72.4,
-      2022: 74.8,
-      2023: 76.2,
-      2024: 78.5,
-      2025: 81.2,
-    };
-    const natMap = { ...defaultNatMap };
+    // 1. Sri Lanka National Pass Rates map per year from DB
+    const natMap = {};
     nationalStats.forEach(ns => {
       if (ns.year && ns.passRate) natMap[ns.year] = ns.passRate;
     });
 
-    // 2. NCP Provincial pass rates per year
-    const currentProvRate = passRate > 0 ? passRate : 86.0;
-    const defaultProvMap = {
-      2021: 69.8,
-      2022: 76.5,
-      2023: 73.1,
-      2024: 82.4,
-      2025: currentProvRate,
-    };
-
-    // 3. Determine scope & labels
+    // 2. Determine scope & labels
     let entityTitle = lang === 'si' ? 'උතුරු මැද පළාත' : 'North Central Province';
     let benchmarkTitle = lang === 'si' ? 'ජාතික සාමාන්‍යය' : 'National Average';
 
     if (comparisonScope === 'ZONE_VS_PROVINCE') {
-      const activeZoneId = selectedCompZone !== 'all' ? selectedCompZone : (filters.zoneId !== 'all' ? filters.zoneId : '1');
+      const activeZoneId = selectedCompZone !== 'all' ? selectedCompZone : (filters.zoneId !== 'all' ? filters.zoneId : (allZonesList[0]?.id || '1'));
       const activeZoneObj = (allZonesList.length > 0 ? allZonesList : zones).find(z => String(z.id) === String(activeZoneId));
-      const zName = activeZoneObj ? activeZoneObj.name : 'Anuradhapura Central';
+      const zName = activeZoneObj ? activeZoneObj.name : 'Zone';
       entityTitle = lang === 'si' ? `${zName} කලාපය` : `${zName} Zone`;
       benchmarkTitle = lang === 'si' ? 'පළාත් සාමාන්‍යය' : 'Provincial Average';
 
-      let zoneYearDiffs = [0, 0, 0, 0, 0];
-
-      const years = [2021, 2022, 2023, 2024, 2025];
-      return years.map((yr, idx) => {
-        const bRate = defaultProvMap[yr] || 78.0;
-        const diffOffset = zoneYearDiffs[idx] !== undefined ? zoneYearDiffs[idx] : 0;
-        const eRate = Math.min(100.0, Math.max(10.0, Number((bRate + diffOffset).toFixed(1))));
-        const diff = Number((eRate - bRate).toFixed(1));
-        return {
-          year: String(yr),
-          entityPassRate: eRate,
-          benchmarkPassRate: bRate,
-          variance: diff,
-          entityLabel: entityTitle,
-          benchmarkLabel: benchmarkTitle,
-        };
+      // Find results for this zone
+      const zResults = resultsData.filter(r => r.school?.division?.zone?.id === activeZoneId || (r.school?.division?.zone?.name && r.school.division.zone.name.toLowerCase() === zName.toLowerCase()));
+      let totalSat = 0, totalPass = 0;
+      zResults.forEach(r => {
+        totalSat += (r.totalSat || (r.aCount||0) + (r.bCount||0) + (r.cCount||0) + (r.sCount||0) + (r.fCount||0));
+        totalPass += ((r.aCount||0) + (r.bCount||0) + (r.cCount||0) + (r.sCount||0));
       });
+      const zRate = totalSat > 0 ? Number(((totalPass / totalSat) * 100).toFixed(1)) : passRate;
+      const bRate = passRate;
+      const yr = filters.year !== 'all' ? String(filters.year) : (availableYears[0] ? String(availableYears[0]) : '2027');
+
+      if (totalSat === 0 && passRate === 0) return [];
+      return [{
+        year: yr,
+        entityPassRate: zRate,
+        benchmarkPassRate: bRate,
+        variance: Number((zRate - bRate).toFixed(1)),
+        entityLabel: entityTitle,
+        benchmarkLabel: benchmarkTitle,
+      }];
 
     } else if (comparisonScope === 'DIVISION_VS_PROVINCE') {
       const activeDivObj = (allDivisionsList.length > 0 ? allDivisionsList : divisions).find(d => String(d.id) === String(selectedCompDivision)) ||
@@ -401,46 +438,68 @@ const ResultsExplorer = () => {
       entityTitle = lang === 'si' ? `${dName} කොට්ඨාසය` : `${dName} Division`;
       benchmarkTitle = lang === 'si' ? 'පළාත් සාමාන්‍යය' : 'Provincial Average';
 
-      let divDiffs = [0, 0, 0, 0, 0];
-
-      const years = [2021, 2022, 2023, 2024, 2025];
-      return years.map((yr, idx) => {
-        const bRate = defaultProvMap[yr] || 78.0;
-        const diffOffset = divDiffs[idx] !== undefined ? divDiffs[idx] : 0;
-        const eRate = Math.min(100.0, Math.max(10.0, Number((bRate + diffOffset).toFixed(1))));
-        const diff = Number((eRate - bRate).toFixed(1));
-        return {
-          year: String(yr),
-          entityPassRate: eRate,
-          benchmarkPassRate: bRate,
-          variance: diff,
-          entityLabel: entityTitle,
-          benchmarkLabel: benchmarkTitle,
-        };
+      const dResults = resultsData.filter(r => r.school?.division?.id === activeDivObj?.id || (r.school?.division?.name && r.school.division.name.toLowerCase() === dName.toLowerCase()));
+      let totalSat = 0, totalPass = 0;
+      dResults.forEach(r => {
+        totalSat += (r.totalSat || (r.aCount||0) + (r.bCount||0) + (r.cCount||0) + (r.sCount||0) + (r.fCount||0));
+        totalPass += ((r.aCount||0) + (r.bCount||0) + (r.cCount||0) + (r.sCount||0));
       });
-    }
+      const dRate = totalSat > 0 ? Number(((totalPass / totalSat) * 100).toFixed(1)) : passRate;
+      const bRate = passRate;
+      const yr = filters.year !== 'all' ? String(filters.year) : (availableYears[0] ? String(availableYears[0]) : '2027');
 
-    // Default: Province vs National
-    const years = [2021, 2022, 2023, 2024, 2025];
-    return years.map(yr => {
-      const bRate = natMap[yr] || defaultNatMap[yr] || 75.0;
-      const eRate = defaultProvMap[yr] || 78.0;
-      const diff = Number((eRate - bRate).toFixed(1));
-
-      return {
-        year: String(yr),
-        entityPassRate: eRate,
+      if (totalSat === 0 && passRate === 0) return [];
+      return [{
+        year: yr,
+        entityPassRate: dRate,
         benchmarkPassRate: bRate,
-        variance: diff,
+        variance: Number((dRate - bRate).toFixed(1)),
         entityLabel: entityTitle,
         benchmarkLabel: benchmarkTitle,
-      };
-    });
-  }, [nationalStats, passRate, comparisonScope, selectedCompZone, selectedCompDivision, allZonesList, allDivisionsList, zones, divisions]);
+      }];
+    }
+
+    // Default: Province vs National Standard
+    if (yearlyProgression.length > 0) {
+      const valid = yearlyProgression.filter(yp => natMap[yp.year] != null);
+      if (valid.length > 0) {
+        return valid.map(yp => {
+          const yr = yp.year;
+          const eRate = yp.passRate != null ? yp.passRate : 0;
+          const bRate = natMap[yr];
+          return {
+            year: String(yr),
+            entityPassRate: eRate,
+            benchmarkPassRate: bRate,
+            variance: Number((eRate - bRate).toFixed(1)),
+            entityLabel: entityTitle,
+            benchmarkLabel: benchmarkTitle
+          };
+        });
+      }
+    }
+
+    if (passRate > 0) {
+      const activeYr = filters.year !== 'all' ? filters.year : (availableYears[0] ? availableYears[0] : null);
+      if (activeYr && natMap[activeYr] != null) {
+        const bRate = natMap[activeYr];
+        return [{
+          year: String(activeYr),
+          entityPassRate: passRate,
+          benchmarkPassRate: bRate,
+          variance: Number((passRate - bRate).toFixed(1)),
+          entityLabel: entityTitle,
+          benchmarkLabel: benchmarkTitle
+        }];
+      }
+    }
+
+    return [];
+  }, [nationalStats, yearlyProgression, passRate, comparisonScope, selectedCompZone, selectedCompDivision, allZonesList, allDivisionsList, zones, divisions, resultsData, filters.year, availableYears]);
 
   const varianceMetrics = useMemo(() => {
     if (!fiveYearTrendData || fiveYearTrendData.length === 0) {
-      return { meanVariance: 0, peakYear: '2025', peakVal: 0, currentDiff: 0, momentum: 0 };
+      return { meanVariance: 0, peakYear: 'Active', peakVal: 0, currentDiff: 0, momentum: 0, latestYear: 'Active' };
     }
     const sum = fiveYearTrendData.reduce((acc, d) => acc + d.variance, 0);
     const meanVariance = Number((sum / fiveYearTrendData.length).toFixed(2));
@@ -453,118 +512,87 @@ const ResultsExplorer = () => {
     const currentDiff = fiveYearTrendData[fiveYearTrendData.length - 1].variance;
     const firstDiff = fiveYearTrendData[0].variance;
     const momentum = Number((currentDiff - firstDiff).toFixed(1));
+    const latestYear = fiveYearTrendData[fiveYearTrendData.length - 1].year;
 
     return {
       meanVariance,
       peakYear: peak.year,
       peakVal: peak.variance,
       currentDiff,
-      momentum
+      momentum,
+      latestYear
     };
   }, [fiveYearTrendData]);
 
-  // Zone Variance relative to Provincial Average (All 11 Zones)
+  // Zone Variance relative to Provincial Average (from REAL database zones)
   const zoneBreakdownData = useMemo(() => {
-    const provBase = passRate > 0 ? passRate : 86.0;
-    const zoneArchetypes = [
-      { name: 'Anuradhapura Central', offset: +3.4 },
-      { name: 'Hingurakgoda', offset: +2.2 },
-      { name: 'Medirigiriya', offset: +0.8 },
-      { name: 'Polonnaruwa', offset: -0.9 },
-      { name: 'Tambuttegama', offset: -1.5 },
-      { name: 'Kekirawa', offset: -3.0 },
-      { name: 'Galenbindunuwewa', offset: -4.1 },
-      { name: 'Welikanda', offset: -3.6 },
-      { name: 'Dimbulagala', offset: -5.4 },
-      { name: 'Horowpothana', offset: -6.5 },
-      { name: 'Kebithigollewa', offset: -7.8 },
-    ];
+    const list = allZonesList.length > 0 ? allZonesList : zones;
+    if (list.length === 0) return [];
+    const provBase = passRate > 0 ? passRate : 0;
 
-    return zoneArchetypes.map(z => {
-      const zPassRate = Math.min(100.0, Math.max(10.0, Number((provBase + z.offset).toFixed(1))));
+    return list.map(z => {
+      const zResults = resultsData.filter(r => r.school?.division?.zone?.id === z.id || (r.school?.division?.zone?.name && r.school.division.zone.name.toLowerCase() === z.name.toLowerCase()));
+      let totalSat = 0, totalPass = 0;
+      zResults.forEach(r => {
+        const a = r.aCount || r.acount || 0;
+        const b = r.bCount || r.bcount || 0;
+        const c = r.cCount || r.ccount || 0;
+        const s = r.sCount || r.scount || 0;
+        const f = r.fCount || r.fcount || 0;
+        totalSat += (a + b + c + s + f);
+        totalPass += (a + b + c + s);
+      });
+      const zPassRate = totalSat > 0 ? Number(((totalPass / totalSat) * 100).toFixed(1)) : provBase;
       const variance = Number((zPassRate - provBase).toFixed(1));
       return {
         name: z.name,
         passRate: zPassRate,
         benchmark: provBase,
         variance: variance,
+        satCount: totalSat
       };
     }).sort((a, b) => b.variance - a.variance);
-  }, [passRate]);
+  }, [allZonesList, zones, resultsData, passRate]);
 
-  // Division Variance relative to Provincial Average (All Divisions)
+  // Division Variance relative to Provincial Average (from REAL database divisions)
   const divisionBreakdownData = useMemo(() => {
-    const provBase = passRate > 0 ? passRate : 86.0;
-    const divisionArchetypes = [
-      { name: 'Anuradhapura Central', offset: +3.8 },
-      { name: 'Nagenahira Nuwaragam Palatha', offset: +2.9 },
-      { name: 'Nuwaragam Palatha Central', offset: +2.4 },
-      { name: 'Hingurakgoda', offset: +2.1 },
-      { name: 'Medirigiriya', offset: +1.2 },
-      { name: 'Thamankaduwa', offset: +0.6 },
-      { name: 'Polonnaruwa', offset: -0.7 },
-      { name: 'Elahera', offset: -1.2 },
-      { name: 'Nachchaduwa', offset: -1.8 },
-      { name: 'Rajanganaya', offset: -2.3 },
-      { name: 'Galnewa', offset: -2.7 },
-      { name: 'Madawachchiya', offset: -3.1 },
-      { name: 'Welikanda', offset: -3.6 },
-      { name: 'Vilachchiya', offset: -3.9 },
-      { name: 'Palagala', offset: -4.3 },
-      { name: 'Dimbulagala', offset: -5.1 },
-      { name: 'Aralaganwila', offset: -5.8 },
-      { name: 'Rabewa', offset: -6.2 },
-      { name: 'Padaviya', offset: -6.9 },
-      { name: 'Kebithigollewa', offset: -7.6 },
-    ];
+    const list = allDivisionsList.length > 0 ? allDivisionsList : divisions;
+    if (list.length === 0) return [];
+    const provBase = passRate > 0 ? passRate : 0;
 
-    return divisionArchetypes.map(d => {
-      const dPassRate = Math.min(100.0, Math.max(10.0, Number((provBase + d.offset).toFixed(1))));
+    return list.map(d => {
+      const dResults = resultsData.filter(r => r.school?.division?.id === d.id || (r.school?.division?.name && r.school.division.name.toLowerCase() === d.name.toLowerCase()));
+      let totalSat = 0, totalPass = 0;
+      dResults.forEach(r => {
+        const a = r.aCount || r.acount || 0;
+        const b = r.bCount || r.bcount || 0;
+        const c = r.cCount || r.ccount || 0;
+        const s = r.sCount || r.scount || 0;
+        const f = r.fCount || r.fcount || 0;
+        totalSat += (a + b + c + s + f);
+        totalPass += (a + b + c + s);
+      });
+      const dPassRate = totalSat > 0 ? Number(((totalPass / totalSat) * 100).toFixed(1)) : provBase;
       const variance = Number((dPassRate - provBase).toFixed(1));
       return {
         name: d.name,
         passRate: dPassRate,
         benchmark: provBase,
         variance: variance,
+        satCount: totalSat
       };
     }).sort((a, b) => b.variance - a.variance);
-  }, [passRate]);
+  }, [allDivisionsList, divisions, resultsData, passRate]);
 
-  // Dedicated 5-Year Provincial vs National Performance Audit Table Data
+  // Real Provincial vs National Performance Audit Table Data
   const nationalComparisonTableData = useMemo(() => {
-    const currentProvRate = passRate > 0 ? passRate : 86.0;
-    const defaultProvMap = {
-      2021: 69.8,
-      2022: 76.5,
-      2023: 73.1,
-      2024: 82.4,
-      2025: currentProvRate,
-    };
-    const defaultNatMap = {
-      2021: 72.4,
-      2022: 74.8,
-      2023: 76.2,
-      2024: 78.5,
-      2025: 81.2,
-    };
-    const natMap = { ...defaultNatMap };
-    nationalStats.forEach(ns => {
-      if (ns.year && ns.passRate) natMap[ns.year] = ns.passRate;
-    });
-
-    const years = [2021, 2022, 2023, 2024, 2025];
-    return years.map(yr => {
-      const pRate = defaultProvMap[yr] || 78.0;
-      const nRate = natMap[yr] || defaultNatMap[yr] || 75.0;
-      const diff = Number((pRate - nRate).toFixed(1));
-      return {
-        year: String(yr),
-        provincePassRate: pRate,
-        nationalPassRate: nRate,
-        variance: diff,
-      };
-    });
-  }, [nationalStats, passRate]);
+    return fiveYearTrendData.map(d => ({
+      year: d.year,
+      provincePassRate: d.entityPassRate,
+      nationalPassRate: d.benchmarkPassRate,
+      variance: d.variance,
+    }));
+  }, [fiveYearTrendData]);
 
   // Custom tooltips with professional phrasing
   const CustomVarianceTooltip = ({ active, payload }) => {
@@ -714,8 +742,13 @@ const ResultsExplorer = () => {
                   Subject: {subjects.find(s => String(s.id) === String(filters.subjectId))?.name || filters.subjectId}
                 </span>
               )}
+              <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-black border border-emerald-200">
+                Benchmark: G.C.E. A/L Examination
+              </span>
               <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-black border border-amber-200">
-                Cohort: 5-Year Trend (2021 - 2025)
+                {fiveYearTrendData.length > 0 
+                  ? `Cohort: ${fiveYearTrendData.length}-Year Trend (${fiveYearTrendData[0].year}${fiveYearTrendData.length > 1 ? ` - ${fiveYearTrendData[fiveYearTrendData.length - 1].year}` : ''})`
+                  : 'Live Database Benchmarks'}
               </span>
             </div>
           ) : (
@@ -723,6 +756,9 @@ const ResultsExplorer = () => {
               <span className="flex items-center text-teal-700">
                 <Filter className="w-4 h-4 mr-1.5" />
                 Active Scope:
+              </span>
+              <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-black border border-emerald-200">
+                Evaluation: {evalType === 'term' ? `Term ${termOrUnit} Exam` : evalType === 'unit' ? `Unit ${termOrUnit} Test` : 'National A/L Benchmark'}
               </span>
               <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">
                 District: {filters.districtId === 'all' ? 'All Districts' : districts.find(d => String(d.id) === String(filters.districtId))?.name || filters.districtId}
@@ -774,6 +810,61 @@ const ResultsExplorer = () => {
               </div>
 
               <div className="space-y-5">
+                {/* 1. Evaluation / Examination Category (Only for All Students & Gender views; Variance is strictly A/L) */}
+                {viewMode !== 'variance' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                        {lang === 'si' ? 'ඇගයීම් වර්ගය' : 'Evaluation Type'}
+                      </label>
+                      <select 
+                        value={evalType} 
+                        onChange={(e) => setEvalType(e.target.value)} 
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl focus:ring-blue-500 focus:border-blue-500 block py-2.5 px-3 outline-none transition-colors"
+                      >
+                        <option value="term">📝 School Term Tests (වාර විභාග)</option>
+                        <option value="unit">📋 Modular Unit Tests (ඒකක පරීක්ෂණ)</option>
+                        <option value="al">🎓 National A/L Benchmark (උසස් පෙළ)</option>
+                      </select>
+                    </div>
+
+                    {/* Sub-selector for Term or Unit */}
+                    {evalType === 'term' && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                          {lang === 'si' ? 'පාසල් වාරය' : 'School Term'}
+                        </label>
+                        <select
+                          value={termOrUnit}
+                          onChange={(e) => setTermOrUnit(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl focus:ring-blue-500 focus:border-blue-500 block py-2.5 px-3 outline-none transition-colors"
+                        >
+                          <option value="1">Term 1 (1 වන වාරය)</option>
+                          <option value="2">Term 2 (2 වන වාරය)</option>
+                          <option value="3">Term 3 (3 වන වාරය)</option>
+                        </select>
+                      </motion.div>
+                    )}
+
+                    {evalType === 'unit' && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                          {lang === 'si' ? 'ඒකක අංකය' : 'Modular Unit'}
+                        </label>
+                        <select
+                          value={termOrUnit}
+                          onChange={(e) => setTermOrUnit(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl focus:ring-blue-500 focus:border-blue-500 block py-2.5 px-3 outline-none transition-colors"
+                        >
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(u => (
+                            <option key={u} value={String(u)}>Unit {u} ({lang === 'si' ? `${u} වන ඒකකය` : `Modular Unit ${u}`})</option>
+                          ))}
+                        </select>
+                      </motion.div>
+                    )}
+                  </>
+                )}
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Subject</label>
                   <select name="subjectId" value={filters.subjectId} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl focus:ring-blue-500 focus:border-blue-500 block py-2 px-3 outline-none transition-colors">
@@ -816,7 +907,7 @@ const ResultsExplorer = () => {
                           onChange={(e) => setSelectedCompZone(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors"
                         >
-                          <option value="all">Anuradhapura Central</option>
+                          <option value="all">{lang === 'si' ? 'සියලු කලාප (පළාත් සාමාන්‍යය)' : 'All Zones (Provincial Summary)'}</option>
                           {(allZonesList.length > 0 ? allZonesList : zones).map(z => (
                             <option key={z.id} value={z.id}>{z.name}</option>
                           ))}
@@ -834,6 +925,7 @@ const ResultsExplorer = () => {
                           onChange={(e) => setSelectedCompDivision(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors"
                         >
+                          <option value="all">{lang === 'si' ? 'සියලු කොට්ඨාස' : 'All Divisions'}</option>
                           {(allDivisionsList.length > 0 ? allDivisionsList : divisions).map(d => (
                             <option key={d.id} value={d.id}>{d.name}</option>
                           ))}
@@ -860,14 +952,14 @@ const ResultsExplorer = () => {
                   /* ── STANDARD FILTERS (for Overall & Gender views) ── */
                   <>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Exam Year</label>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                        {lang === 'si' ? 'විභාග / අධ්‍යයන වර්ෂය' : 'Exam Year'}
+                      </label>
                       <select name="year" value={filters.year} onChange={handleFilterChange} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl focus:ring-blue-500 focus:border-blue-500 block py-2 px-3 outline-none transition-colors">
-                        <option value="all">All Years</option>
-                        <option value="2025">2025</option>
-                        <option value="2024">2024</option>
-                        <option value="2023">2023</option>
-                        <option value="2022">2022</option>
-                        <option value="2021">2021</option>
+                        <option value="all">{lang === 'si' ? 'සියලු ලියාපදිංචි වර්ෂයන්' : 'All Recorded Years'}</option>
+                        {availableYears.map(yr => (
+                          <option key={yr} value={String(yr)}>{yr} A/L</option>
+                        ))}
                       </select>
                     </div>
 
@@ -1244,172 +1336,198 @@ const ResultsExplorer = () => {
                       </div>
                     </div>
 
-                    {/* 4 Executive KPI Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {/* 1. 5-Year Mean Variance */}
-                      <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-5">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                          5-Year Mean Variance
-                        </span>
-                        <div className="flex items-baseline space-x-2">
-                          <span className={`text-2xl sm:text-3xl font-black ${varianceMetrics.meanVariance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {varianceMetrics.meanVariance >= 0 ? `+${varianceMetrics.meanVariance}%` : `${varianceMetrics.meanVariance}%`}
-                          </span>
-                          <span className="text-[11px] font-bold text-slate-500">avg</span>
+                    {fiveYearTrendData.length === 0 ? (
+                      <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-8 sm:p-12 text-center my-6">
+                        <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-200">
+                          <Info className="w-8 h-8" />
                         </div>
-                        <p className="text-[11px] font-semibold text-slate-500 mt-2">
-                          {varianceMetrics.meanVariance >= 0 ? 'Consistent net outperformance' : 'Average historical deficit'}
+                        <h4 className="text-lg font-black text-slate-800 mb-2">
+                          {comparisonScope === 'PROVINCE_VS_NATIONAL' 
+                            ? (lang === 'si' ? 'ශ්‍රී ලංකා ජාතික සමත් ප්‍රතිශත (National Benchmarks) ඇතුළත් කර නොමැත' : 'No National Benchmark Statistics Recorded')
+                            : (lang === 'si' ? 'සංසන්දනය සඳහා ප්‍රමාණවත් විභාග දත්ත වාර්තා වී නොමැත' : 'No Comparative Examination Records Available')}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto leading-relaxed">
+                          {comparisonScope === 'PROVINCE_VS_NATIONAL'
+                            ? (lang === 'si'
+                              ? 'ශ්‍රී ලංකා ජාතික සමත් ප්‍රතිශත තවමත් පද්ධතියට ඇතුළත් කර නොමැති බැවින් ජාතික මට්ටම සමඟ සංසන්දනය කළ නොහැක. ඔබට වම්පස "සංසන්දන මට්ටම" යටතේ "කලාප (Zone vs Province)" හෝ "කොට්ඨාස (Division vs Province)" තෝරා පළාත් සාමාන්‍යය සමඟ සසඳා බැලිය හැක.'
+                              : 'National examination pass rates have not been entered into the system yet. You can switch the Comparison Level on the left to "Zone vs Provincial Average" or "Division vs Provincial Average" to view internal provincial benchmarks.')
+                            : (lang === 'si'
+                              ? 'තෝරාගත් පරාමිතීන් සඳහා උසස් පෙළ විභාග ප්‍රතිඵල සටහන්ව නොමැත.'
+                              : 'No G.C.E. A/L examination records found matching the selected parameters.')}
                         </p>
                       </div>
-
-                      {/* 2. Peak Variance Year */}
-                      <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-5">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                          Peak Achievement
-                        </span>
-                        <div className="flex items-baseline space-x-2">
-                          <span className="text-2xl sm:text-3xl font-black text-amber-500">
-                            {varianceMetrics.peakYear}
-                          </span>
-                          <span className="text-xs font-bold text-emerald-600">
-                            +{varianceMetrics.peakVal}%
-                          </span>
-                        </div>
-                        <p className="text-[11px] font-semibold text-slate-500 mt-2">
-                          Highest outperformance margin
-                        </p>
-                      </div>
-
-                      {/* 3. Current Cohort Delta */}
-                      <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-5">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                          Latest Margin (2025)
-                        </span>
-                        <div className="flex items-baseline space-x-2">
-                          <span className={`text-2xl sm:text-3xl font-black ${varianceMetrics.currentDiff >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {varianceMetrics.currentDiff >= 0 ? `+${varianceMetrics.currentDiff}%` : `${varianceMetrics.currentDiff}%`}
-                          </span>
-                        </div>
-                        <p className="text-[11px] font-semibold text-slate-500 mt-2">
-                          {varianceMetrics.currentDiff >= 0 ? 'Exceeding target standard' : 'Requires academic intervention'}
-                        </p>
-                      </div>
-
-                      {/* 4. 5-Year Trajectory Shift */}
-                      <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-5">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                          5-Year Momentum
-                        </span>
-                        <div className="flex items-baseline space-x-2">
-                          <span className={`text-2xl sm:text-3xl font-black ${varianceMetrics.momentum >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {varianceMetrics.momentum >= 0 ? `+${varianceMetrics.momentum}%` : `${varianceMetrics.momentum}%`}
-                          </span>
-                          <TrendingUp className={`w-4 h-4 ${varianceMetrics.momentum >= 0 ? 'text-emerald-500' : 'text-rose-500'}`} />
-                        </div>
-                        <p className="text-[11px] font-semibold text-slate-500 mt-2">
-                          {varianceMetrics.momentum >= 0 ? 'Progressive acceleration' : 'Deceleration in margin'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Chart 1: 5-Year Historical Performance & Variance Trajectory (Composed Bar + Line) */}
-                    <div className="bg-white rounded-3xl shadow-md border border-slate-100 p-6 sm:p-8">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                        <div>
-                          <div className="inline-flex items-center space-x-2 text-xs font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full mb-2">
-                            <TrendingUp className="w-3.5 h-3.5" />
-                            <span>Annual Performance Trajectory</span>
+                    ) : (
+                      <>
+                        {/* 4 Executive KPI Cards */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {/* 1. 5-Year Mean Variance */}
+                          <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-5">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                              5-Year Mean Variance
+                            </span>
+                            <div className="flex items-baseline space-x-2">
+                              <span className={`text-2xl sm:text-3xl font-black ${varianceMetrics.meanVariance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {varianceMetrics.meanVariance >= 0 ? `+${varianceMetrics.meanVariance}%` : `${varianceMetrics.meanVariance}%`}
+                              </span>
+                              <span className="text-[11px] font-bold text-slate-500">avg</span>
+                            </div>
+                            <p className="text-[11px] font-semibold text-slate-500 mt-2">
+                              {varianceMetrics.meanVariance >= 0 ? 'Consistent net outperformance' : 'Average historical deficit'}
+                            </p>
                           </div>
-                          <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-                            5-Year Performance Variance Trajectory
-                          </h3>
-                          <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                            වාර්ෂික සමත් ප්‍රතිශත විචලනය (Diverging Bars) සහ වර්ධන ප්‍රවණතාව (Trajectory Line - 2021 සිට 2025 දක්වා).
-                          </p>
+
+                          {/* 2. Peak Variance Year */}
+                          <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-5">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                              Peak Achievement
+                            </span>
+                            <div className="flex items-baseline space-x-2">
+                              <span className="text-2xl sm:text-3xl font-black text-amber-500">
+                                {varianceMetrics.peakYear}
+                              </span>
+                              <span className="text-xs font-bold text-emerald-600">
+                                +{varianceMetrics.peakVal}%
+                              </span>
+                            </div>
+                            <p className="text-[11px] font-semibold text-slate-500 mt-2">
+                              Highest outperformance margin
+                            </p>
+                          </div>
+
+                          {/* 3. Current Cohort Delta */}
+                          <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-5">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                              Latest Margin ({varianceMetrics.latestYear || 'Active'})
+                            </span>
+                            <div className="flex items-baseline space-x-2">
+                              <span className={`text-2xl sm:text-3xl font-black ${varianceMetrics.currentDiff >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {varianceMetrics.currentDiff >= 0 ? `+${varianceMetrics.currentDiff}%` : `${varianceMetrics.currentDiff}%`}
+                              </span>
+                            </div>
+                            <p className="text-[11px] font-semibold text-slate-500 mt-2">
+                              {varianceMetrics.currentDiff >= 0 ? 'Exceeding target standard' : 'Requires academic intervention'}
+                            </p>
+                          </div>
+
+                          {/* 4. 5-Year Trajectory Shift */}
+                          <div className="bg-white rounded-2xl shadow-md border border-slate-100 p-5">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                              5-Year Momentum
+                            </span>
+                            <div className="flex items-baseline space-x-2">
+                              <span className={`text-2xl sm:text-3xl font-black ${varianceMetrics.momentum >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {varianceMetrics.momentum >= 0 ? `+${varianceMetrics.momentum}%` : `${varianceMetrics.momentum}%`}
+                              </span>
+                              <TrendingUp className={`w-4 h-4 ${varianceMetrics.momentum >= 0 ? 'text-emerald-500' : 'text-rose-500'}`} />
+                            </div>
+                            <p className="text-[11px] font-semibold text-slate-500 mt-2">
+                              {varianceMetrics.momentum >= 0 ? 'Progressive acceleration' : 'Deceleration in margin'}
+                            </p>
+                          </div>
                         </div>
 
-                        {/* Legend Pills */}
-                        <div className="flex flex-wrap items-center gap-2.5 text-xs font-bold">
-                          <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            <span className="w-3 h-3 rounded bg-emerald-500" />
-                            <span>Above Standard (+%)</span>
-                          </span>
-                          <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200">
-                            <span className="w-3 h-3 rounded bg-rose-500" />
-                            <span>Below Standard (-%)</span>
-                          </span>
-                          <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200">
-                            <span className="w-3.5 h-1 rounded bg-indigo-600" />
-                            <span>Connecting Trend Line</span>
-                          </span>
-                        </div>
-                      </div>
+                        {/* Chart 1: Historical Performance & Variance Trajectory (Composed Bar + Line) */}
+                        <div className="bg-white rounded-3xl shadow-md border border-slate-100 p-6 sm:p-8">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                            <div>
+                              <div className="inline-flex items-center space-x-2 text-xs font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full mb-2">
+                                <TrendingUp className="w-3.5 h-3.5" />
+                                <span>Annual Performance Trajectory</span>
+                              </div>
+                              <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                                {fiveYearTrendData.length > 1 ? `${fiveYearTrendData.length}-Year Performance Variance Trajectory` : 'Annual Performance Variance Trajectory'}
+                              </h3>
+                              <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                                {lang === 'si'
+                                  ? `වාර්ෂික සමත් ප්‍රතිශත විචලනය (Diverging Bars) සහ වර්ධන ප්‍රවණතාව (${fiveYearTrendData.length > 0 ? `${fiveYearTrendData[0].year}${fiveYearTrendData.length > 1 ? ` සිට ${fiveYearTrendData[fiveYearTrendData.length - 1].year} දක්වා` : ''}` : 'පවතින අධ්‍යයන වර්ෂය'}).`
+                                  : `Annual pass rate variance (diverging bars) and growth progression trajectory (${fiveYearTrendData.length > 0 ? `${fiveYearTrendData[0].year}${fiveYearTrendData.length > 1 ? ` to ${fiveYearTrendData[fiveYearTrendData.length - 1].year}` : ''}` : 'active academic cohort'}).`}
+                              </p>
+                            </div>
 
-                      {/* Composed Chart */}
-                      <div className="w-full" style={{ width: '100%', height: 380, minHeight: 380 }}>
-                        <ResponsiveContainer width="100%" height={380}>
-                          <ComposedChart data={fiveYearTrendData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis 
-                              dataKey="year" 
-                              tick={{ fill: '#1e293b', fontWeight: 800, fontSize: 13 }}
-                              tickLine={false}
-                              axisLine={{ stroke: '#cbd5e1' }}
-                            />
-                            <YAxis 
-                              unit="%"
-                              tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
-                              tickFormatter={(v) => (v > 0 ? `+${v}%` : `${v}%`)}
-                              tickLine={false}
-                              axisLine={false}
-                              domain={[(dataMin) => Math.min(-5, Math.floor(dataMin - 1)), (dataMax) => Math.max(5, Math.ceil(dataMax + 1))]}
-                            />
-                            <ReferenceLine 
-                              y={0} 
-                              stroke="#0f172a" 
-                              strokeWidth={2}
-                              label={{
-                                value: `0.0% Baseline (${fiveYearTrendData[0]?.benchmarkLabel || 'Standard'})`,
-                                position: 'insideTopRight',
-                                fill: '#475569',
-                                fontSize: 11,
-                                fontWeight: 'bold',
-                                offset: 10
-                              }}
-                            />
-                            <Tooltip content={<CustomVarianceTooltip />} />
-                            
-                            {/* Diverging Bar */}
-                            <Bar 
-                              dataKey="variance" 
-                              name="Variance Gap (විචලනය)" 
-                              barSize={48} 
-                              radius={[6, 6, 6, 6]}
-                              isAnimationActive={false}
-                            >
-                              {fiveYearTrendData.map((entry, index) => (
-                                <Cell 
-                                  key={`var-cell-${index}`} 
-                                  fill={entry.variance >= 0 ? '#10b981' : '#f43f5e'} 
+                            {/* Legend Pills */}
+                            <div className="flex flex-wrap items-center gap-2.5 text-xs font-bold">
+                              <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                <span className="w-3 h-3 rounded bg-emerald-500" />
+                                <span>Above Standard (+%)</span>
+                              </span>
+                              <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200">
+                                <span className="w-3 h-3 rounded bg-rose-500" />
+                                <span>Below Standard (-%)</span>
+                              </span>
+                              <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                <span className="w-3.5 h-1 rounded bg-indigo-600" />
+                                <span>Connecting Trend Line</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Composed Chart */}
+                          <div className="w-full" style={{ width: '100%', height: 380, minHeight: 380 }}>
+                            <ResponsiveContainer width="100%" height={380}>
+                              <ComposedChart data={fiveYearTrendData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis 
+                                  dataKey="year" 
+                                  tick={{ fill: '#1e293b', fontWeight: 800, fontSize: 13 }}
+                                  tickLine={false}
+                                  axisLine={{ stroke: '#cbd5e1' }}
                                 />
-                              ))}
-                            </Bar>
+                                <YAxis 
+                                  unit="%"
+                                  tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
+                                  tickFormatter={(v) => (v > 0 ? `+${v}%` : `${v}%`)}
+                                  tickLine={false}
+                                  axisLine={false}
+                                  domain={[(dataMin) => Math.min(-5, Math.floor(dataMin - 1)), (dataMax) => Math.max(5, Math.ceil(dataMax + 1))]}
+                                />
+                                <ReferenceLine 
+                                  y={0} 
+                                  stroke="#0f172a" 
+                                  strokeWidth={2}
+                                  label={{
+                                    value: `0.0% Baseline (${fiveYearTrendData[0]?.benchmarkLabel || 'Standard'})`,
+                                    position: 'insideTopRight',
+                                    fill: '#475569',
+                                    fontSize: 11,
+                                    fontWeight: 'bold',
+                                    offset: 10
+                                  }}
+                                />
+                                <Tooltip content={<CustomVarianceTooltip />} />
+                                
+                                {/* Diverging Bar */}
+                                <Bar 
+                                  dataKey="variance" 
+                                  name="Variance Gap (විචලනය)" 
+                                  barSize={48} 
+                                  radius={[6, 6, 6, 6]}
+                                  isAnimationActive={false}
+                                >
+                                  {fiveYearTrendData.map((entry, index) => (
+                                    <Cell 
+                                      key={`var-cell-${index}`} 
+                                      fill={entry.variance >= 0 ? '#10b981' : '#f43f5e'} 
+                                    />
+                                  ))}
+                                </Bar>
 
-                            {/* Overlaid Connecting Line */}
-                            <Line 
-                              type="monotone" 
-                              dataKey="variance" 
-                              name="Trajectory Line (ප්‍රවණතා රේඛාව)"
-                              stroke="#6366f1" 
-                              strokeWidth={3.5} 
-                              dot={{ r: 6, fill: '#6366f1', stroke: '#ffffff', strokeWidth: 2.5 }}
-                              activeDot={{ r: 8, fill: '#4338ca' }}
-                              isAnimationActive={false}
-                            />
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
+                                {/* Overlaid Connecting Line */}
+                                <Line 
+                                  type="monotone" 
+                                  dataKey="variance" 
+                                  name="Trajectory Line (ප්‍රවණතා රේඛාව)"
+                                  stroke="#6366f1" 
+                                  strokeWidth={3.5} 
+                                  dot={{ r: 6, fill: '#6366f1', stroke: '#ffffff', strokeWidth: 2.5 }}
+                                  activeDot={{ r: 8, fill: '#4338ca' }}
+                                  isAnimationActive={false}
+                                />
+                              </ComposedChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      </>
+                    )}
 
                     {/* Chart 2: Regional Hierarchy Breakdown (Horizontal Diverging Bar Chart) */}
                     <div className="bg-white rounded-3xl shadow-md border border-slate-100 p-6 sm:p-8">
@@ -1421,11 +1539,11 @@ const ResultsExplorer = () => {
                           </div>
                           <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
                             {regionalBreakdownType === 'zones' 
-                              ? 'Educational Zones vs Provincial Average (සියලුම කලාප 11)' 
-                              : 'Educational Divisions vs Provincial Average (අධ්‍යාපන කොට්ඨාස)'}
+                              ? (lang === 'si' ? `අධ්‍යාපන කලාප සංසන්දනය (${allZonesList.length || zones.length} කලාප)` : `Educational Zones vs Provincial Average (${allZonesList.length || zones.length} Zones)`)
+                              : (lang === 'si' ? `අධ්‍යාපන කොට්ඨාස සංසන්දනය (${allDivisionsList.length || divisions.length} කොට්ඨාස)` : `Educational Divisions vs Provincial Average (${allDivisionsList.length || divisions.length} Divisions)`)}
                           </h3>
                           <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                            උතුරු මැද පළාත් සාමාන්‍යයට (+{passRate > 0 ? passRate : 86}%) සාපේක්ෂව කලාප සහ කොට්ඨාසවල සමත් ප්‍රතිශත විචලනය.
+                            උතුරු මැද පළාත් සාමාන්‍යයට (+{passRate > 0 ? passRate : 0}%) සාපේක්ෂව කලාප සහ කොට්ඨාසවල සමත් ප්‍රතිශත විචලනය.
                           </p>
                         </div>
 
@@ -1437,7 +1555,7 @@ const ResultsExplorer = () => {
                               regionalBreakdownType === 'zones' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                             }`}
                           >
-                            All 11 Zones (කලාප 11)
+                            {lang === 'si' ? `කලාප (${allZonesList.length || zones.length})` : `Zones (${allZonesList.length || zones.length})`}
                           </button>
                           <button
                             onClick={() => setRegionalBreakdownType('divisions')}
@@ -1445,7 +1563,7 @@ const ResultsExplorer = () => {
                               regionalBreakdownType === 'divisions' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
                             }`}
                           >
-                            Divisions (කොට්ඨාස)
+                            {lang === 'si' ? `කොට්ඨාස (${allDivisionsList.length || divisions.length})` : `Divisions (${allDivisionsList.length || divisions.length})`}
                           </button>
                         </div>
                       </div>
@@ -1489,66 +1607,74 @@ const ResultsExplorer = () => {
                       </div>
                     </div>
 
-                    {/* 5-Year Provincial vs National Performance Audit Table */}
-                    <div className="bg-white rounded-3xl shadow-md border border-slate-100 overflow-hidden">
-                      <div className="p-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                          <h3 className="font-bold text-slate-900 text-base">5-Year Provincial vs National Performance Audit</h3>
-                          <p className="text-xs text-slate-500 font-medium">උතුරු මැද පළාත් සාමාන්‍යය සහ ශ්‍රී ලංකා ජාතික සාමාන්‍යය අතර වාර්ෂික ප්‍රතිඵල සංසන්දනය (2021 - 2025)</p>
+                    {/* Provincial vs National Performance Audit Table */}
+                    {nationalComparisonTableData.length > 0 && (
+                      <div className="bg-white rounded-3xl shadow-md border border-slate-100 overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                          <div>
+                            <h3 className="font-bold text-slate-900 text-base">
+                              {fiveYearTrendData.length > 1 ? `${fiveYearTrendData.length}-Year Provincial vs National Performance Audit` : 'Provincial vs National Performance Audit'}
+                            </h3>
+                            <p className="text-xs text-slate-500 font-medium">
+                              {lang === 'si'
+                                ? `උතුරු මැද පළාත් සාමාන්‍යය සහ ශ්‍රී ලංකා ජාතික සාමාන්‍යය අතර වාර්ෂික ප්‍රතිඵල සංසන්දනය (${fiveYearTrendData.length > 0 ? `${fiveYearTrendData[0].year}${fiveYearTrendData.length > 1 ? ` - ${fiveYearTrendData[fiveYearTrendData.length - 1].year}` : ''}` : 'පවතින අධ්‍යයන වර්ෂය'})`
+                                : `Annual performance comparison between NCP and Sri Lanka National Average (${fiveYearTrendData.length > 0 ? `${fiveYearTrendData[0].year}${fiveYearTrendData.length > 1 ? ` - ${fiveYearTrendData[fiveYearTrendData.length - 1].year}` : ''}` : 'Active Cohort'})`}
+                            </p>
+                          </div>
+                          <span className="text-xs font-black text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+                            {fiveYearTrendData.length} Recorded Cohort{fiveYearTrendData.length !== 1 ? 's' : ''} ({fiveYearTrendData.length > 0 ? `${fiveYearTrendData[0].year}${fiveYearTrendData.length > 1 ? ` - ${fiveYearTrendData[fiveYearTrendData.length - 1].year}` : ''}` : 'Active'})
+                          </span>
                         </div>
-                        <span className="text-xs font-black text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
-                          5 Recorded Cohorts (2021 - 2025)
-                        </span>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-slate-500">
-                          <thead className="text-xs text-slate-700 uppercase bg-slate-50">
-                            <tr>
-                              <th className="px-6 py-4 rounded-tl-xl">Academic Year (අධ්‍යයන වර්ෂය)</th>
-                              <th className="px-6 py-4">NCP Provincial Pass Rate (උතුරු මැද %)</th>
-                              <th className="px-6 py-4">National Pass Rate (ජාතික %)</th>
-                              <th className="px-6 py-4 text-center">Net Variance (ශුද්ධ වෙනස)</th>
-                              <th className="px-6 py-4 text-right rounded-tr-xl">Official Evaluation (ඇගයීම)</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {nationalComparisonTableData.map((row, idx) => {
-                              const isPos = row.variance >= 0;
-                              return (
-                                <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                                  <td className="px-6 py-4 font-black text-slate-900 flex items-center space-x-2">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                                    <span>Year {row.year}</span>
-                                  </td>
-                                  <td className="px-6 py-4 font-bold text-slate-800">{row.provincePassRate}%</td>
-                                  <td className="px-6 py-4 font-semibold text-slate-500">{row.nationalPassRate}%</td>
-                                  <td className="px-6 py-4 text-center">
-                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black border ${
-                                      isPos ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
-                                    }`}>
-                                      {isPos ? `+${row.variance}%` : `${row.variance}%`}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 text-right">
-                                    {isPos ? (
-                                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
-                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                        <span>Exceeding National Standard (+{row.variance}%)</span>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm text-left text-slate-500">
+                            <thead className="text-xs text-slate-700 uppercase bg-slate-50">
+                              <tr>
+                                <th className="px-6 py-4 rounded-tl-xl">Academic Year (අධ්‍යයන වර්ෂය)</th>
+                                <th className="px-6 py-4">NCP Provincial Pass Rate (උතුරු මැද %)</th>
+                                <th className="px-6 py-4">National Pass Rate (ජාතික %)</th>
+                                <th className="px-6 py-4 text-center">Net Variance (ශුද්ධ වෙනස)</th>
+                                <th className="px-6 py-4 text-right rounded-tr-xl">Official Evaluation (ඇගයීම)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {nationalComparisonTableData.map((row, idx) => {
+                                const isPos = row.variance >= 0;
+                                return (
+                                  <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                                    <td className="px-6 py-4 font-black text-slate-900 flex items-center space-x-2">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                                      <span>Year {row.year}</span>
+                                    </td>
+                                    <td className="px-6 py-4 font-bold text-slate-800">{row.provincePassRate}%</td>
+                                    <td className="px-6 py-4 font-semibold text-slate-500">{row.nationalPassRate}%</td>
+                                    <td className="px-6 py-4 text-center">
+                                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black border ${
+                                        isPos ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                                      }`}>
+                                        {isPos ? `+${row.variance}%` : `${row.variance}%`}
                                       </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-600">
-                                        <AlertCircle className="w-3.5 h-3.5" />
-                                        <span>Below National Standard ({row.variance}%)</span>
-                                      </span>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                      {isPos ? (
+                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
+                                          <CheckCircle2 className="w-3.5 h-3.5" />
+                                          <span>Exceeding National Standard (+{row.variance}%)</span>
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-600">
+                                          <AlertCircle className="w-3.5 h-3.5" />
+                                          <span>Below National Standard ({row.variance}%)</span>
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                   </div>
                 )}

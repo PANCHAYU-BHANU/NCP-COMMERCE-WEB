@@ -133,7 +133,7 @@ const Committees = () => {
 
   const fetchZones = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/public/zones');
+      const res = await fetch('/api/public/zones');
       if (res.ok) {
         const data = await res.json();
         setZones(data);
@@ -147,7 +147,7 @@ const Committees = () => {
   const fetchSystemUsers = async () => {
     try {
       const token = getAuthToken();
-      const res = await fetch('http://localhost:8080/api/auth/users', {
+      const res = await fetch('/api/auth/users', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (res.ok) {
@@ -162,7 +162,7 @@ const Committees = () => {
   const fetchMyCommittees = async () => {
     try {
       const token = getAuthToken();
-      const res = await fetch('http://localhost:8080/api/committees/my-committees', {
+      const res = await fetch('/api/committees/my-committees', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (res.ok) {
@@ -180,7 +180,7 @@ const Committees = () => {
   const fetchCommittees = async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:8080/api/public/committees?type=${activeTab}`;
+      let url = `/api/public/committees?type=${activeTab}`;
       if (activeTab === 'ZONAL' && selectedZoneId) {
         url += `&zoneId=${selectedZoneId}`;
       } else if (activeTab === 'ZONAL' && !selectedZoneId) {
@@ -202,7 +202,7 @@ const Committees = () => {
   const fetchMembers = async (committeeId) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8080/api/public/committees/${committeeId}/members`);
+      const res = await fetch(`/api/public/committees/${committeeId}/members`);
       if (res.ok) {
         const data = await res.json();
         setMembers(data);
@@ -217,7 +217,7 @@ const Committees = () => {
     if (!isSilent) setMessagesLoading(true);
     try {
       const token = getAuthToken();
-      const res = await fetch(`http://localhost:8080/api/committees/${committeeId}/messages`, {
+      const res = await fetch(`/api/committees/${committeeId}/messages`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (res.ok) {
@@ -285,7 +285,7 @@ const Committees = () => {
         formData.append('file', selectedFile);
       }
 
-      const res = await fetch(`http://localhost:8080/api/committees/${selectedCommittee.id}/messages`, {
+      const res = await fetch(`/api/committees/${selectedCommittee.id}/messages`, {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData
@@ -315,7 +315,7 @@ const Committees = () => {
   const handleTogglePin = async (messageId) => {
     try {
       const token = getAuthToken();
-      const res = await fetch(`http://localhost:8080/api/committees/${selectedCommittee.id}/messages/${messageId}/pin`, {
+      const res = await fetch(`/api/committees/${selectedCommittee.id}/messages/${messageId}/pin`, {
         method: 'PUT',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
@@ -366,7 +366,7 @@ const Committees = () => {
 
     try {
       const token = getAuthToken();
-      const res = await fetch(`http://localhost:8080/api/committees/${selectedCommittee.id}/messages/${messageId}`, {
+      const res = await fetch(`/api/committees/${selectedCommittee.id}/messages/${messageId}`, {
         method: 'DELETE',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
@@ -391,7 +391,7 @@ const Committees = () => {
         payload.append('zoneId', selectedZoneId);
       }
 
-      const res = await fetch('http://localhost:8080/api/cms/committees', {
+      const res = await fetch('/api/cms/committees', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -432,7 +432,7 @@ const Committees = () => {
 
     try {
       const token = getAuthToken();
-      const res = await fetch(`http://localhost:8080/api/cms/committees/${id}`, {
+      const res = await fetch(`/api/cms/committees/${id}`, {
         method: 'DELETE',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
@@ -464,7 +464,7 @@ const Committees = () => {
       payload.append('userId', memberFormData.userId);
       payload.append('position', memberFormData.position);
 
-      const res = await fetch(`http://localhost:8080/api/cms/committees/${selectedCommittee.id}/members`, {
+      const res = await fetch(`/api/cms/committees/${selectedCommittee.id}/members`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -504,7 +504,7 @@ const Committees = () => {
 
     try {
       const token = getAuthToken();
-      const res = await fetch(`http://localhost:8080/api/cms/committees/members/${id}`, {
+      const res = await fetch(`/api/cms/committees/members/${id}`, {
         method: 'DELETE',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });

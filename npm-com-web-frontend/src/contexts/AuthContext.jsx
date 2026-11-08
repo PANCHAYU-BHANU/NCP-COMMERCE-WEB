@@ -47,7 +47,10 @@ export const AuthProvider = ({ children }) => {
           setCurrentUser(initialUser);
 
           // Background sync to fetch fresh full name & details from database
-          fetch('http://localhost:8080/api/auth/users')
+          const token = authData.token || authData.accessToken;
+          fetch('/api/auth/users', {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          })
             .then(res => res.json())
             .then(usersList => {
               if (Array.isArray(usersList)) {

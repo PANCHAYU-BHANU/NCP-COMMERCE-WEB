@@ -10,6 +10,7 @@ import java.util.List;
 public interface StudentAlSummaryRepository extends JpaRepository<StudentAlSummary, Long> {
     List<StudentAlSummary> findByStudentId(Long studentId);
     List<StudentAlSummary> findByStudentIdAndYear(Long studentId, Integer year);
+    java.util.Optional<StudentAlSummary> findFirstByStudentIdAndYear(Long studentId, Integer year);
 
     @Query("SELECT DISTINCT s.year FROM StudentAlSummary s WHERE s.year IS NOT NULL ORDER BY s.year DESC")
     List<Integer> findDistinctYears();

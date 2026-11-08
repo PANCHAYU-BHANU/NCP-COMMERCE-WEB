@@ -59,6 +59,8 @@ const DistrictPage = () => {
   });
 
   const [yearlyProgression, setYearlyProgression] = useState([]);
+  const [zoneLiveStats, setZoneLiveStats] = useState(null);
+  const [divisionLiveStats, setDivisionLiveStats] = useState(null);
 
   // In-place Quick Analytics Modal state
   const [modalConfig, setModalConfig] = useState({
@@ -98,7 +100,7 @@ const DistrictPage = () => {
     setSchools([]);
 
     // 1. Fetch live district statistics from DB
-    fetch(`http://localhost:8080/api/public/statistics/district/${dData.id}`)
+    fetch(`/api/public/statistics/district/${dData.id}`)
       .then(res => res.json())
       .then(stat => {
         if (stat) {
@@ -118,7 +120,7 @@ const DistrictPage = () => {
       .catch(() => {});
 
     // 2. Fetch zones dynamically from DB
-    fetch(`http://localhost:8080/api/public/zones?districtId=${dData.id}`)
+    fetch(`/api/public/zones?districtId=${dData.id}`)
       .then(res => res.json())
       .then(dbZones => {
         if (Array.isArray(dbZones)) {
@@ -132,7 +134,9 @@ const DistrictPage = () => {
             divisionsCount: z.divisionsCount ?? (z.divisions ? z.divisions.length : 0),
             schoolsCount: z.schoolsCount ?? 0,
             directorName: z.directorName || null,
-            students: z.students ?? 0
+            teachersCount: z.teachersCount ?? 0,
+            students: z.students ?? z.studentsCount ?? 0,
+            studentsCount: z.studentsCount ?? z.students ?? 0
           }));
           setZonesList(mapped);
         } else {
@@ -142,7 +146,7 @@ const DistrictPage = () => {
       .catch(() => setZonesList([]));
 
     // 3. Fetch live results from DB for real dynamic auto-calculations
-    fetch(`http://localhost:8080/api/public/al-results?districtId=${dData.id}`)
+    fetch(`/api/public/al-results?districtId=${dData.id}`)
       .then(res => res.json())
       .then(resData => {
         if (Array.isArray(resData)) {
@@ -154,7 +158,7 @@ const DistrictPage = () => {
 
   // Dynamic 5-Year Examination Progression from DB
   useEffect(() => {
-    let url = `http://localhost:8080/api/public/statistics/yearly-comparison?limit=5`;
+    let url = `/api/public/statistics/yearly-comparison?limit=5`;
     if (selectedDivision) {
       url += `&level=division&id=${selectedDivision.id}`;
     } else if (selectedZone) {
@@ -183,10 +187,17 @@ const DistrictPage = () => {
     setSelectedZone(zone);
     setSelectedDivision(null);
     setSchools([]);
+    setZoneLiveStats(null);
+    setDivisionLiveStats(null);
     setLoading(true);
     scrollToExplorer();
 
-    fetch(`http://localhost:8080/api/public/divisions?zoneId=${zone.id}`)
+    fetch(`/api/public/statistics/zone/${zone.id}`)
+      .then(res => res.json())
+      .then(stat => setZoneLiveStats(stat))
+      .catch(() => {});
+
+    fetch(`/api/public/divisions?zoneId=${zone.id}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -203,10 +214,16 @@ const DistrictPage = () => {
 
   const handleSelectDivision = (division) => {
     setSelectedDivision(division);
+    setDivisionLiveStats(null);
     setLoading(true);
     scrollToExplorer();
 
-    fetch(`http://localhost:8080/api/public/schools?divisionId=${division.id}`)
+    fetch(`/api/public/statistics/division/${division.id}`)
+      .then(res => res.json())
+      .then(stat => setDivisionLiveStats(stat))
+      .catch(() => {});
+
+    fetch(`/api/public/schools?divisionId=${division.id}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -225,12 +242,15 @@ const DistrictPage = () => {
     setSelectedZone(null);
     setSelectedDivision(null);
     setSchools([]);
+    setZoneLiveStats(null);
+    setDivisionLiveStats(null);
     scrollToExplorer();
   };
 
   const handleBackToZone = () => {
     setSelectedDivision(null);
     setSchools([]);
+    setDivisionLiveStats(null);
     scrollToExplorer();
   };
 
@@ -278,7 +298,7 @@ const DistrictPage = () => {
       passRate2023: 0,
       passRate2024: 0,
       passRate2025: 0,
-      students: schools.reduce((acc, s) => acc + (parseInt(s.students) || 0), 0)
+      students: divisionLiveStats?.students ?? selectedDivision.students ?? schools.reduce((acc, s) => acc + (parseInt(s.students) || 0), 0)
     };
     const live = computeLiveStats(divResults, fallbackDiv);
 
@@ -291,13 +311,13 @@ const DistrictPage = () => {
       subtitle: lang === 'si'
         ? `${selectedDivision.name} කොට්ඨාසයේ වාණිජ පාසල් ${schools.length || 0}ක්, ගුරුවරුන් හා සිසුන්ගේ ප්‍රගති විශ්ලේෂණය`
         : `Performance indicators, commerce teachers, and student enrolment in ${selectedDivision.name}`,
-      schools: schools.length || (selectedDivision.schoolsCount || 0),
-      teachers: schools.reduce((acc, s) => acc + (s.teachersCount || 0), 0),
-      students: live.students || 0,
-      passRate2023: live.passRate2023 || 0,
-      passRate2024: live.passRate2024 || 0,
-      passRate2025: live.passRate2025 || 0,
-      isLive: live.isLive,
+      schools: divisionLiveStats?.schools ?? (schools.length || selectedDivision.schoolsCount || 0),
+      teachers: divisionLiveStats?.teachers ?? selectedDivision.teachersCount ?? schools.reduce((acc, s) => acc + (s.teachersCount || 0), 0),
+      students: divisionLiveStats?.students ?? selectedDivision.students ?? (live.students || 0),
+      passRate2023: divisionLiveStats?.passRatePrev2 ?? live.passRate2023 ?? 0,
+      passRate2024: divisionLiveStats?.passRatePrev1 ?? live.passRate2024 ?? 0,
+      passRate2025: divisionLiveStats?.passRateCurrent ?? live.passRate2025 ?? 0,
+      isLive: Boolean((divisionLiveStats?.students || 0) > 0 || live.isLive),
       progressionTitle: lang === 'si'
         ? `${selectedDivision.name} කොට්ඨාස වාර්ෂික සාමාන්‍ය සමත් ප්‍රතිශත ප්‍රවණතාව`
         : `${selectedDivision.name} Division Pass Rate Progression`
@@ -311,7 +331,7 @@ const DistrictPage = () => {
       passRate2023: 0,
       passRate2024: 0,
       passRate2025: 0,
-      students: selectedZone.students || 0
+      students: zoneLiveStats?.students ?? selectedZone.students ?? 0
     };
     const live = computeLiveStats(zoneResults, fallbackZone);
 
@@ -324,13 +344,13 @@ const DistrictPage = () => {
       subtitle: lang === 'si'
         ? `කොට්ඨාස ${selectedZone.divisionsCount || 0}ක් සහ වාණිජ පාසල් ${selectedZone.schoolsCount || 0}ක කලාපීය අධ්‍යාපන මිණුම් සලකුණු`
         : `Regional examination performance across ${selectedZone.divisionsCount || 0} divisions and ${selectedZone.schoolsCount || 0} commerce schools in ${selectedZone.name} Zone`,
-      schools: selectedZone.schoolsCount || 0,
-      teachers: 0,
-      students: live.students || 0,
-      passRate2023: live.passRate2023 || 0,
-      passRate2024: live.passRate2024 || 0,
-      passRate2025: live.passRate2025 || 0,
-      isLive: live.isLive,
+      schools: zoneLiveStats?.schools ?? selectedZone.schoolsCount ?? 0,
+      teachers: zoneLiveStats?.teachers ?? selectedZone.teachersCount ?? (zoneLiveStats?.teachersCount ?? 0),
+      students: zoneLiveStats?.students ?? selectedZone.students ?? selectedZone.studentsCount ?? (live.students || 0),
+      passRate2023: zoneLiveStats?.passRatePrev2 ?? live.passRate2023 ?? 0,
+      passRate2024: zoneLiveStats?.passRatePrev1 ?? live.passRate2024 ?? 0,
+      passRate2025: zoneLiveStats?.passRateCurrent ?? live.passRate2025 ?? 0,
+      isLive: Boolean((zoneLiveStats?.students || selectedZone.students || selectedZone.studentsCount || 0) > 0 || live.isLive),
       progressionTitle: lang === 'si'
         ? `${selectedZone.name} කලාප වාර්ෂික සමත් ප්‍රතිශත ප්‍රවණතාව`
         : `${selectedZone.name} Zone Examination Pass Rate Progression`

@@ -32,7 +32,7 @@ const StudentsExplorer = () => {
   useEffect(() => {
     const fetchRefData = async () => {
       try {
-        const distRes = await fetch('http://localhost:8080/api/public/districts');
+        const distRes = await fetch('/api/public/districts');
         if(distRes.ok) setDistricts(await distRes.json());
       } catch (err) {
         console.error("Error fetching reference data", err);
@@ -45,7 +45,7 @@ const StudentsExplorer = () => {
   useEffect(() => {
     const fetchCascade = async () => {
       if (filters.districtId !== 'all') {
-        const res = await fetch(`http://localhost:8080/api/public/zones?districtId=${filters.districtId}`);
+        const res = await fetch(`/api/public/zones?districtId=${filters.districtId}`);
         if(res.ok) setZones(await res.json());
       } else { setZones([]); setDivisions([]); setSchools([]); }
     };
@@ -55,7 +55,7 @@ const StudentsExplorer = () => {
   useEffect(() => {
     const fetchCascade = async () => {
       if (filters.zoneId !== 'all') {
-        const res = await fetch(`http://localhost:8080/api/public/divisions?zoneId=${filters.zoneId}`);
+        const res = await fetch(`/api/public/divisions?zoneId=${filters.zoneId}`);
         if(res.ok) setDivisions(await res.json());
       } else { setDivisions([]); setSchools([]); }
     };
@@ -65,7 +65,7 @@ const StudentsExplorer = () => {
   useEffect(() => {
     const fetchCascade = async () => {
       if (filters.divisionId !== 'all') {
-        const res = await fetch(`http://localhost:8080/api/public/schools?divisionId=${filters.divisionId}`);
+        const res = await fetch(`/api/public/schools?divisionId=${filters.divisionId}`);
         if(res.ok) setSchools(await res.json());
       } else { setSchools([]); }
     };
@@ -77,7 +77,7 @@ const StudentsExplorer = () => {
     const fetchStudents = async () => {
       setLoading(true);
       try {
-        let url = new URL('http://localhost:8080/api/public/student-counts');
+        let url = new URL('/api/public/student-counts', window.location.origin);
         if (filters.schoolId !== 'all') url.searchParams.append('schoolId', filters.schoolId);
         else if (filters.divisionId !== 'all') url.searchParams.append('divisionId', filters.divisionId);
         else if (filters.zoneId !== 'all') url.searchParams.append('zoneId', filters.zoneId);

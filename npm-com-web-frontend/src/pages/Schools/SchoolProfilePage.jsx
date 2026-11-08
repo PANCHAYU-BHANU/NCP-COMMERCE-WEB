@@ -23,7 +23,7 @@ const SchoolProfilePage = () => {
     window.scrollTo(0, 0);
     setLoading(true);
 
-    fetch(`http://localhost:8080/api/public/schools/${id}`)
+    fetch(`/api/public/schools/${id}`)
       .then(res => {
         if (!res.ok) throw new Error("School not found");
         return res.json();
@@ -34,7 +34,7 @@ const SchoolProfilePage = () => {
       .catch(err => {
         console.error("Error fetching school profile:", err);
         // Fallback default structure if school ID is dynamic or mock
-        fetch(`http://localhost:8080/api/public/schools`)
+        fetch(`/api/public/schools`)
           .then(r => r.json())
           .then(allSchools => {
             const found = allSchools.find(s => String(s.id) === String(id));
@@ -54,7 +54,7 @@ const SchoolProfilePage = () => {
       .finally(() => setLoading(false));
 
     // Dynamic 5-year comparison from DB
-    fetch(`http://localhost:8080/api/public/statistics/yearly-comparison?level=school&id=${id}&limit=5`)
+    fetch(`/api/public/statistics/yearly-comparison?level=school&id=${id}&limit=5`)
       .then(r => r.json())
       .then(res => {
         if (res && res.data) setYearlyProgression(res.data);
@@ -335,9 +335,9 @@ const SchoolProfilePage = () => {
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
-              {/* Grade 12 Card */}
+              {/* Cohort 1 Card */}
               <div className="p-5 rounded-2xl bg-blue-50/70 border border-blue-200">
-                <span className="text-xs font-black uppercase tracking-wider text-blue-800 block mb-2">Grade 12 Commerce</span>
+                <span className="text-xs font-black uppercase tracking-wider text-blue-800 block mb-2">{schoolData?.cohort1Year || '2027'} A/L Commerce</span>
                 <div className="text-3xl font-black text-blue-900 mb-2">{totalG12} <span className="text-sm font-semibold text-slate-500">Students</span></div>
                 <div className="flex justify-between text-xs font-bold text-slate-600 pt-2 border-t border-blue-200/60">
                   <span className="text-blue-700">👦 Boys: {g12Male}</span>
@@ -345,9 +345,9 @@ const SchoolProfilePage = () => {
                 </div>
               </div>
 
-              {/* Grade 13 Card */}
+              {/* Cohort 2 Card */}
               <div className="p-5 rounded-2xl bg-teal-50/70 border border-teal-200">
-                <span className="text-xs font-black uppercase tracking-wider text-teal-800 block mb-2">Grade 13 Commerce</span>
+                <span className="text-xs font-black uppercase tracking-wider text-teal-800 block mb-2">{schoolData?.cohort2Year || '2026'} A/L Commerce</span>
                 <div className="text-3xl font-black text-teal-900 mb-2">{totalG13} <span className="text-sm font-semibold text-slate-500">Students</span></div>
                 <div className="flex justify-between text-xs font-bold text-slate-600 pt-2 border-t border-teal-200/60">
                   <span className="text-blue-700">👦 Boys: {g13Male}</span>

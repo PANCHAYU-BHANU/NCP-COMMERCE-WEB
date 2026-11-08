@@ -98,7 +98,7 @@ const UserManagement = () => {
   const effectiveSchoolId = currentUser?.schoolId ? String(currentUser.schoolId) : '';
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/public/districts')
+    fetch('/api/public/districts')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
@@ -118,7 +118,7 @@ const UserManagement = () => {
         ]);
       });
 
-    fetch('http://localhost:8080/api/public/subjects')
+    fetch('/api/public/subjects')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
@@ -135,7 +135,7 @@ const UserManagement = () => {
 
   useEffect(() => {
     if (selectedDistrict) {
-      fetch(`http://localhost:8080/api/public/zones?districtId=${selectedDistrict}`)
+      fetch(`/api/public/zones?districtId=${selectedDistrict}`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) setZones(data);
@@ -147,7 +147,7 @@ const UserManagement = () => {
 
   useEffect(() => {
     if (selectedZone) {
-      fetch(`http://localhost:8080/api/public/divisions?zoneId=${selectedZone}`)
+      fetch(`/api/public/divisions?zoneId=${selectedZone}`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) setDivisions(data);
@@ -159,7 +159,7 @@ const UserManagement = () => {
 
   useEffect(() => {
     if (selectedDivision) {
-      fetch(`http://localhost:8080/api/public/schools?divisionId=${selectedDivision}`)
+      fetch(`/api/public/schools?divisionId=${selectedDivision}`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) setSchools(data);
@@ -170,7 +170,10 @@ const UserManagement = () => {
   }, [selectedDivision]);
 
   const fetchUsers = () => {
-    fetch('http://localhost:8080/api/auth/users')
+    const token = currentUser?.token || currentUser?.accessToken || JSON.parse(localStorage.getItem('auth') || '{}')?.token;
+    fetch('/api/auth/users', {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setUsers(data);
@@ -254,15 +257,15 @@ const UserManagement = () => {
     // Pre-load cascading hierarchy lists immediately so transfer selects are pre-filled
     try {
       if (dId) {
-        const zData = await fetch(`http://localhost:8080/api/public/zones?districtId=${dId}`).then(r => r.json());
+        const zData = await fetch(`/api/public/zones?districtId=${dId}`).then(r => r.json());
         if (Array.isArray(zData)) setZones(zData);
       }
       if (zId) {
-        const divData = await fetch(`http://localhost:8080/api/public/divisions?zoneId=${zId}`).then(r => r.json());
+        const divData = await fetch(`/api/public/divisions?zoneId=${zId}`).then(r => r.json());
         if (Array.isArray(divData)) setDivisions(divData);
       }
       if (divId) {
-        const schData = await fetch(`http://localhost:8080/api/public/schools?divisionId=${divId}`).then(r => r.json());
+        const schData = await fetch(`/api/public/schools?divisionId=${divId}`).then(r => r.json());
         if (Array.isArray(schData)) setSchools(schData);
       }
     } catch (err) {
@@ -337,8 +340,8 @@ const UserManagement = () => {
 
       const token = currentUser?.token || currentUser?.accessToken;
       const url = editingUser 
-        ? `http://localhost:8080/api/auth/users/${editingUser.id}` 
-        : 'http://localhost:8080/api/auth/signup';
+        ? `/api/auth/users/${editingUser.id}` 
+        : '/api/auth/signup';
       const method = editingUser ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -399,7 +402,7 @@ const UserManagement = () => {
     if (result.isConfirmed) {
       try {
         const token = currentUser?.token || currentUser?.accessToken;
-        const res = await fetch(`http://localhost:8080/api/auth/users/${id}`, {
+        const res = await fetch(`/api/auth/users/${id}`, {
           method: 'DELETE',
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
@@ -440,7 +443,7 @@ const UserManagement = () => {
     if (newPassword) {
       try {
         const token = JSON.parse(localStorage.getItem('auth'))?.token;
-        const res = await fetch(`http://localhost:8080/api/auth/users/${targetUser.id}/password`, {
+        const res = await fetch(`/api/auth/users/${targetUser.id}/password`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -944,7 +947,7 @@ const UserManagement = () => {
                               setSelectedDivision('');
                               setSelectedSchool('');
                               if (dVal) {
-                                const zList = await fetch(`http://localhost:8080/api/public/zones?districtId=${dVal}`).then(r => r.json());
+                                const zList = await fetch(`/api/public/zones?districtId=${dVal}`).then(r => r.json());
                                 if (Array.isArray(zList)) setZones(zList);
                               }
                             }}
@@ -967,7 +970,7 @@ const UserManagement = () => {
                               setSelectedDivision('');
                               setSelectedSchool('');
                               if (zVal) {
-                                const divList = await fetch(`http://localhost:8080/api/public/divisions?zoneId=${zVal}`).then(r => r.json());
+                                const divList = await fetch(`/api/public/divisions?zoneId=${zVal}`).then(r => r.json());
                                 if (Array.isArray(divList)) setDivisions(divList);
                               }
                             }}
@@ -990,7 +993,7 @@ const UserManagement = () => {
                                 setSelectedDivision(divVal);
                                 setSelectedSchool('');
                                 if (divVal) {
-                                  const schList = await fetch(`http://localhost:8080/api/public/schools?divisionId=${divVal}`).then(r => r.json());
+                                  const schList = await fetch(`/api/public/schools?divisionId=${divVal}`).then(r => r.json());
                                   if (Array.isArray(schList)) setSchools(schList);
                                 }
                               }}
@@ -1292,7 +1295,7 @@ const UserManagement = () => {
         isOpen={isSubjectModalOpen}
         onClose={() => setIsSubjectModalOpen(false)}
         onSubjectsUpdated={() => {
-          fetch('http://localhost:8080/api/public/subjects')
+          fetch('/api/public/subjects')
             .then(res => res.json())
             .then(data => {
               if (Array.isArray(data) && data.length > 0) setSubjects(data);

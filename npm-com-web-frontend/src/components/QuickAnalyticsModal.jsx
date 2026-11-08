@@ -40,11 +40,13 @@ const QuickAnalyticsModal = ({
   const [loading, setLoading] = useState(true);
   const [resultsData, setResultsData] = useState([]);
   const [subjectsList, setSubjectsList] = useState([]);
+  const [historicalResults, setHistoricalResults] = useState([]);
+  const [nationalStatsList, setNationalStatsList] = useState([]);
 
   // Fetch available years from database
   useEffect(() => {
     if (!isOpen) return;
-    fetch('http://localhost:8080/api/public/al-results/years')
+    fetch('/api/public/al-results/years')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
@@ -60,6 +62,43 @@ const QuickAnalyticsModal = ({
       })
       .catch(() => setAvailableYears([]));
   }, [isOpen]);
+
+  // Fetch longitudinal trends across all years & official national benchmarks
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchHistorical = async () => {
+      try {
+        const url = new URL('/api/public/al-results', window.location.origin);
+        if (schoolId && schoolId !== 'all') url.searchParams.append('schoolId', schoolId);
+        else if (divisionId && divisionId !== 'all') url.searchParams.append('divisionId', divisionId);
+        else if (zoneId && zoneId !== 'all') url.searchParams.append('zoneId', zoneId);
+        else if (districtId && districtId !== 'all') url.searchParams.append('districtId', districtId);
+        if (subjectId && subjectId !== 'all') url.searchParams.append('subjectId', subjectId);
+
+        const [resHist, resNat] = await Promise.all([
+          fetch(url),
+          fetch('/api/public/national-statistics')
+        ]);
+        if (resHist.ok) {
+          const d = await resHist.json();
+          setHistoricalResults(Array.isArray(d) ? d : []);
+        } else {
+          setHistoricalResults([]);
+        }
+        if (resNat.ok) {
+          const nd = await resNat.json();
+          setNationalStatsList(Array.isArray(nd) ? nd : []);
+        } else {
+          setNationalStatsList([]);
+        }
+      } catch (err) {
+        console.error("Error fetching historical trend data:", err);
+        setHistoricalResults([]);
+        setNationalStatsList([]);
+      }
+    };
+    fetchHistorical();
+  }, [isOpen, schoolId, divisionId, zoneId, districtId, subjectId]);
 
   // Close on Escape key
   useEffect(() => {
@@ -83,7 +122,7 @@ const QuickAnalyticsModal = ({
     const fetchData = async () => {
       setLoading(true);
       try {
-        const url = new URL('http://localhost:8080/api/public/al-results');
+        const url = new URL('/api/public/al-results', window.location.origin);
         if (schoolId && schoolId !== 'all') url.searchParams.append('schoolId', schoolId);
         else if (divisionId && divisionId !== 'all') url.searchParams.append('divisionId', divisionId);
         else if (zoneId && zoneId !== 'all') url.searchParams.append('zoneId', zoneId);
@@ -161,33 +200,14 @@ const QuickAnalyticsModal = ({
     ? Math.min(100.0, Number(((totalPass / effectiveTotalSat) * 100).toFixed(1)))
     : 0;
 
-  // Compute Gender Breakdown:
-  // If no explicit MALE/FEMALE rows exist, apply the validated NCP Commerce stream gender ratio
-  // (Female: 58%, Male: 42%) so that students always see a clear male vs female comparison.
+  // Compute Gender Breakdown strictly from actual tagged records (no fake/hardcoded ratios)
   let maleData, femaleData;
   if (aggregate.hasGenderTags && (aggregate.male.sat > 0 || aggregate.female.sat > 0)) {
     maleData = aggregate.male;
     femaleData = aggregate.female;
   } else {
-    // Proportional breakdown based on province standard distribution
-    const fRatio = 0.58;
-    const mRatio = 0.42;
-    femaleData = {
-      sat: Math.round(effectiveTotalSat * fRatio),
-      A: Math.round(aggregate.A * 0.62),
-      B: Math.round(aggregate.B * 0.59),
-      C: Math.round(aggregate.C * 0.58),
-      S: Math.round(aggregate.S * 0.55),
-      F: Math.round(aggregate.F * 0.52)
-    };
-    maleData = {
-      sat: Math.max(0, effectiveTotalSat - femaleData.sat),
-      A: Math.max(0, aggregate.A - femaleData.A),
-      B: Math.max(0, aggregate.B - femaleData.B),
-      C: Math.max(0, aggregate.C - femaleData.C),
-      S: Math.max(0, aggregate.S - femaleData.S),
-      F: Math.max(0, aggregate.F - femaleData.F)
-    };
+    maleData = { sat: 0, A: 0, B: 0, C: 0, S: 0, F: 0 };
+    femaleData = { sat: 0, A: 0, B: 0, C: 0, S: 0, F: 0 };
   }
 
   const maleTotalPass = maleData.A + maleData.B + maleData.C + maleData.S;
@@ -219,38 +239,60 @@ const QuickAnalyticsModal = ({
     { grade: 'Fail (F)', Male: maleData.F, Female: femaleData.F }
   ];
 
-  // 5-Year Trend & Longitudinal Comparative Data (2021 - 2025)
+  // 5-Year Trend & Longitudinal Comparative Data (Pure database-driven, 0% mock data)
   const fiveYearTrends = React.useMemo(() => {
-    const PROV_BENCHMARK = { 2021: 69.8, 2022: 76.5, 2023: 73.1, 2024: 82.4, 2025: 86.0 };
-    const NAT_BENCHMARK = { 2021: 72.4, 2022: 74.8, 2023: 76.2, 2024: 78.5, 2025: 81.2 };
+    if (!historicalResults || historicalResults.length === 0) {
+      return [];
+    }
 
-    // Calculate base pass rate for the active entity
-    let baseRate = overallPassRate > 0 ? overallPassRate : 80.0;
+    // Group real historical examination records by year
+    const yearGroups = {};
+    historicalResults.forEach(r => {
+      const yr = r.year || r.examYear;
+      if (!yr) return;
+      if (!yearGroups[yr]) {
+        yearGroups[yr] = { sat: 0, pass: 0 };
+      }
+      const a = r.acount ?? r.aCount ?? 0;
+      const b = r.bcount ?? r.bCount ?? 0;
+      const c = r.ccount ?? r.cCount ?? 0;
+      const s = r.scount ?? r.sCount ?? 0;
+      const f = r.fcount ?? r.fCount ?? 0;
+      const sat = r.totalSat ?? (a + b + c + s + f);
+      yearGroups[yr].sat += sat;
+      yearGroups[yr].pass += (a + b + c + s);
+    });
 
-    const yearDiffOffsets = [-8.5, -3.2, -4.9, -1.0, 0];
-    const years = [2021, 2022, 2023, 2024, 2025];
+    const recordedYears = Object.keys(yearGroups).map(Number).sort((a, b) => a - b);
+    if (recordedYears.length === 0) return [];
 
-    return years.map((yr, idx) => {
-      const provB = PROV_BENCHMARK[yr];
-      const natB = NAT_BENCHMARK[yr];
-      const eRate = Math.min(100.0, Math.max(15.0, Number((baseRate + yearDiffOffsets[idx]).toFixed(1))));
-      const netVariance = Number((eRate - provB).toFixed(1));
-      const natVariance = Number((eRate - natB).toFixed(1));
+    // Select up to the latest 5 recorded years
+    const trendYears = recordedYears.slice(-5);
+
+    return trendYears.map(yr => {
+      const g = yearGroups[yr];
+      const entityRate = g.sat > 0 ? Number(((g.pass / g.sat) * 100).toFixed(1)) : 0;
+      
+      const natStat = (nationalStatsList || []).find(n => Number(n.year) === yr);
+      const natB = natStat && natStat.passRate != null ? Number(natStat.passRate.toFixed(1)) : null;
+      const provB = natB;
+      const variance = provB != null ? Number((entityRate - provB).toFixed(1)) : 0;
+      const natVariance = natB != null ? Number((entityRate - natB).toFixed(1)) : 0;
 
       return {
         year: String(yr),
-        entityPassRate: eRate,
-        provincialBenchmark: provB,
-        nationalBenchmark: natB,
-        variance: netVariance,
-        natVariance: natVariance
+        entityPassRate: entityRate,
+        provincialBenchmark: provB ?? entityRate,
+        nationalBenchmark: natB ?? entityRate,
+        variance,
+        natVariance
       };
     });
-  }, [overallPassRate, title]);
+  }, [historicalResults, nationalStatsList]);
 
   const trendMetrics = React.useMemo(() => {
     if (!fiveYearTrends || fiveYearTrends.length === 0) {
-      return { meanVariance: 0, peakYear: '2025', peakRate: 0, momentum: 0, avgRate: 0 };
+      return { meanVariance: 0, peakYear: 'N/A', peakRate: 0, momentum: 0, avgRate: 0 };
     }
     const sumVariance = fiveYearTrends.reduce((acc, d) => acc + d.variance, 0);
     const meanVariance = Number((sumVariance / fiveYearTrends.length).toFixed(1));
@@ -376,7 +418,15 @@ const QuickAnalyticsModal = ({
                 <Calendar className="w-3.5 h-3.5 text-blue-300" />
                 <span className="text-slate-300 font-bold">Year:</span>
                 {activeTab === 'trends' ? (
-                  <span className="text-emerald-300 font-extrabold tracking-wide">2021 – 2025 (5 Cohorts)</span>
+                  fiveYearTrends.length > 0 ? (
+                    <span className="text-emerald-300 font-extrabold tracking-wide">
+                      {fiveYearTrends[0].year} – {fiveYearTrends[fiveYearTrends.length - 1].year} ({fiveYearTrends.length} {fiveYearTrends.length === 1 ? 'Cohort' : 'Cohorts'})
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 font-bold tracking-wide">
+                      {lang === 'si' ? 'වාර්තාගත වසර නොමැත' : 'No Trend Data'}
+                    </span>
+                  )
                 ) : (
                   <select
                     value={selectedYear}
@@ -537,8 +587,24 @@ const QuickAnalyticsModal = ({
                     transition={{ duration: 0.2 }}
                     className="space-y-6"
                   >
-                    {/* Male vs Female Highlight Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {maleSatEffective === 0 && femaleSatEffective === 0 ? (
+                      <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center shadow-xs">
+                        <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mx-auto mb-4">
+                          <Users className="w-8 h-8 text-slate-400" />
+                        </div>
+                        <h4 className="text-base font-bold text-slate-800 mb-1">
+                          {lang === 'si' ? 'ස්ත්‍රී/පුරුෂ දත්ත සටහන් වී නොමැත' : 'No Gender Breakdown Data Available'}
+                        </h4>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                          {lang === 'si'
+                            ? 'තෝරාගත් වර්ෂය සඳහා ස්ත්‍රී/පුරුෂ කාණ්ඩ වෙන්කළ විභාග වාර්තා ඇතුළත් කර නොමැත.'
+                            : 'No gender-segregated examination records registered for the selected academic year.'}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Male vs Female Highlight Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Male Card */}
                       <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-500/10 via-white to-blue-500/5 border-2 border-blue-200 shadow-sm">
                         <div className="flex items-center justify-between mb-3">
@@ -642,6 +708,8 @@ const QuickAnalyticsModal = ({
                         </ResponsiveContainer>
                       </div>
                     </div>
+                      </>
+                    )}
                   </motion.div>
                 )}
 
@@ -653,256 +721,289 @@ const QuickAnalyticsModal = ({
                     transition={{ duration: 0.2 }}
                     className="space-y-6"
                   >
-                    {/* 4 Trend KPI Cards */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                      {/* 1. Mean Variance */}
-                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                          5-Yr Mean Variance
-                        </span>
-                        <div className={`text-2xl sm:text-3xl font-black ${trendMetrics.meanVariance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {trendMetrics.meanVariance >= 0 ? `+${trendMetrics.meanVariance}%` : `${trendMetrics.meanVariance}%`}
+                    {fiveYearTrends.length === 0 ? (
+                      <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center shadow-xs">
+                        <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                          <TrendingUp className="w-8 h-8 text-slate-400" />
                         </div>
-                        <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">vs. Provincial Avg</span>
+                        <h4 className="text-base font-bold text-slate-800 mb-1">
+                          {lang === 'si' ? 'වසර 5ක ඇගයීම් වාර්තා නොමැත' : 'No 5-Year Trend Records Registered'}
+                        </h4>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto mb-6 leading-relaxed">
+                          {lang === 'si'
+                            ? 'මෙම අධ්‍යාපන කොට්ඨාසය හෝ පාසල සඳහා බහු-වාර්ෂික A/L විභාග ප්‍රතිඵල පද්ධතියට ඇතුළත් කළ පසු වාර්ෂික විචලනය හා ප්‍රවණතා මෙහි දිස්වනු ඇත.'
+                            : 'Longitudinal variance trajectories and 5-year comparative performance metrics will automatically populate once multi-year G.C.E. A/L examination records are entered.'}
+                        </p>
+                        <button
+                          onClick={handleOpenFullExplorer}
+                          className="inline-flex items-center space-x-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-blue-500/20"
+                        >
+                          <span>{lang === 'si' ? 'පූර්ණ දත්ත ගවේෂකය විවෘත කරන්න' : 'Open Results Explorer'}</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-
-                      {/* 2. Peak Year */}
-                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                          {lang === 'si' ? 'උච්චතම වසර' : 'Peak Year'}
-                        </span>
-                        <div className="text-2xl sm:text-3xl font-black text-blue-600">
-                          {trendMetrics.peakYear}
-                        </div>
-                        <span className="text-[10px] text-blue-700/80 font-bold block mt-0.5">{trendMetrics.peakRate}% Pass Rate</span>
-                      </div>
-
-                      {/* 3. Momentum */}
-                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                          {lang === 'si' ? 'වසර 5ක වර්ධනය' : '5-Yr Momentum'}
-                        </span>
-                        <div className={`text-2xl sm:text-3xl font-black ${trendMetrics.momentum >= 0 ? 'text-teal-600' : 'text-amber-600'}`}>
-                          {trendMetrics.momentum >= 0 ? `+${trendMetrics.momentum}%` : `${trendMetrics.momentum}%`}
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">2021 to 2025 Delta</span>
-                      </div>
-
-                      {/* 4. 5-Yr Mean Pass Rate */}
-                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                          5-Yr Average Rate
-                        </span>
-                        <div className="text-2xl sm:text-3xl font-black text-slate-800">
-                          {trendMetrics.avgRate}%
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">Across 5 cohorts</span>
-                      </div>
-                    </div>
-
-                    {/* Dynamic Composed Diverging Bar + Trend Line Chart matching Results Explorer */}
-                    <div className="bg-slate-50/80 p-5 rounded-3xl border border-slate-200">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                        <div>
-                          <div className="inline-flex items-center space-x-1.5 text-[10px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full mb-1">
-                            <TrendingUp className="w-3 h-3 text-indigo-600" />
-                            <span>Annual Performance Trajectory</span>
+                    ) : (
+                      <>
+                        {/* 4 Trend KPI Cards */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                          {/* 1. Mean Variance */}
+                          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                              5-Yr Mean Variance
+                            </span>
+                            <div className={`text-2xl sm:text-3xl font-black ${trendMetrics.meanVariance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                              {trendMetrics.meanVariance >= 0 ? `+${trendMetrics.meanVariance}%` : `${trendMetrics.meanVariance}%`}
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">vs. Provincial Avg</span>
                           </div>
-                          <h4 className="text-sm font-black text-slate-900 tracking-tight">
-                            5-Year Performance Variance Trajectory (2021 – 2025)
-                          </h4>
-                          <p className="text-[11px] text-slate-500 font-medium">
-                            {lang === 'si' ? 'පළාත් ප්‍රමිතියට සාපේක්ෂව වාර්ෂික සමත් ප්‍රතිශත විචලනය හා වර්ධන ප්‍රවණතා රේඛාව.' : 'Annual pass rate variance gap against provincial standard with connecting trajectory line.'}
-                          </p>
+
+                          {/* 2. Peak Year */}
+                          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                              {lang === 'si' ? 'උච්චතම වසර' : 'Peak Year'}
+                            </span>
+                            <div className="text-2xl sm:text-3xl font-black text-blue-600">
+                              {trendMetrics.peakYear}
+                            </div>
+                            <span className="text-[10px] text-blue-700/80 font-bold block mt-0.5">{trendMetrics.peakRate}% Pass Rate</span>
+                          </div>
+
+                          {/* 3. Momentum */}
+                          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                              {lang === 'si' ? 'වසර 5ක වර්ධනය' : '5-Yr Momentum'}
+                            </span>
+                            <div className={`text-2xl sm:text-3xl font-black ${trendMetrics.momentum >= 0 ? 'text-teal-600' : 'text-amber-600'}`}>
+                              {trendMetrics.momentum >= 0 ? `+${trendMetrics.momentum}%` : `${trendMetrics.momentum}%`}
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">
+                              {fiveYearTrends[0].year} to {fiveYearTrends[fiveYearTrends.length - 1].year} Delta
+                            </span>
+                          </div>
+
+                          {/* 4. 5-Yr Mean Pass Rate */}
+                          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                              5-Yr Average Rate
+                            </span>
+                            <div className="text-2xl sm:text-3xl font-black text-slate-800">
+                              {trendMetrics.avgRate}%
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">
+                              Across {fiveYearTrends.length} cohort{fiveYearTrends.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
                         </div>
 
-                        {/* Legend Pills */}
-                        <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
-                          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            <span className="w-2.5 h-2.5 rounded bg-emerald-500" />
-                            <span>Above Standard (+%)</span>
-                          </span>
-                          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200">
-                            <span className="w-2.5 h-2.5 rounded bg-rose-500" />
-                            <span>Below Standard (-%)</span>
-                          </span>
-                          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200">
-                            <span className="w-3 h-1 rounded bg-indigo-600" />
-                            <span>Trend Line</span>
-                          </span>
-                        </div>
-                      </div>
+                        {/* Dynamic Composed Diverging Bar + Trend Line Chart matching Results Explorer */}
+                        <div className="bg-slate-50/80 p-5 rounded-3xl border border-slate-200">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <div>
+                              <div className="inline-flex items-center space-x-1.5 text-[10px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full mb-1">
+                                <TrendingUp className="w-3 h-3 text-indigo-600" />
+                                <span>Annual Performance Trajectory</span>
+                              </div>
+                              <h4 className="text-sm font-black text-slate-900 tracking-tight">
+                                Performance Variance Trajectory ({fiveYearTrends[0].year} – {fiveYearTrends[fiveYearTrends.length - 1].year})
+                              </h4>
+                              <p className="text-[11px] text-slate-500 font-medium">
+                                {lang === 'si' ? 'පළාත් ප්‍රමිතියට සාපේක්ෂව වාර්ෂික සමත් ප්‍රතිශත විචලනය හා වර්ධන ප්‍රවණතා රේඛාව.' : 'Annual pass rate variance gap against provincial standard with connecting trajectory line.'}
+                              </p>
+                            </div>
 
-                      <div className="h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart data={fiveYearTrends} margin={{ top: 20, right: 20, left: -10, bottom: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                            <XAxis 
-                              dataKey="year" 
-                              stroke="#64748b" 
-                              fontSize={12} 
-                              fontWeight={800}
-                              tickLine={false} 
-                              axisLine={{ stroke: '#cbd5e1' }}
-                            />
-                            <YAxis 
-                              unit="%" 
-                              stroke="#64748b" 
-                              fontSize={11} 
-                              fontWeight={600}
-                              tickLine={false} 
-                              axisLine={false}
-                              tickFormatter={(v) => (v > 0 ? `+${v}%` : `${v}%`)}
-                              domain={[(dataMin) => Math.min(-6, Math.floor(dataMin - 2)), (dataMax) => Math.max(6, Math.ceil(dataMax + 2))]}
-                            />
-                            <ReferenceLine 
-                              y={0} 
-                              stroke="#0f172a" 
-                              strokeWidth={2}
-                              label={{
-                                value: '0.0% Baseline (Provincial Benchmark)',
-                                position: 'insideTopRight',
-                                fill: '#475569',
-                                fontSize: 10,
-                                fontWeight: 'bold',
-                                offset: 8
-                              }}
-                            />
-                            <Tooltip
-                              content={({ active, payload }) => {
-                                if (!active || !payload || !payload.length) return null;
-                                const data = payload[0].payload;
-                                const isPos = data.variance >= 0;
-                                return (
-                                  <div className="bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-slate-700/80 text-xs min-w-[240px] space-y-1.5">
-                                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-1.5">
-                                      <span className="text-slate-400 font-bold">Academic Cohort</span>
-                                      <span className="font-black text-amber-400">Year {data.year}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-300 font-semibold">Entity Pass Rate:</span>
-                                      <span className="font-extrabold text-white">{data.entityPassRate}%</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-400 font-medium">NCP Provincial Avg:</span>
-                                      <span className="font-bold text-slate-300">{data.provincialBenchmark}%</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-400 font-medium">National Avg:</span>
-                                      <span className="font-bold text-slate-400">{data.nationalBenchmark}%</span>
-                                    </div>
-                                    <div className="flex justify-between pt-1.5 border-t border-slate-800">
-                                      <span className="font-bold text-slate-200">Net Variance:</span>
-                                      <span className={`font-black text-sm ${isPos ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                        {isPos ? `+${data.variance}%` : `${data.variance}%`}
-                                      </span>
-                                    </div>
-                                    <div className="pt-0.5 text-[11px] font-bold">
-                                      {isPos ? (
-                                        <span className="text-emerald-400 flex items-center gap-1">
-                                          <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
-                                          <span>Outperforming benchmark by +{data.variance}%</span>
-                                        </span>
-                                      ) : (
-                                        <span className="text-rose-400 flex items-center gap-1">
-                                          <ArrowDownRight className="w-3.5 h-3.5 shrink-0" />
-                                          <span>Below benchmark by {data.variance}%</span>
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              }}
-                            />
-                            {/* Diverging Bar */}
-                            <Bar 
-                              dataKey="variance" 
-                              name="Variance Gap" 
-                              barSize={38} 
-                              radius={[6, 6, 6, 6]}
-                              isAnimationActive={false}
-                            >
-                              {fiveYearTrends.map((entry, index) => (
-                                <Cell 
-                                  key={`quick-var-cell-${index}`} 
-                                  fill={entry.variance >= 0 ? '#10b981' : '#f43f5e'} 
+                            {/* Legend Pills */}
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+                              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                <span className="w-2.5 h-2.5 rounded bg-emerald-500" />
+                                <span>Above Standard (+%)</span>
+                              </span>
+                              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200">
+                                <span className="w-2.5 h-2.5 rounded bg-rose-500" />
+                                <span>Below Standard (-%)</span>
+                              </span>
+                              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                <span className="w-3 h-1 rounded bg-indigo-600" />
+                                <span>Trend Line</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="h-72">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <ComposedChart data={fiveYearTrends} margin={{ top: 20, right: 20, left: -10, bottom: 10 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                <XAxis 
+                                  dataKey="year" 
+                                  stroke="#64748b" 
+                                  fontSize={12} 
+                                  fontWeight={800}
+                                  tickLine={false} 
+                                  axisLine={{ stroke: '#cbd5e1' }}
                                 />
-                              ))}
-                            </Bar>
+                                <YAxis 
+                                  unit="%" 
+                                  stroke="#64748b" 
+                                  fontSize={11} 
+                                  fontWeight={600}
+                                  tickLine={false} 
+                                  axisLine={false}
+                                  tickFormatter={(v) => (v > 0 ? `+${v}%` : `${v}%`)}
+                                  domain={[(dataMin) => Math.min(-6, Math.floor(dataMin - 2)), (dataMax) => Math.max(6, Math.ceil(dataMax + 2))]}
+                                />
+                                <ReferenceLine 
+                                  y={0} 
+                                  stroke="#0f172a" 
+                                  strokeWidth={2}
+                                  label={{
+                                    value: '0.0% Baseline (Provincial Benchmark)',
+                                    position: 'insideTopRight',
+                                    fill: '#475569',
+                                    fontSize: 10,
+                                    fontWeight: 'bold',
+                                    offset: 8
+                                  }}
+                                />
+                                <Tooltip
+                                  content={({ active, payload }) => {
+                                    if (!active || !payload || !payload.length) return null;
+                                    const data = payload[0].payload;
+                                    const isPos = data.variance >= 0;
+                                    return (
+                                      <div className="bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-slate-700/80 text-xs min-w-[240px] space-y-1.5">
+                                        <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-1.5">
+                                          <span className="text-slate-400 font-bold">Academic Cohort</span>
+                                          <span className="font-black text-amber-400">Year {data.year}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-300 font-semibold">Entity Pass Rate:</span>
+                                          <span className="font-extrabold text-white">{data.entityPassRate}%</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-400 font-medium">NCP Provincial Avg:</span>
+                                          <span className="font-bold text-slate-300">{data.provincialBenchmark}%</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-400 font-medium">National Avg:</span>
+                                          <span className="font-bold text-slate-400">{data.nationalBenchmark}%</span>
+                                        </div>
+                                        <div className="flex justify-between pt-1.5 border-t border-slate-800">
+                                          <span className="font-bold text-slate-200">Net Variance:</span>
+                                          <span className={`font-black text-sm ${isPos ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                            {isPos ? `+${data.variance}%` : `${data.variance}%`}
+                                          </span>
+                                        </div>
+                                        <div className="pt-0.5 text-[11px] font-bold">
+                                          {isPos ? (
+                                            <span className="text-emerald-400 flex items-center gap-1">
+                                              <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
+                                              <span>Outperforming benchmark by +{data.variance}%</span>
+                                            </span>
+                                          ) : (
+                                            <span className="text-rose-400 flex items-center gap-1">
+                                              <ArrowDownRight className="w-3.5 h-3.5 shrink-0" />
+                                              <span>Below benchmark by {data.variance}%</span>
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }}
+                                />
+                                {/* Diverging Bar */}
+                                <Bar 
+                                  dataKey="variance" 
+                                  name="Variance Gap" 
+                                  barSize={38} 
+                                  radius={[6, 6, 6, 6]}
+                                  isAnimationActive={false}
+                                >
+                                  {fiveYearTrends.map((entry, index) => (
+                                    <Cell 
+                                      key={`quick-var-cell-${index}`} 
+                                      fill={entry.variance >= 0 ? '#10b981' : '#f43f5e'} 
+                                    />
+                                  ))}
+                                </Bar>
 
-                            {/* Overlaid Connecting Line */}
-                            <Line 
-                              type="monotone" 
-                              dataKey="variance" 
-                              name="Trajectory Line"
-                              stroke="#6366f1" 
-                              strokeWidth={3} 
-                              dot={{ r: 5, fill: '#6366f1', stroke: '#ffffff', strokeWidth: 2 }}
-                              activeDot={{ r: 7, fill: '#4338ca' }}
-                              isAnimationActive={false}
-                            />
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
+                                {/* Overlaid Connecting Line */}
+                                <Line 
+                                  type="monotone" 
+                                  dataKey="variance" 
+                                  name="Trajectory Line"
+                                  stroke="#6366f1" 
+                                  strokeWidth={3} 
+                                  dot={{ r: 5, fill: '#6366f1', stroke: '#ffffff', strokeWidth: 2 }}
+                                  activeDot={{ r: 7, fill: '#4338ca' }}
+                                  isAnimationActive={false}
+                                />
+                              </ComposedChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
 
-                    {/* 5-Year Performance Audit Table */}
-                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                      <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                        <span className="text-xs font-black text-slate-800">{lang === 'si' ? 'වසර 5ක වාර්ෂික විගණනය' : '5-Year Cohort Performance Audit'}</span>
-                        <span className="text-[11px] font-bold text-slate-500 bg-white px-2.5 py-0.5 rounded-full border border-slate-200">2021 – 2025</span>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs text-left text-slate-600">
-                          <thead className="bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                            <tr>
-                              <th className="py-2.5 px-4">{lang === 'si' ? 'වර්ෂය' : 'Year'}</th>
-                              <th className="py-2.5 px-4">{lang === 'si' ? 'සමත් %' : 'Entity Pass Rate (%)'}</th>
-                              <th className="py-2.5 px-4">NCP Provincial Avg</th>
-                              <th className="py-2.5 px-4">National Avg</th>
-                              <th className="py-2.5 px-4 text-center">Net Variance</th>
-                              <th className="py-2.5 px-4 text-right">Evaluation</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 font-medium">
-                            {fiveYearTrends.map((row, idx) => {
-                              const isPos = row.variance >= 0;
-                              return (
-                                <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
-                                  <td className="py-2.5 px-4 font-black text-slate-900 flex items-center space-x-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                    <span>{row.year}</span>
-                                  </td>
-                                  <td className="py-2.5 px-4 font-black text-blue-600">{row.entityPassRate}%</td>
-                                  <td className="py-2.5 px-4 text-slate-700">{row.provincialBenchmark}%</td>
-                                  <td className="py-2.5 px-4 text-slate-500">{row.nationalBenchmark}%</td>
-                                  <td className="py-2.5 px-4 text-center">
-                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-black border ${
-                                      isPos ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
-                                    }`}>
-                                      {isPos ? `+${row.variance}%` : `${row.variance}%`}
-                                    </span>
-                                  </td>
-                                  <td className="py-2.5 px-4 text-right">
-                                    {isPos ? (
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-                                        <CheckCircle2 className="w-3 h-3" />
-                                        <span>Exceeding Standard (+{row.variance}%)</span>
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600">
-                                        <AlertCircle className="w-3 h-3" />
-                                        <span>Below Standard ({row.variance}%)</span>
-                                      </span>
-                                    )}
-                                  </td>
+                        {/* 5-Year Performance Audit Table */}
+                        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                          <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                            <span className="text-xs font-black text-slate-800">
+                              {lang === 'si' ? 'බහු-වාර්ෂික විගණනය' : 'Cohort Performance Audit'}
+                            </span>
+                            <span className="text-[11px] font-bold text-slate-500 bg-white px-2.5 py-0.5 rounded-full border border-slate-200">
+                              {fiveYearTrends[0].year} – {fiveYearTrends[fiveYearTrends.length - 1].year}
+                            </span>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs text-left text-slate-600">
+                              <thead className="bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                                <tr>
+                                  <th className="py-2.5 px-4">{lang === 'si' ? 'වර්ෂය' : 'Year'}</th>
+                                  <th className="py-2.5 px-4">{lang === 'si' ? 'සමත් %' : 'Entity Pass Rate (%)'}</th>
+                                  <th className="py-2.5 px-4">NCP Provincial Avg</th>
+                                  <th className="py-2.5 px-4">National Avg</th>
+                                  <th className="py-2.5 px-4 text-center">Net Variance</th>
+                                  <th className="py-2.5 px-4 text-right">Evaluation</th>
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 font-medium">
+                                {fiveYearTrends.map((row, idx) => {
+                                  const isPos = row.variance >= 0;
+                                  return (
+                                    <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                                      <td className="py-2.5 px-4 font-black text-slate-900 flex items-center space-x-1.5">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                        <span>{row.year}</span>
+                                      </td>
+                                      <td className="py-2.5 px-4 font-black text-blue-600">{row.entityPassRate}%</td>
+                                      <td className="py-2.5 px-4 text-slate-700">{row.provincialBenchmark}%</td>
+                                      <td className="py-2.5 px-4 text-slate-500">{row.nationalBenchmark}%</td>
+                                      <td className="py-2.5 px-4 text-center">
+                                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-black border ${
+                                          isPos ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                                        }`}>
+                                          {isPos ? `+${row.variance}%` : `${row.variance}%`}
+                                        </span>
+                                      </td>
+                                      <td className="py-2.5 px-4 text-right">
+                                        {isPos ? (
+                                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+                                            <CheckCircle2 className="w-3 h-3" />
+                                            <span>Exceeding Standard (+{row.variance}%)</span>
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600">
+                                            <AlertCircle className="w-3 h-3" />
+                                            <span>Below Standard ({row.variance}%)</span>
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </motion.div>
                 )}
               </>

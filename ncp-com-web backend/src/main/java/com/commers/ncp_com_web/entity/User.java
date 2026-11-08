@@ -60,6 +60,9 @@ public class User {
     @Column(name = "is_section_head")
     private Boolean isSectionHead = false;
 
+    @Column(name = "profile_pic", columnDefinition = "TEXT")
+    private String profilePic;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "user_subjects",

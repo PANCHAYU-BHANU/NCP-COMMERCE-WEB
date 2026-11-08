@@ -100,7 +100,7 @@ const HomePage = () => {
 
   // Fetch real statistics, zones & news from API
   useEffect(() => {
-    fetch('http://localhost:8080/api/public/statistics/overview')
+    fetch('/api/public/statistics/overview')
       .then(res => res.json())
       .then(data => {
         if (data && data.provincial) {
@@ -124,7 +124,7 @@ const HomePage = () => {
       })
       .catch(err => console.error("Error fetching stats:", err));
 
-    fetch('http://localhost:8080/api/public/zones')
+    fetch('/api/public/zones')
       .then(res => res.json())
       .then(zones => {
         if (Array.isArray(zones)) {
@@ -136,7 +136,7 @@ const HomePage = () => {
       })
       .catch(() => {});
 
-    fetch('http://localhost:8080/api/public/news')
+    fetch('/api/public/news')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {

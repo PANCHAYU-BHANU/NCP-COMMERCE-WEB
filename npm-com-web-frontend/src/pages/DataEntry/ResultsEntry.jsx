@@ -5,7 +5,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input, Select } from '../../components/ui/Input';
-import { Save, FileText, Upload, Users, User, UserCheck } from 'lucide-react';
+import { Save, FileText, Upload, Users, User, UserCheck, RefreshCw } from 'lucide-react';
 
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
@@ -158,6 +158,8 @@ const ResultsEntry = () => {
     { value: 'it', label: 'Information & Communication Technology (තොරතුරු තාක්ෂණය)', shortName: 'IT', colName: 'IT' }
   ];
 
+  const UNIT_SUBJECTS = COMMERCE_SUBJECTS;
+
   const TERM_SUBJECT_OPTIONS = [
     ...COMMERCE_SUBJECTS,
     { value: 'all', label: 'All Subjects (Combined Sheet)', shortName: 'All Subjects', colName: 'All' }
@@ -255,7 +257,7 @@ const ResultsEntry = () => {
     }
   };
 
-  const sortedUnitDefs = [...unitDefinitions].sort((a, b) => a.unitNumber - b.unitNumber);
+  const sortedUnitDefs = [...(unitDefinitions || [])].sort((a, b) => a.unitNumber - b.unitNumber);
   const unitOptions = sortedUnitDefs.length > 0
     ? sortedUnitDefs.map(u => ({
         value: u.unitNumber.toString(),
@@ -268,11 +270,11 @@ const ResultsEntry = () => {
 
   const activeUnitDef = sortedUnitDefs.find(u => String(u.unitNumber) === String(bulkConfig.termOrUnit));
   const activeUnitName = activeUnitDef ? activeUnitDef.unitName : `Unit ${bulkConfig.termOrUnit}`;
-  const activeSubjectObj = COMMERCE_SUBJECTS.find(s => s.value === selectedUnitSubject) || COMMERCE_SUBJECTS[0];
-  const activeTermSubjectObj = TERM_SUBJECT_OPTIONS.find(s => s.value === selectedTermSubject) || TERM_SUBJECT_OPTIONS[0];
+  const activeSubjectObj = COMMERCE_SUBJECTS.find(s => s.value === selectedUnitSubject) || COMMERCE_SUBJECTS[0] || { shortName: 'Accounting', colName: 'Accounting' };
+  const activeTermSubjectObj = TERM_SUBJECT_OPTIONS.find(s => s.value === selectedTermSubject) || TERM_SUBJECT_OPTIONS[0] || { shortName: 'Accounting', colName: 'Accounting' };
 
   const [nationalStats, setNationalStats] = useState({
-    year: '2025', totalSchools: '', totalStudents: '', totalTeachers: '', passRate: ''
+    year: '2027', totalSchools: '', totalStudents: '', totalTeachers: '', passRate: ''
   });
   const [allNationalStats, setAllNationalStats] = useState([]);
 
@@ -290,6 +292,14 @@ const ResultsEntry = () => {
               totalTeachers: current.totalTeachers || '',
               passRate: current.passRate || ''
             });
+          } else {
+            setNationalStats(prev => ({
+              ...prev,
+              totalSchools: '',
+              totalStudents: '',
+              totalTeachers: '',
+              passRate: ''
+            }));
           }
         }
       })
@@ -318,6 +328,16 @@ const ResultsEntry = () => {
     }
   };
 
+  const handleResetNatStatForm = () => {
+    setNationalStats(prev => ({
+      ...prev,
+      totalSchools: '',
+      totalStudents: '',
+      totalTeachers: '',
+      passRate: ''
+    }));
+  };
+
   const handleSelectStatRow = (stat) => {
     setNationalStats({
       year: String(stat.year),
@@ -326,6 +346,37 @@ const ResultsEntry = () => {
       totalTeachers: stat.totalTeachers || '',
       passRate: stat.passRate || ''
     });
+  };
+
+  const handleDeleteStatRow = async (id, year) => {
+    const result = await Swal.fire({
+      title: `Delete ${year} A/L Benchmark?`,
+      text: "Are you sure you want to delete this recorded benchmark?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      confirmButtonText: "Yes, delete",
+      cancelButtonText: "Cancel"
+    });
+    if (result.isConfirmed) {
+      try {
+        await api.delete(`/public/national-statistics/${id}`);
+        Swal.fire({ icon: "success", title: "Record deleted", timer: 1500, showConfirmButton: false });
+        if (String(nationalStats.year) === String(year)) {
+          setNationalStats(prev => ({
+            ...prev,
+            totalSchools: '',
+            totalStudents: '',
+            totalTeachers: '',
+            passRate: ''
+          }));
+        }
+        fetchNationalStats();
+      } catch (err) {
+        console.error(err);
+        Swal.fire({ icon: "error", title: "Failed to delete record" });
+      }
+    }
   };
 
   const handleNatStatSubmit = async () => {
@@ -346,12 +397,100 @@ const ResultsEntry = () => {
     }
   };
 
+  const normalizeGender = (val) => {
+    if (!val) return 'MALE';
+    const s = String(val).trim().toUpperCase();
+    if (s === 'FEMALE' || s === 'F' || s === 'GIRL' || s === 'WOMAN' || s.startsWith('FEM')) {
+      return 'FEMALE';
+    }
+    return 'MALE';
+  };
+
   const [parsedMarks, setParsedMarks] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoadingRoster, setIsLoadingRoster] = useState(false);
+
+  const fetchResultsRoster = React.useCallback(async () => {
+    if (!targetSchoolId || activeTab === 'national_stats') return;
+    setIsLoadingRoster(true);
+    try {
+      const typeMap = {
+        term: 'TERM_TEST',
+        unit: 'UNIT_TEST',
+        national: 'AL_RESULTS'
+      };
+      const apiType = typeMap[activeTab] || 'TERM_TEST';
+      const year = parseInt(bulkConfig.year || '2027', 10);
+      const termOrUnit = parseInt(bulkConfig.termOrUnit || '1', 10);
+
+      const res = await api.get(`/school/${targetSchoolId}/results-roster`, {
+        params: {
+          type: apiType,
+          year,
+          termOrUnit
+        }
+      });
+      if (res.data && Array.isArray(res.data)) {
+        setParsedMarks(res.data.map(item => ({
+          ...item,
+          gender: normalizeGender(item.gender)
+        })));
+      }
+    } catch (err) {
+      console.error("Error loading student results roster:", err);
+    } finally {
+      setIsLoadingRoster(false);
+    }
+  }, [targetSchoolId, activeTab, bulkConfig.year, bulkConfig.termOrUnit]);
+
+  React.useEffect(() => {
+    fetchResultsRoster();
+  }, [fetchResultsRoster]);
+
+  const mergeUploadedWithRoster = (currentList, uploadedList) => {
+    if (!currentList || currentList.length === 0) return uploadedList;
+    const list = [...currentList];
+    const unmerged = [];
+
+    for (const upRow of uploadedList) {
+      const upIdx = String(upRow.indexNumber || '').trim().toLowerCase();
+      const upName = String(upRow.name || '').trim().toLowerCase();
+      
+      let foundIndex = -1;
+      if (upIdx) {
+        foundIndex = list.findIndex(r => String(r.indexNumber || '').trim().toLowerCase() === upIdx);
+      }
+      if (foundIndex === -1 && upName) {
+        foundIndex = list.findIndex(r => String(r.name || '').trim().toLowerCase() === upName);
+      }
+
+      if (foundIndex !== -1) {
+        const existing = list[foundIndex];
+        list[foundIndex] = {
+          ...existing,
+          name: upRow.name || existing.name,
+          gender: normalizeGender(upRow.gender || existing.gender),
+          whatsapp: upRow.whatsapp || existing.whatsapp,
+          alYear: upRow.alYear || existing.alYear,
+          acc: upRow.acc !== undefined && upRow.acc !== '' ? upRow.acc : existing.acc,
+          eco: upRow.eco !== undefined && upRow.eco !== '' ? upRow.eco : existing.eco,
+          bs: upRow.bs !== undefined && upRow.bs !== '' ? upRow.bs : existing.bs,
+          it: upRow.it !== undefined && upRow.it !== '' ? upRow.it : existing.it,
+          zScore: upRow.zScore || existing.zScore,
+          districtRank: upRow.districtRank || existing.districtRank,
+          islandRank: upRow.islandRank || existing.islandRank
+        };
+      } else {
+        unmerged.push(upRow);
+      }
+    }
+
+    return [...list, ...unmerged];
+  };
 
   const handleMarkChange = (index, field, value) => {
     const updated = [...parsedMarks];
-    updated[index][field] = value;
+    updated[index][field] = field === 'gender' ? normalizeGender(value) : value;
     setParsedMarks(updated);
   };
 
@@ -377,7 +516,7 @@ const ResultsEntry = () => {
               [name, gender, acc, eco, bs, it, zScore, districtRank, islandRank] = parts;
             }
             return {
-              id: index, indexNumber: indexNum || '', name: name || '', gender: gender || 'MALE', whatsapp: '',
+              id: Date.now() + index, indexNumber: indexNum || '', name: name || '', gender: normalizeGender(gender), whatsapp: '',
               acc: acc || '', eco: eco || '', bs: bs || '', it: it || '',
               zScore: zScore || '', districtRank: districtRank || '', islandRank: islandRank || ''
             };
@@ -393,7 +532,7 @@ const ResultsEntry = () => {
               [indexNum, name, markVal] = parts;
             }
             const rowObj = {
-              id: index, indexNumber: indexNum || '', name: name || '', gender: gender || 'MALE', whatsapp: whatsapp || '',
+              id: Date.now() + index, indexNumber: indexNum || '', name: name || '', gender: normalizeGender(gender), whatsapp: whatsapp || '',
               acc: '', eco: '', bs: '', it: '', zScore: '', districtRank: '', islandRank: ''
             };
             rowObj[currentSubj] = markVal || '';
@@ -407,13 +546,13 @@ const ResultsEntry = () => {
               [name, gender, whatsapp, acc, eco, bs, it] = parts;
             }
             return {
-              id: index, indexNumber: indexNum || '', name: name || '', gender: gender || 'MALE', whatsapp: whatsapp || '',
+              id: Date.now() + index, indexNumber: indexNum || '', name: name || '', gender: normalizeGender(gender), whatsapp: whatsapp || '',
               acc: acc || '', eco: eco || '', bs: bs || '', it: it || '',
               zScore: '', districtRank: '', islandRank: ''
             };
           }
         });
-        setParsedMarks(data);
+        setParsedMarks(prev => mergeUploadedWithRoster(prev, data));
       } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
         const data = await file.arrayBuffer();
         const workbook = XLSX.read(data);
@@ -424,8 +563,9 @@ const ResultsEntry = () => {
         const parsed = json.map((row, index) => {
           const indexNum = String(row['Index No'] || row['IndexNo'] || row['Index'] || row['Admission No'] || row['AdmissionNo'] || '').trim();
           const name = String(row['Name'] || row['Student Name'] || '').trim();
-          const gender = row['Gender'] || 'MALE';
-          const whatsapp = row['WhatsApp'] || row['Whatsapp'] || '';
+          const gender = normalizeGender(row['Gender'] || row['gender']);
+          const whatsapp = String(row['WhatsApp'] || row['Whatsapp'] || '').trim();
+          const alYear = parseInt(bulkConfig.year || '2027', 10);
 
           if (activeTab === 'unit' || (activeTab === 'term' && selectedTermSubject !== 'all')) {
             const curSubjKey = activeTab === 'unit' ? selectedUnitSubject : selectedTermSubject;
@@ -438,7 +578,7 @@ const ResultsEntry = () => {
               || row['Accounting'] || row['Economics'] || row['Business Studies'] || row['IT']
               || '';
             const rowObj = {
-              id: index, indexNumber: indexNum, name, gender, whatsapp,
+              id: Date.now() + index, indexNumber: indexNum, name, gender, whatsapp, alYear,
               acc: '', eco: '', bs: '', it: '', zScore: '', districtRank: '', islandRank: ''
             };
             rowObj[curSubjKey] = String(markVal || '').trim();
@@ -446,21 +586,22 @@ const ResultsEntry = () => {
           }
 
           return {
-            id: index,
+            id: Date.now() + index,
             indexNumber: indexNum,
             name,
             gender,
             whatsapp,
-            acc: row['Accounting'] || '',
-            eco: row['Economics'] || '',
-            bs: row['Business Studies'] || '',
-            it: row['IT'] || '',
-            zScore: row['Z-Score'] || '',
-            districtRank: row['District Rank'] || '',
-            islandRank: row['Island Rank'] || ''
+            alYear,
+            acc: String(row['Accounting'] || '').trim(),
+            eco: String(row['Economics'] || '').trim(),
+            bs: String(row['Business Studies'] || '').trim(),
+            it: String(row['IT'] || '').trim(),
+            zScore: String(row['Z-Score'] || '').trim(),
+            districtRank: String(row['District Rank'] || '').trim(),
+            islandRank: String(row['Island Rank'] || '').trim()
           };
         });
-        setParsedMarks(parsed);
+        setParsedMarks(prev => mergeUploadedWithRoster(prev, parsed));
       } else if (fileName.endsWith('.pdf')) {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -478,7 +619,7 @@ const ResultsEntry = () => {
             const curSubjKey = activeTab === 'unit' ? selectedUnitSubject : selectedTermSubject;
             const markVal = parts[parts.length - 1] || '';
             const rowObj = {
-              id: index,
+              id: Date.now() + index,
               indexNumber: parts[0] || '',
               name: parts.slice(1, parts.length - 1).join(' ') || '',
               gender: 'MALE',
@@ -489,10 +630,10 @@ const ResultsEntry = () => {
             return rowObj;
           }
           return {
-            id: index,
+            id: Date.now() + index,
             indexNumber: '',
             name: parts.slice(0, parts.length - 6).join(' ') || '',
-            gender: parts[parts.length - 6] || 'MALE',
+            gender: normalizeGender(parts[parts.length - 6]),
             whatsapp: parts[parts.length - 5] || '',
             acc: parts[parts.length - 4] || '',
             eco: parts[parts.length - 3] || '',
@@ -500,7 +641,7 @@ const ResultsEntry = () => {
             it: parts[parts.length - 1] || ''
           };
         });
-        setParsedMarks(parsed);
+        setParsedMarks(prev => mergeUploadedWithRoster(prev, parsed));
       } else {
         Swal.fire({ icon: 'error', title: 'Unsupported file type.' });
       }
@@ -516,19 +657,65 @@ const ResultsEntry = () => {
   const handleDownloadTemplate = () => {
     let ws_data = [];
     let fileName = '';
+    const studentRows = (parsedMarks && parsedMarks.length > 0) ? parsedMarks : [];
+
     if (activeTab === 'national') {
       ws_data = [['Index No', 'Name', 'Gender', 'Accounting', 'Economics', 'Business Studies', 'IT', 'Z-Score', 'District Rank', 'Island Rank']];
       fileName = `AL_Results_${bulkConfig.year}_Template.xlsx`;
+      studentRows.forEach(s => {
+        ws_data.push([
+          s.indexNumber || '',
+          s.name || '',
+          normalizeGender(s.gender) === 'FEMALE' ? 'Female' : 'Male',
+          s.acc || '',
+          s.eco || '',
+          s.bs || '',
+          s.it || '',
+          s.zScore || '',
+          s.districtRank || '',
+          s.islandRank || ''
+        ]);
+      });
     } else if (activeTab === 'unit') {
       ws_data = [['Index No', 'Name', 'Gender', 'WhatsApp', `${activeSubjectObj.shortName} (Marks / 100)`]];
       fileName = `Unit_${bulkConfig.termOrUnit}_${activeSubjectObj.shortName}_Template.xlsx`;
+      studentRows.forEach(s => {
+        ws_data.push([
+          s.indexNumber || '',
+          s.name || '',
+          normalizeGender(s.gender) === 'FEMALE' ? 'Female' : 'Male',
+          s.whatsapp || '',
+          s[selectedUnitSubject] || ''
+        ]);
+      });
     } else {
       if (selectedTermSubject === 'all') {
         ws_data = [['Index No', 'Name', 'Gender', 'WhatsApp', 'Accounting', 'Economics', 'Business Studies', 'IT']];
         fileName = `Term_${bulkConfig.termOrUnit}_All_Subjects_Template.xlsx`;
+        studentRows.forEach(s => {
+          ws_data.push([
+            s.indexNumber || '',
+            s.name || '',
+            normalizeGender(s.gender) === 'FEMALE' ? 'Female' : 'Male',
+            s.whatsapp || '',
+            s.acc || '',
+            s.eco || '',
+            s.bs || '',
+            s.it || ''
+          ]);
+        });
       } else {
         ws_data = [['Index No', 'Name', 'Gender', 'WhatsApp', `${activeTermSubjectObj.shortName} (Marks / 100)`]];
         fileName = `Term_${bulkConfig.termOrUnit}_${activeTermSubjectObj.shortName}_Template.xlsx`;
+        studentRows.forEach(s => {
+          ws_data.push([
+            s.indexNumber || '',
+            s.name || '',
+            normalizeGender(s.gender) === 'FEMALE' ? 'Female' : 'Male',
+            s.whatsapp || '',
+            s[selectedTermSubject] || ''
+          ]);
+        });
       }
     }
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
@@ -575,12 +762,15 @@ const ResultsEntry = () => {
         type: type,
         year: parseInt(bulkConfig.year),
         termOrUnit: parseInt(bulkConfig.termOrUnit || '1'),
-        rows: validRows
+        rows: validRows.map(r => ({
+          ...r,
+          alYear: parseInt(bulkConfig.year, 10)
+        }))
       };
       
       await api.post(`/school/${targetSchoolId}/bulk-upload-results`, payload);
-      Swal.fire({ icon: 'success', title: `${type.replace('_', ' ')} saved successfully!`, timer: 2000, showConfirmButton: false })
-      setParsedMarks([]);
+      Swal.fire({ icon: 'success', title: `${type.replace('_', ' ')} saved successfully!`, timer: 2000, showConfirmButton: false });
+      fetchResultsRoster();
     } catch (err) {
       console.error(err);
       Swal.fire({ icon: "error", title: err.response?.data || "Failed to save results.", timer: 3000, showConfirmButton: true })
@@ -611,7 +801,7 @@ const ResultsEntry = () => {
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span>Leaderboard Auto-Calculation</span>
           </span>
-          <span className="text-slate-400 text-[10px] font-semibold hidden sm:inline">Active Batches: 2027 & 2026</span>
+          <span className="text-slate-400 text-[10px] font-semibold hidden sm:inline">Target A/L Batch: {bulkConfig.year}</span>
         </div>
       </div>
 
@@ -924,7 +1114,7 @@ const ResultsEntry = () => {
               <Select 
                 value={selectedUnitSubject} 
                 onChange={(e) => setSelectedUnitSubject(e.target.value)} 
-                options={UNIT_SUBJECTS.map(s => ({ value: s.value, label: s.label }))}
+                options={COMMERCE_SUBJECTS.map(s => ({ value: s.value, label: s.label }))}
               />
             </div>
 
@@ -1039,6 +1229,14 @@ const ResultsEntry = () => {
                   <p className="text-xs text-slate-500">Combine School ID + Index No to uniquely identify and track each student.</p>
                 </div>
                 <div className="flex items-center space-x-3">
+                  <button 
+                    onClick={fetchResultsRoster}
+                    title="Reload latest students & marks from database"
+                    className="text-xs font-bold text-slate-500 hover:text-blue-600 flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw size={13} className={isLoadingRoster ? "animate-spin text-blue-600" : ""} />
+                    <span>Sync Roster</span>
+                  </button>
                   {parsedMarks.length > 0 && (
                     <button 
                       onClick={() => setParsedMarks([])}
@@ -1109,7 +1307,13 @@ const ResultsEntry = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
-                    {parsedMarks.length > 0 ? (
+                    {isLoadingRoster ? (
+                      <tr>
+                        <td colSpan={(activeTab === 'unit' || (activeTab === 'term' && selectedTermSubject !== 'all')) ? 5 : (activeTab === 'national' ? 11 : 8)} className="p-8 text-center text-blue-600 font-bold animate-pulse">
+                          Syncing student roster and examination records from database...
+                        </td>
+                      </tr>
+                    ) : parsedMarks.length > 0 ? (
                       parsedMarks.map((mark, i) => {
                         // Calculate pass/fail for A/L
                         let status = '';
@@ -1134,7 +1338,7 @@ const ResultsEntry = () => {
                           </td>
                           <td className="p-2"><input value={mark.name} onChange={(e) => handleMarkChange(i, 'name', e.target.value)} placeholder="Full Name" className="w-full border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-medium text-slate-700" type="text" /></td>
                           <td className="p-2">
-                            <select value={mark.gender} onChange={(e) => handleMarkChange(i, 'gender', e.target.value)} className="w-full border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-medium text-slate-700 bg-transparent">
+                            <select value={normalizeGender(mark.gender)} onChange={(e) => handleMarkChange(i, 'gender', e.target.value)} className="w-full border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded-md p-1.5 transition-all text-sm font-medium text-slate-700 bg-transparent">
                               <option value="MALE">Male</option>
                               <option value="FEMALE">Female</option>
                             </select>
@@ -1276,13 +1480,31 @@ const ResultsEntry = () => {
                 />
               </div>
 
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex justify-between items-center">
-                <span className="text-xs font-semibold text-slate-600">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-wrap justify-between items-center gap-3">
+                <span className="text-xs font-semibold text-slate-600 flex items-center flex-wrap gap-2">
                   Target Year: <strong className="text-blue-700">{nationalStats.year} A/L</strong>
+                  {allNationalStats.some(s => String(s.year) === String(nationalStats.year)) ? (
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                      Saved Record
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[11px] font-bold">
+                      New Record (Blank)
+                    </span>
+                  )}
                 </span>
-                <Button leftIcon={Save} onClick={handleNatStatSubmit}>
-                  Save Benchmark Record
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={handleResetNatStatForm}
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                  >
+                    Clear Form
+                  </button>
+                  <Button leftIcon={Save} onClick={handleNatStatSubmit}>
+                    Save Benchmark Record
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>
@@ -1333,12 +1555,20 @@ const ResultsEntry = () => {
                             {stat.totalSchools ? stat.totalSchools.toLocaleString() : '-'}
                           </td>
                           <td className="py-3 px-4 text-right">
-                            <button
-                              onClick={() => handleSelectStatRow(stat)}
-                              className="px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                            >
-                              Edit in Form
-                            </button>
+                            <div className="flex items-center justify-end space-x-2">
+                              <button
+                                onClick={() => handleSelectStatRow(stat)}
+                                className="px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteStatRow(stat.id, stat.year)}
+                                className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
