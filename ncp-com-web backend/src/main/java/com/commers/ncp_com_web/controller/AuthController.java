@@ -200,6 +200,10 @@ public class AuthController {
             }
             response.setExamLevel(user.getExamLevel());
             response.setProfilePic(user.getProfilePic());
+            response.setIsSectionHead(Boolean.TRUE.equals(user.getIsSectionHead()) || user.getRole() == ERole.ROLE_SECTION_HEAD);
+            if (user.getSubjects() != null && !user.getSubjects().isEmpty()) {
+                response.setSubjects(user.getSubjects().stream().map(Subject::getName).collect(Collectors.toList()));
+            }
         }
 
         return ResponseEntity.ok(response);

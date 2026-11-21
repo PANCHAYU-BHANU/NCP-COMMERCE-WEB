@@ -20,6 +20,7 @@ const RankingsLeaderboardPage = () => {
 
   // Filters state
   const [examType, setExamType] = useState(initialExam); // 'al', 'term', 'unit'
+  const [selectedTermOrUnit, setSelectedTermOrUnit] = useState('all'); // 'all', '1', '2', '3' for term, 'all', '1'..'10' for unit
   const [selectedYear, setSelectedYear] = useState(initialYear);
   const [availableYears, setAvailableYears] = useState(
     initialExam === 'al' ? ['2025', '2024', '2023', '2022', '2021'] : ['2027', '2026', '2025', '2024', '2023']
@@ -33,6 +34,7 @@ const RankingsLeaderboardPage = () => {
   // Handle switching Exam Type with smart year realignment based on actual backend data
   const handleExamTypeChange = (newExam) => {
     setExamType(newExam);
+    setSelectedTermOrUnit('all');
   };
 
   // Dynamically load available years for the selected exam type from backend
@@ -177,7 +179,12 @@ const RankingsLeaderboardPage = () => {
     if (scope === 'division' && selectedDivision) locationParams += `&divisionId=${selectedDivision}`;
     if (scope === 'school' && selectedSchool) locationParams += `&schoolId=${selectedSchool}`;
 
-    const url = `/api/public/rankings?examType=${examType}&year=${selectedYear}${subjectIdParam}${locationParams}`;
+    let termOrUnitParam = '';
+    if ((examType === 'term' || examType === 'unit') && selectedTermOrUnit !== 'all') {
+      termOrUnitParam = `&termOrUnit=${selectedTermOrUnit}`;
+    }
+
+    const url = `/api/public/rankings?examType=${examType}&year=${selectedYear}${termOrUnitParam}${subjectIdParam}${locationParams}`;
 
     fetch(url)
       .then(res => {
@@ -202,7 +209,7 @@ const RankingsLeaderboardPage = () => {
 
   useEffect(() => {
     fetchRankings();
-  }, [examType, selectedYear, selectedSubject]);
+  }, [examType, selectedYear, selectedSubject, selectedTermOrUnit]);
 
   // ── DYNAMIC HIERARCHICAL CALCULATION & FILTERING ──
   // Compute relative ranks (School #1, Division #1, Zonal #1, District #1, Province #1)
@@ -421,11 +428,35 @@ const RankingsLeaderboardPage = () => {
     ict: lang === 'si' ? 'තොරතුරු තාක්ෂණය (ICT)' : 'Information Technology (ICT)'
   }[selectedSubject];
 
-  const examDisplayLabel = {
-    al: lang === 'si' ? `${selectedYear} උසස් පෙළ ඇගයීම් මිණුම් ලකුණු (${selectedYear} A/L Benchmark)` : `${selectedYear} A/L National Evaluation Benchmark`,
-    term: lang === 'si' ? `${selectedYear} වාර විභාග ශ්‍රේණිගත කිරීම් (Term Test Evaluations)` : `${selectedYear} Term Test Evaluations (1st, 2nd & 3rd Terms)`,
-    unit: lang === 'si' ? `${selectedYear} ඒකක ඇගයීම් ප්‍රමුඛතා (Unit Tests)` : `${selectedYear} Unit Test Modular Evaluations`
-  }[examType];
+  const examDisplayLabel = useMemo(() => {
+    if (examType === 'al') {
+      return lang === 'si'
+        ? `${selectedYear} උසස් පෙළ ඇගයීම් මිණුම් ලකුණු (${selectedYear} A/L Benchmark)`
+        : `${selectedYear} A/L National Evaluation Benchmark`;
+    }
+    if (examType === 'term') {
+      if (selectedTermOrUnit === 'all') {
+        return lang === 'si'
+          ? `${selectedYear} වාර විභාග ශ්‍රේණිගත කිරීම් — සියලු වාරයන්හි එකතුව (All Terms Aggregate)`
+          : `${selectedYear} Term Test Evaluations (All Terms Aggregate)`;
+      }
+      const ord = selectedTermOrUnit === '1' ? '1st' : selectedTermOrUnit === '2' ? '2nd' : '3rd';
+      return lang === 'si'
+        ? `${selectedYear} ${selectedTermOrUnit} වන වාර විභාග ඇගයීම් (${ord} Term Evaluation)`
+        : `${selectedYear} ${ord} Term Test Evaluation`;
+    }
+    if (examType === 'unit') {
+      if (selectedTermOrUnit === 'all') {
+        return lang === 'si'
+          ? `${selectedYear} ඒකක ඇගයීම් ප්‍රමුඛතා — සියලු ඒකක සාමාන්‍යය (All Units Average)`
+          : `${selectedYear} Unit Test Evaluations (All Units Average)`;
+      }
+      return lang === 'si'
+        ? `${selectedYear} Unit ${selectedTermOrUnit} ඒකක ඇගයීම (Unit ${selectedTermOrUnit} Modular Evaluation)`
+        : `${selectedYear} Unit ${selectedTermOrUnit} Modular Evaluation`;
+    }
+    return '';
+  }, [examType, selectedYear, selectedTermOrUnit, lang]);
 
   return (
     <div className="min-h-screen bg-slate-100/70 pb-28">
@@ -566,6 +597,79 @@ const RankingsLeaderboardPage = () => {
               </button>
             </div>
           </div>
+
+          {/* Term Test Specific Selector (All Terms vs 1st, 2nd, 3rd Term) */}
+          {examType === 'term' && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 sm:p-3 bg-blue-50/70 border border-blue-200/80 rounded-2xl animate-fadeIn">
+              <div className="flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-blue-600" />
+                  <span>{lang === 'si' ? 'වාරය තෝරන්න (Evaluation Term):' : 'Evaluation Term:'}</span>
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: 'all', label: lang === 'si' ? 'සියලු වාරයන් (All Terms Aggregate)' : 'All Terms (Aggregate)' },
+                  { id: '1', label: lang === 'si' ? '1 වන වාරය (1st Term)' : '1st Term' },
+                  { id: '2', label: lang === 'si' ? '2 වන වාරය (2nd Term)' : '2nd Term' },
+                  { id: '3', label: lang === 'si' ? '3 වන වාරය (3rd Term)' : '3rd Term' },
+                ].map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setSelectedTermOrUnit(t.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      selectedTermOrUnit === t.id
+                        ? 'bg-blue-600 text-white shadow-xs font-black scale-102'
+                        : 'bg-white text-slate-700 border border-blue-200/80 hover:bg-blue-100/60'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Unit Test Specific Selector (All Units vs Unit 1-10) */}
+          {examType === 'unit' && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 sm:p-3 bg-indigo-50/70 border border-indigo-200/80 rounded-2xl animate-fadeIn">
+              <div className="flex items-center space-x-2 shrink-0">
+                <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>{lang === 'si' ? 'ඒකකය තෝරන්න (Unit Module):' : 'Unit Module:'}</span>
+                </span>
+              </div>
+
+              <div className="flex overflow-x-auto no-scrollbar items-center gap-1.5 w-full sm:w-auto pb-0.5">
+                <button
+                  onClick={() => setSelectedTermOrUnit('all')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                    selectedTermOrUnit === 'all'
+                      ? 'bg-indigo-600 text-white shadow-xs font-black scale-102'
+                      : 'bg-white text-slate-700 border border-indigo-200/80 hover:bg-indigo-100/60'
+                  }`}
+                >
+                  {lang === 'si' ? 'සියලු ඒකක (All Units Average)' : 'All Units (Average)'}
+                </button>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(uNum => (
+                  <button
+                    key={uNum}
+                    onClick={() => setSelectedTermOrUnit(String(uNum))}
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                      selectedTermOrUnit === String(uNum)
+                        ? 'bg-indigo-600 text-white shadow-xs font-black scale-102'
+                        : 'bg-white text-slate-700 border border-indigo-200/80 hover:bg-indigo-100/60'
+                    }`}
+                  >
+                    Unit {uNum}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Subject Filter & Scope Tabs (Responsive & Overflow-safe) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-5 items-center">

@@ -28,5 +28,8 @@ public class News {
 
     private String examLevel = "GENERAL"; // AL, OL, GENERAL
 
+    @Column(length = 500)
+    private String imageUrl;
+
     private LocalDateTime createdAt = LocalDateTime.now();
 }

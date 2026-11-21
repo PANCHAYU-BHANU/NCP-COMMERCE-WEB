@@ -1,10 +1,9 @@
-target/
-!.mvn/wrapper/maven-wrapper.jar
+target/*
 !target/*.jar
+!.mvn/wrapper/maven-wrapper.jar
 *.log
 .git
 .gitignore
 .idea
 .vscode
 *.iml
-

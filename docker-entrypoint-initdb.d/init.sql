@@ -402,8 +402,28 @@ CREATE TABLE `news` (
   `exam_level` varchar(255) DEFAULT NULL,
   `status` varchar(255) DEFAULT NULL,
   `title` varchar(255) NOT NULL,
+  `image_url` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+DROP TABLE IF EXISTS `homepage_settings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `homepage_settings` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `director_name` varchar(255) DEFAULT NULL,
+  `director_role` varchar(255) DEFAULT NULL,
+  `director_title` varchar(255) DEFAULT NULL,
+  `director_quote` text,
+  `director_quote_si` text,
+  `director_photo` varchar(500) DEFAULT NULL,
+  `vision` text,
+  `vision_si` text,
+  `mission` text,
+  `mission_si` text,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --

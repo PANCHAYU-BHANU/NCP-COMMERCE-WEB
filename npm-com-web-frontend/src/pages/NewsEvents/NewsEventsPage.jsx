@@ -70,16 +70,24 @@ const NewsEventsPage = () => {
     import('sweetalert2').then((Swal) => {
       const date = new Date(item.createdAt);
       const formattedDate = date.toLocaleDateString('default', { year: 'numeric', month: 'long', day: 'numeric' });
+      const imgUrl = item.imageUrl ? (item.imageUrl.startsWith('http') ? item.imageUrl : (item.imageUrl.startsWith('/') ? item.imageUrl : `/${item.imageUrl}`)) : null;
       
       Swal.default.fire({
         title: `<span class="text-2xl font-black text-blue-800">${item.title}</span>`,
         html: `
-          <div class="text-left space-y-5 mt-4">
+          <div class="text-left space-y-4 mt-3">
+            ${imgUrl ? `
+            <div class="rounded-2xl overflow-hidden shadow-md max-h-72 bg-slate-100 relative group cursor-pointer" onclick="window.openFullImage('${imgUrl}')">
+              <img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt="${item.title}" />
+              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
+                <span class="text-white font-bold text-xs bg-black/60 px-3 py-1.5 rounded-full backdrop-blur-sm shadow flex items-center">🔍 View Full Image</span>
+              </div>
+            </div>` : ''}
             <div class="flex items-center space-x-3">
-              <span class="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-bold rounded-full">${item.category}</span>
-              <span class="text-sm font-semibold text-slate-500">${formattedDate}</span>
+              <span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">${item.category}</span>
+              <span class="text-xs font-semibold text-slate-500">${formattedDate}</span>
             </div>
-            <div class="text-slate-700 leading-relaxed text-base p-5 bg-blue-50/50 rounded-2xl border border-blue-100/50 shadow-sm">
+            <div class="text-slate-700 leading-relaxed text-sm p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50 shadow-sm whitespace-pre-line">
               ${item.content.replace(/\n/g, '<br/>')}
             </div>
           </div>
@@ -278,6 +286,15 @@ const NewsEventsPage = () => {
                   className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow group flex flex-col cursor-pointer"
                 >
                   <div className="h-2 w-full bg-gradient-to-r from-blue-500 to-teal-400"></div>
+                  {item.imageUrl && (
+                    <div className="h-44 w-full overflow-hidden bg-slate-100">
+                      <img
+                        src={item.imageUrl.startsWith('http') ? item.imageUrl : (item.imageUrl.startsWith('/') ? item.imageUrl : `/${item.imageUrl}`)}
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  )}
                   <div className="p-6 flex-1 flex flex-col">
                     <div className="flex items-center justify-between mb-3">
                       <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-full">{item.category}</span>

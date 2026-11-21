@@ -45,6 +45,10 @@ const ResultsEntry = () => {
   const isZonalUser = userRole === 'ZONAL_DIRECTOR';
   const isProvincialAdmin = ['PROVINCIAL_DIRECTOR', 'ADMIN'].includes(userRole);
 
+  const isSectionHead = userRole === 'SECTION_HEAD' || Boolean(currentUser?.isSectionHead);
+  const hasFullMarksAccess = isSectionHead || isProvincialAdmin || isZonalUser || isDivisionalUser || userRole === 'PRINCIPAL';
+  const isRegularTeacher = userRole === 'TEACHER' && !hasFullMarksAccess;
+
   const showSchoolSelector = !isSchoolUser;
 
   // Fetch initial locations based on role hierarchy
@@ -131,14 +135,18 @@ const ResultsEntry = () => {
       icon: '📋', 
       title: 'Unit Assessments', 
       subtitle: 'Modular Topic Marks' 
-    },
-    { 
+    }
+  ];
+
+  // School A/L Results entry is reserved for Section Heads, Principals, and Education Directors
+  if (hasFullMarksAccess) {
+    tabs.push({ 
       id: 'national', 
       icon: '🎓', 
       title: 'School A/L Results', 
       subtitle: 'Official Examination Grades' 
-    }
-  ];
+    });
+  }
 
   // Only PROVINCIAL_DIRECTOR or ADMIN can enter/update provincial & national aggregate benchmark targets
   if (isProvincialAdmin) {
@@ -150,6 +158,27 @@ const ResultsEntry = () => {
     });
   }
 
+  // Regular Teacher Assigned Subject Extraction & Validation
+  const teacherAssignedSubjectNames = React.useMemo(() => {
+    if (!currentUser?.subjects || !Array.isArray(currentUser.subjects)) return [];
+    return currentUser.subjects.map(s => {
+      const str = typeof s === 'string' ? s : (s.name || s.shortName || '');
+      return str.toLowerCase();
+    });
+  }, [currentUser?.subjects]);
+
+  const isSubjectAllowedForTeacher = (subjValue) => {
+    if (!isRegularTeacher) return true;
+    if (teacherAssignedSubjectNames.length === 0) return true;
+    return teacherAssignedSubjectNames.some(assigned => {
+      if (subjValue === 'acc' && assigned.includes('account')) return true;
+      if (subjValue === 'bs' && (assigned.includes('business') || assigned.includes('biz'))) return true;
+      if (subjValue === 'eco' && assigned.includes('econom')) return true;
+      if (subjValue === 'it' && (assigned.includes('information') || assigned.includes('ict') || assigned.includes('tech'))) return true;
+      return false;
+    });
+  };
+
   // Commerce Subjects for Unit Modular Testing & Term Tests
   const COMMERCE_SUBJECTS = [
     { value: 'acc', label: 'Accounting (ගිණුම්කරණය)', shortName: 'Accounting', colName: 'Accounting' },
@@ -158,15 +187,34 @@ const ResultsEntry = () => {
     { value: 'it', label: 'Information & Communication Technology (තොරතුරු තාක්ෂණය)', shortName: 'IT', colName: 'IT' }
   ];
 
-  const UNIT_SUBJECTS = COMMERCE_SUBJECTS;
+  const allowedCommerceSubjects = isRegularTeacher
+    ? COMMERCE_SUBJECTS.filter(s => isSubjectAllowedForTeacher(s.value))
+    : COMMERCE_SUBJECTS;
+  const effectiveCommerceSubjects = allowedCommerceSubjects.length > 0 ? allowedCommerceSubjects : COMMERCE_SUBJECTS;
 
-  const TERM_SUBJECT_OPTIONS = [
-    ...COMMERCE_SUBJECTS,
-    { value: 'all', label: 'All Subjects (Combined Sheet)', shortName: 'All Subjects', colName: 'All' }
-  ];
+  const UNIT_SUBJECTS = effectiveCommerceSubjects;
 
-  const [selectedTermSubject, setSelectedTermSubject] = useState('acc');
-  const [selectedUnitSubject, setSelectedUnitSubject] = useState('acc');
+  const TERM_SUBJECT_OPTIONS = isRegularTeacher
+    ? effectiveCommerceSubjects
+    : [
+        ...COMMERCE_SUBJECTS,
+        { value: 'all', label: 'All Subjects (Combined Sheet)', shortName: 'All Subjects', colName: 'All' }
+      ];
+
+  const [selectedTermSubject, setSelectedTermSubject] = useState(effectiveCommerceSubjects[0]?.value || 'acc');
+  const [selectedUnitSubject, setSelectedUnitSubject] = useState(effectiveCommerceSubjects[0]?.value || 'acc');
+
+  // Automatically realign selected subject with teacher's assigned jurisdiction
+  React.useEffect(() => {
+    if (isRegularTeacher && effectiveCommerceSubjects.length > 0) {
+      if (!effectiveCommerceSubjects.some(s => s.value === selectedTermSubject)) {
+        setSelectedTermSubject(effectiveCommerceSubjects[0].value);
+      }
+      if (!effectiveCommerceSubjects.some(s => s.value === selectedUnitSubject)) {
+        setSelectedUnitSubject(effectiveCommerceSubjects[0].value);
+      }
+    }
+  }, [isRegularTeacher, effectiveCommerceSubjects, selectedTermSubject, selectedUnitSubject]);
 
   // Generate dynamic years covering extensive future and past ranges (2035 to 2018)
   const yearOptions = [];
@@ -489,6 +537,19 @@ const ResultsEntry = () => {
   };
 
   const handleMarkChange = (index, field, value) => {
+    // If regular teacher, block modifying unassigned subjects
+    if (isRegularTeacher && ['acc', 'eco', 'bs', 'it'].includes(field)) {
+      if (!isSubjectAllowedForTeacher(field)) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Subject Restricted',
+          text: 'You are only authorized to enter or modify marks for your appointed subject.',
+          timer: 2000,
+          showConfirmButton: false
+        });
+        return;
+      }
+    }
     const updated = [...parsedMarks];
     updated[index][field] = field === 'gender' ? normalizeGender(value) : value;
     setParsedMarks(updated);
@@ -762,10 +823,21 @@ const ResultsEntry = () => {
         type: type,
         year: parseInt(bulkConfig.year),
         termOrUnit: parseInt(bulkConfig.termOrUnit || '1'),
-        rows: validRows.map(r => ({
-          ...r,
-          alYear: parseInt(bulkConfig.year, 10)
-        }))
+        rows: validRows.map(r => {
+          const rowData = {
+            ...r,
+            alYear: parseInt(bulkConfig.year, 10)
+          };
+          if (isRegularTeacher) {
+            const allowedKeys = effectiveCommerceSubjects.map(s => s.value);
+            ['acc', 'eco', 'bs', 'it'].forEach(k => {
+              if (!allowedKeys.includes(k)) {
+                delete rowData[k];
+              }
+            });
+          }
+          return rowData;
+        })
       };
       
       await api.post(`/school/${targetSchoolId}/bulk-upload-results`, payload);
@@ -831,6 +903,33 @@ const ResultsEntry = () => {
               <span className="text-sm font-mono font-black text-teal-900">#{targetSchoolId}</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── TEACHER SUBJECT JURISDICTION ISOLATION BADGE ── */}
+      {isRegularTeacher && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-amber-50/90 border border-amber-200/90 rounded-3xl p-4 sm:p-5 mb-3 shadow-xs gap-3">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-amber-600 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-amber-600/25">
+              <span className="text-lg">🔒</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-amber-900 uppercase tracking-wider">Teacher Subject Jurisdiction</span>
+                <span className="text-[10px] bg-amber-200 text-amber-900 font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Subject Locked</span>
+              </div>
+              <p className="text-sm sm:text-base font-black text-amber-950 mt-0.5">
+                Appointed Subject: {effectiveCommerceSubjects.map(s => s.label).join(' • ')}
+              </p>
+              <p className="text-xs text-amber-700 font-medium">
+                You can strictly add, edit, and modify marks for your appointed subject. Other subjects are locked under Section Head & Principal oversight.
+              </p>
+            </div>
+          </div>
+          <div className="bg-white/80 px-3.5 py-2 rounded-2xl border border-amber-200 text-right self-start sm:self-auto shadow-2xs">
+            <span className="text-[10px] text-amber-700 uppercase font-black block">Authorized Subject</span>
+            <span className="text-xs font-black text-amber-900">{activeTermSubjectObj.shortName}</span>
+          </div>
         </div>
       )}
 

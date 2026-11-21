@@ -3,10 +3,12 @@ package com.commers.ncp_com_web.controller;
 import com.commers.ncp_com_web.entity.MediaGallery;
 import com.commers.ncp_com_web.entity.News;
 import com.commers.ncp_com_web.entity.Event;
+import com.commers.ncp_com_web.entity.HomepageSetting;
 import com.commers.ncp_com_web.payload.response.MessageResponse;
 import com.commers.ncp_com_web.repository.MediaGalleryRepository;
 import com.commers.ncp_com_web.repository.NewsRepository;
 import com.commers.ncp_com_web.repository.EventRepository;
+import com.commers.ncp_com_web.repository.HomepageSettingRepository;
 import com.commers.ncp_com_web.repository.CommitteeMemberRepository;
 import com.commers.ncp_com_web.repository.CommitteeMessageRepository;
 import com.commers.ncp_com_web.repository.ZoneRepository;
@@ -59,6 +61,9 @@ public class CMSController {
     @Autowired
     private ZoneRepository zoneRepository;
 
+    @Autowired
+    private HomepageSettingRepository homepageSettingRepository;
+
     // --- News Endpoints ---
 
     @GetMapping("/news")
@@ -87,6 +92,9 @@ public class CMSController {
             news.setContent(newsDetails.getContent());
             news.setCategory(newsDetails.getCategory());
             news.setStatus(newsDetails.getStatus());
+            if (newsDetails.getImageUrl() != null) {
+                news.setImageUrl(newsDetails.getImageUrl());
+            }
             if (newsDetails.getExamLevel() != null) {
                 news.setExamLevel(newsDetails.getExamLevel());
             }
@@ -292,5 +300,41 @@ public class CMSController {
     public ResponseEntity<?> deleteCommitteeMember(@PathVariable Long id) {
         committeeMemberRepository.deleteById(id);
         return ResponseEntity.ok(new MessageResponse("Committee member deleted successfully!"));
+    }
+
+    // --- Homepage & Provincial Director CMS Settings ---
+
+    @GetMapping("/homepage-settings")
+    public ResponseEntity<?> getCmsHomepageSettings() {
+        List<HomepageSetting> list = homepageSettingRepository.findAll();
+        if (!list.isEmpty()) {
+            return ResponseEntity.ok(list.get(0));
+        }
+        return ResponseEntity.ok(new HomepageSetting());
+    }
+
+    @PostMapping("/homepage-settings")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PROVINCIAL_DIRECTOR')")
+    public ResponseEntity<?> saveHomepageSettings(@RequestBody HomepageSetting incoming) {
+        try {
+            List<HomepageSetting> list = homepageSettingRepository.findAll();
+            HomepageSetting setting = list.isEmpty() ? new HomepageSetting() : list.get(0);
+
+            if (incoming.getDirectorName() != null) setting.setDirectorName(incoming.getDirectorName().trim());
+            if (incoming.getDirectorRole() != null) setting.setDirectorRole(incoming.getDirectorRole().trim());
+            if (incoming.getDirectorTitle() != null) setting.setDirectorTitle(incoming.getDirectorTitle().trim());
+            if (incoming.getDirectorQuote() != null) setting.setDirectorQuote(incoming.getDirectorQuote().trim());
+            if (incoming.getDirectorQuoteSi() != null) setting.setDirectorQuoteSi(incoming.getDirectorQuoteSi().trim());
+            if (incoming.getDirectorPhoto() != null) setting.setDirectorPhoto(incoming.getDirectorPhoto().trim());
+            if (incoming.getVision() != null) setting.setVision(incoming.getVision().trim());
+            if (incoming.getVisionSi() != null) setting.setVisionSi(incoming.getVisionSi().trim());
+            if (incoming.getMission() != null) setting.setMission(incoming.getMission().trim());
+            if (incoming.getMissionSi() != null) setting.setMissionSi(incoming.getMissionSi().trim());
+
+            homepageSettingRepository.save(setting);
+            return ResponseEntity.ok(setting);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(new MessageResponse("Could not save homepage settings: " + e.getMessage()));
+        }
     }
 }

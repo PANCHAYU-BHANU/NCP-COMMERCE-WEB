@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Camera, Film, BookOpen, GraduationCap, Users, UserCog, Activity, Search, X } from 'lucide-react';
+import { ArrowLeft, Camera, Film, BookOpen, GraduationCap, Users, UserCog, Activity, Search, X, Award, FolderOpen } from 'lucide-react';
 
 const MediaGallery = () => {
   const { type } = useParams(); // 'photos' or 'videos'
@@ -40,6 +40,8 @@ const MediaGallery = () => {
     { id: 'teacher_prog', name: 'Teacher Programme', icon: UserCog },
     { id: 'student_prog', name: 'Student Programme', icon: Users },
     { id: 'extra_act', name: 'Extra Activities', icon: Activity },
+    { id: 'commerce_day', name: 'Commerce Day & Competitions', icon: Award },
+    { id: 'general', name: 'General Events', icon: FolderOpen },
   ];
 
   const currentMedia = mediaItems
@@ -49,8 +51,8 @@ const MediaGallery = () => {
       return isVideo ? isItemVideo : !isItemVideo;
     })
     .filter(item => {
-      const album = (item.album || '').toLowerCase().replace(' ', '_');
-      return album.includes(activeCategory);
+      const album = (item.album || '').toLowerCase().replace(/ /g, '_');
+      return album.includes(activeCategory) || (activeCategory === 'general' && (!album || album === 'general'));
     })
     .filter(item => {
       if (levelFilter === 'ALL') return true;
@@ -188,6 +190,7 @@ const MediaGallery = () => {
                         <img 
                           src={media.url} 
                           alt={media.title} 
+                          onError={(e) => { e.target.src = '/slide_1.png'; }}
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />
                       )}

@@ -66,7 +66,9 @@ export const AuthProvider = ({ children }) => {
                     schoolId: me.schoolId || prev?.schoolId,
                     divisionId: me.divisionId || prev?.divisionId,
                     zoneId: me.zoneId || prev?.zoneId,
-                    districtId: me.districtId || prev?.districtId
+                    districtId: me.districtId || prev?.districtId,
+                    isSectionHead: me.isSectionHead !== undefined ? me.isSectionHead : prev?.isSectionHead,
+                    subjects: me.subjects || prev?.subjects
                   }));
                   localStorage.setItem('auth', JSON.stringify({
                     ...authData,
@@ -77,7 +79,9 @@ export const AuthProvider = ({ children }) => {
                     schoolId: me.schoolId || authData.schoolId,
                     divisionId: me.divisionId || authData.divisionId,
                     zoneId: me.zoneId || authData.zoneId,
-                    districtId: me.districtId || authData.districtId
+                    districtId: me.districtId || authData.districtId,
+                    isSectionHead: me.isSectionHead !== undefined ? me.isSectionHead : authData.isSectionHead,
+                    subjects: me.subjects || authData.subjects
                   }));
                 }
               }

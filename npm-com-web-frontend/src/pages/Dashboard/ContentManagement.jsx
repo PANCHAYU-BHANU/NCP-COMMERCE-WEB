@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Swal from 'sweetalert2';
 import { useAuth } from '../../contexts/AuthContext';
-import { Globe, Layout, Image as ImageIcon, FileText, Upload, Plus, Trash2, Edit2, Save, X, Settings, RefreshCw } from 'lucide-react';
+import { Globe, Layout, Image as ImageIcon, FileText, Upload, Plus, Trash2, Edit2, Save, X, Settings, RefreshCw, Camera } from 'lucide-react';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 
 const ContentManagement = () => {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('news');
+  const directorPhotoRef = useRef(null);
+  const newsPhotoRef = useRef(null);
+  const [uploadingDirectorPhoto, setUploadingDirectorPhoto] = useState(false);
+  const [uploadingNewsPhoto, setUploadingNewsPhoto] = useState(false);
 
   const tabs = [
     { id: 'news', label: 'News & Announcements', icon: Globe },
@@ -20,7 +24,7 @@ const ContentManagement = () => {
 
   const [newsList, setNewsList] = useState([]);
   const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
-  const [newsFormData, setNewsFormData] = useState({ title: '', content: '', category: 'General', status: 'Published', examLevel: 'GENERAL' });
+  const [newsFormData, setNewsFormData] = useState({ title: '', content: '', category: 'General', status: 'Published', examLevel: 'GENERAL', imageUrl: '', imageFile: null, imagePreview: '' });
   const [loading, setLoading] = useState(false);
 
   
@@ -103,12 +107,78 @@ const ContentManagement = () => {
     }
   };
 
+  const fetchHomepageSettings = async () => {
+    try {
+      const res = await fetch('/api/public/homepage-settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && (data.directorName || data.vision)) {
+          setHomepageSettings(prev => ({
+            ...prev,
+            directorName: data.directorName || prev.directorName,
+            directorRole: data.directorRole || prev.directorRole,
+            directorTitle: data.directorTitle || prev.directorTitle,
+            directorQuote: data.directorQuote || prev.directorQuote,
+            directorQuoteSi: data.directorQuoteSi || prev.directorQuoteSi,
+            directorPhoto: data.directorPhoto || prev.directorPhoto,
+            vision: data.vision || prev.vision,
+            visionSi: data.visionSi || prev.visionSi,
+            mission: data.mission || prev.mission,
+            missionSi: data.missionSi || prev.missionSi
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch remote homepage settings:', err);
+    }
+  };
+
+  const handleDirectorPhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingDirectorPhoto(true);
+    try {
+      const token = currentUser?.token || currentUser?.accessToken;
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/cms/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setHomepageSettings(prev => ({ ...prev, directorPhoto: data.url }));
+        Swal.fire({
+          icon: 'success',
+          title: 'Portrait Uploaded!',
+          text: 'Remember to click "Save All Changes" to save changes to the database.',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        Swal.fire({ icon: 'error', title: 'Upload Failed', text: errJson.message || 'Please upload a valid image file.' });
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire({ icon: 'error', title: 'Upload Error', text: err.message });
+    } finally {
+      setUploadingDirectorPhoto(false);
+    }
+  };
+
   useEffect(() => {
     fetchNews();
     fetchEvents();
     fetchSubjects();
     fetchResources();
     fetchLiveStats();
+    fetchHomepageSettings();
   }, []);
 
   const fetchResources = async () => {
@@ -174,6 +244,35 @@ const ContentManagement = () => {
     setLoading(true);
     try {
       const token = currentUser?.token || currentUser?.accessToken;
+      let finalImageUrl = newsFormData.imageUrl || '';
+
+      if (newsFormData.imageFile) {
+        const formData = new FormData();
+        formData.append('file', newsFormData.imageFile);
+        const uploadRes = await fetch('/api/cms/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          finalImageUrl = uploadData.url;
+        } else {
+          Swal.fire({ icon: 'warning', title: 'Image Upload Failed', text: 'Continuing without image...' });
+        }
+      }
+
+      const payload = {
+        title: newsFormData.title,
+        content: newsFormData.content,
+        category: newsFormData.category,
+        status: newsFormData.status,
+        examLevel: newsFormData.examLevel || 'GENERAL',
+        imageUrl: finalImageUrl
+      };
+
       const url = newsFormData.id ? `/api/cms/news/${newsFormData.id}` : '/api/cms/news';
       const method = newsFormData.id ? 'PUT' : 'POST';
       
@@ -183,11 +282,11 @@ const ContentManagement = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(newsFormData)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         setIsNewsModalOpen(false);
-        setNewsFormData({ title: '', content: '', category: 'General', status: 'Published', examLevel: 'GENERAL' });
+        setNewsFormData({ title: '', content: '', category: 'General', status: 'Published', examLevel: 'GENERAL', imageUrl: '', imageFile: null, imagePreview: '' });
         fetchNews();
         Swal.fire({ icon: 'success', title: newsFormData.id ? 'News updated successfully!' : 'News added successfully!', timer: 2000, showConfirmButton: false })
       } else {
@@ -268,7 +367,17 @@ const ContentManagement = () => {
   };
 
   const handleEditNewsClick = (news) => {
-    setNewsFormData({ id: news.id, title: news.title, content: news.content, category: news.category, status: news.status });
+    setNewsFormData({
+      id: news.id,
+      title: news.title,
+      content: news.content,
+      category: news.category,
+      status: news.status,
+      examLevel: news.examLevel || 'GENERAL',
+      imageUrl: news.imageUrl || '',
+      imageFile: null,
+      imagePreview: news.imageUrl || ''
+    });
     setIsNewsModalOpen(true);
   };
 
@@ -422,6 +531,7 @@ const ContentManagement = () => {
         <div className="overflow-x-auto rounded-2xl border border-slate-200"><table className="w-full text-left border-collapse min-w-[560px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
+              <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase">Image</th>
               <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase">Title</th>
               <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase">Publish Date</th>
               <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase">Status</th>
@@ -431,6 +541,20 @@ const ContentManagement = () => {
           <tbody className="divide-y divide-slate-100">
             {newsList.map(news => (
               <tr key={news.id} className="hover:bg-slate-50/50 transition-colors group">
+                <td className="py-4 px-6">
+                  {news.imageUrl ? (
+                    <img
+                      src={news.imageUrl}
+                      alt={news.title}
+                      className="w-12 h-12 object-cover rounded-xl shadow-xs border border-slate-200"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-300">
+                      <ImageIcon size={18} />
+                    </div>
+                  )}
+                </td>
                 <td className="py-4 px-6 font-semibold text-slate-800">{news.title}</td>
                 <td className="py-4 px-6 text-slate-500 text-sm">{news.createdAt ? new Date(news.createdAt).toLocaleDateString() : 'N/A'}</td>
                 <td className="py-4 px-6">
@@ -475,13 +599,14 @@ const ContentManagement = () => {
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Content</label>
                     <textarea rows="4" required value={newsFormData.content} onChange={e => setNewsFormData({...newsFormData, content: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50"></textarea>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1.5">Category</label>
                       <select value={newsFormData.category} onChange={e => setNewsFormData({...newsFormData, category: e.target.value})} className="w-full px-3 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500/50">
                         <option>General</option>
                         <option>Exam</option>
                         <option>Event</option>
+                        <option>Workshop</option>
                       </select>
                     </div>
                     <div>
@@ -498,6 +623,56 @@ const ContentManagement = () => {
                         <option value="AL">A/L Only</option>
                         <option value="OL">O/L Only</option>
                       </select>
+                    </div>
+                  </div>
+
+                  {/* Photo Attachment for News */}
+                  <div className="pt-2">
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">News Photo / Image (Optional)</label>
+                    <div className="flex items-center space-x-3">
+                      {(newsFormData.imagePreview || newsFormData.imageUrl) ? (
+                        <div className="relative group">
+                          <img
+                            src={newsFormData.imagePreview || newsFormData.imageUrl}
+                            alt="News preview"
+                            className="w-16 h-16 object-cover rounded-xl border border-slate-200 shadow-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setNewsFormData(prev => ({ ...prev, imageUrl: '', imageFile: null, imagePreview: '' }))}
+                            className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-sm"
+                            title="Remove image"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : null}
+                      <input
+                        type="file"
+                        ref={newsPhotoRef}
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setNewsFormData(prev => ({
+                              ...prev,
+                              imageFile: file,
+                              imagePreview: URL.createObjectURL(file)
+                            }));
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        leftIcon={Camera}
+                        onClick={() => newsPhotoRef.current?.click()}
+                        className="text-xs cursor-pointer"
+                      >
+                        {(newsFormData.imagePreview || newsFormData.imageUrl) ? 'Change Photo' : 'Upload Photo from Computer'}
+                      </Button>
                     </div>
                   </div>
                 </form>
@@ -634,6 +809,10 @@ const ContentManagement = () => {
                 <option value="unit_test">Unit Test</option>
                 <option value="term_test">Term Test</option>
                 <option value="teacher_prog">Teacher Programme</option>
+                <option value="student_prog">Student Programme</option>
+                <option value="extra_act">Extra Activities</option>
+                <option value="commerce_day">Commerce Day & Competitions</option>
+                <option value="general">General / Other Events</option>
               </select>
               <select className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white relative z-20" value={photoExamLevel} onChange={(e) => setPhotoExamLevel(e.target.value)}>
                 <option value="GENERAL">General (All)</option>
@@ -663,7 +842,11 @@ const ContentManagement = () => {
                 <option value="">Select Category...</option>
                 <option value="unit_test">Unit Test</option>
                 <option value="term_test">Term Test</option>
+                <option value="teacher_prog">Teacher Programme</option>
+                <option value="student_prog">Student Programme</option>
                 <option value="extra_act">Extra Activities</option>
+                <option value="commerce_day">Commerce Day & Competitions</option>
+                <option value="general">General / Other Events</option>
               </select>
               <select className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white relative z-20" value={videoExamLevel} onChange={(e) => setVideoExamLevel(e.target.value)}>
                 <option value="GENERAL">General (All)</option>
@@ -881,33 +1064,59 @@ const ContentManagement = () => {
     </div>
   );
 
-    const handleSaveHomepageSettings = () => {
+    const handleSaveHomepageSettings = async () => {
     try {
-      localStorage.setItem('ncp_homepage_settings', JSON.stringify(homepageSettings));
-      Swal.fire({
-        icon: 'success',
-        title: 'Homepage Settings Saved!',
-        text: "Provincial Director's settings, messages, vision, mission, and provincial benchmarks are now updated and live on the public website.",
-        timer: 2500,
-        showConfirmButton: false
+      const token = currentUser?.token || currentUser?.accessToken;
+      const res = await fetch('/api/cms/homepage-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(homepageSettings)
       });
+      if (res.ok) {
+        localStorage.setItem('ncp_homepage_settings', JSON.stringify(homepageSettings));
+        Swal.fire({
+          icon: 'success',
+          title: 'Homepage Settings Saved to Database!',
+          text: "Provincial Director's settings, messages, vision, mission, and provincial benchmarks are now updated and live on the public website for everyone.",
+          timer: 2500,
+          showConfirmButton: false
+        });
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        Swal.fire({ icon: 'error', title: 'Failed to save to database', text: errJson.message || 'Please check your permissions.' });
+      }
     } catch (e) {
-      Swal.fire({ icon: 'error', title: 'Failed to save settings' });
+      console.error(e);
+      Swal.fire({ icon: 'error', title: 'Network error saving settings', text: e.message });
     }
   };
 
   const handleResetHomepageSettings = () => {
     Swal.fire({
       title: 'Reset to System Defaults?',
-      text: "This will restore the default Director's message, vision, mission, and provincial benchmarks.",
+      text: "This will restore the default Director's message, vision, mission, and provincial benchmarks in the database.",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Yes, reset',
       cancelButtonText: 'Cancel'
-    }).then((res) => {
+    }).then(async (res) => {
       if (res.isConfirmed) {
         setHomepageSettings(defaultHomepageSettings);
         localStorage.removeItem('ncp_homepage_settings');
+        try {
+          const token = currentUser?.token || currentUser?.accessToken;
+          await fetch('/api/cms/homepage-settings', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(defaultHomepageSettings)
+          });
+        } catch (ignored) {}
         Swal.fire({ icon: 'success', title: 'Settings reset to defaults', timer: 1500, showConfirmButton: false });
       }
     });
@@ -943,18 +1152,49 @@ const ContentManagement = () => {
           <div className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
               <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <img
-                  src={homepageSettings.directorPhoto || '/director.jpg'}
-                  alt="Provincial Director"
-                  className="w-32 h-32 rounded-2xl object-cover shadow-md border-2 border-white mb-3"
+                <div 
+                  onClick={() => directorPhotoRef.current?.click()}
+                  className="relative group cursor-pointer mb-3"
+                  title="Click to select a new portrait from your computer"
+                >
+                  <img
+                    src={homepageSettings.directorPhoto || '/director.jpg'}
+                    alt="Provincial Director"
+                    onError={(e) => { e.target.src = '/director.jpg'; }}
+                    className="w-32 h-32 rounded-2xl object-cover shadow-md border-2 border-white group-hover:opacity-80 transition-opacity"
+                  />
+                  <div className="absolute inset-0 bg-black/50 rounded-2xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity">
+                    <Camera className="w-6 h-6 mb-1" />
+                    <span className="text-[11px] font-bold">Change Photo</span>
+                  </div>
+                </div>
+
+                <input
+                  type="file"
+                  ref={directorPhotoRef}
+                  accept="image/*"
+                  onChange={handleDirectorPhotoUpload}
+                  className="hidden"
                 />
-                <span className="text-xs font-bold text-slate-600 mb-2">Current Official Portrait</span>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  leftIcon={Upload}
+                  isLoading={uploadingDirectorPhoto}
+                  onClick={() => directorPhotoRef.current?.click()}
+                  className="w-full mb-3 text-xs bg-white hover:bg-slate-100"
+                >
+                  {uploadingDirectorPhoto ? 'Uploading...' : 'Upload New Portrait'}
+                </Button>
+
+                <span className="text-[11px] font-bold text-slate-500 mb-1">Image Path / URL</span>
                 <input
                   type="text"
                   value={homepageSettings.directorPhoto}
                   onChange={(e) => setHomepageSettings({ ...homepageSettings, directorPhoto: e.target.value })}
                   placeholder="/director.jpg"
-                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-center font-mono"
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-center font-mono text-slate-600"
                 />
               </div>
 

@@ -136,6 +136,15 @@ const HomePage = () => {
       })
       .catch(() => {});
 
+    fetch('/api/public/homepage-settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data && (data.directorName || data.vision)) {
+          setCmsSettings(data);
+        }
+      })
+      .catch(() => {});
+
     fetch('/api/public/news')
       .then(res => res.json())
       .then(data => {
@@ -452,11 +461,12 @@ const HomePage = () => {
                   <img
                     src={cmsSettings?.directorPhoto || "/director.jpg"}
                     alt="Provincial Director of Education NCP"
+                    onError={(e) => { e.target.src = '/director.jpg'; }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
                   <div className="absolute bottom-4 left-4 right-4">
-                    <p className="text-white font-black text-lg">{directorInfo.name || cmsSettings?.directorName || t.director.name}</p>
+                    <p className="text-white font-black text-lg">{cmsSettings?.directorName || directorInfo.name || t.director.name}</p>
                     <p className="text-teal-300 text-xs font-semibold">{cmsSettings?.directorRole || t.director.role}</p>
                   </div>
                 </div>
@@ -496,7 +506,7 @@ const HomePage = () => {
 
               <div className="pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h4 className="text-base font-bold text-white">{directorInfo.name || cmsSettings?.directorName || t.director.name}</h4>
+                  <h4 className="text-base font-bold text-white">{cmsSettings?.directorName || directorInfo.name || t.director.name}</h4>
                   <p className="text-xs text-slate-400">{cmsSettings?.directorRole || t.director.role}</p>
                 </div>
 
@@ -1022,6 +1032,16 @@ const HomePage = () => {
                       </span>
                     </div>
 
+                    {item.imageUrl && (
+                      <div className="h-44 w-full mb-3 rounded-2xl overflow-hidden bg-slate-100">
+                        <img
+                          src={item.imageUrl.startsWith('http') ? item.imageUrl : (item.imageUrl.startsWith('/') ? item.imageUrl : `/${item.imageUrl}`)}
+                          alt={item.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    )}
+
                     <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
                       {item.title}
                     </h3>
@@ -1072,6 +1092,15 @@ const HomePage = () => {
                 ✕
               </button>
             </div>
+            {selectedNews.imageUrl && (
+              <div className="mb-4 rounded-2xl overflow-hidden max-h-64 bg-slate-100">
+                <img
+                  src={selectedNews.imageUrl.startsWith('http') ? selectedNews.imageUrl : (selectedNews.imageUrl.startsWith('/') ? selectedNews.imageUrl : `/${selectedNews.imageUrl}`)}
+                  alt={selectedNews.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
             <h3 className="text-2xl font-black text-slate-900 mb-3">{selectedNews.title}</h3>
             <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line mb-6">
               {selectedNews.content}

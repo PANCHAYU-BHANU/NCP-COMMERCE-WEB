@@ -61,6 +61,9 @@ public class SchoolController {
     private IssueSuggestionRepository issueSuggestionRepository;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private com.commers.ncp_com_web.repository.NationalStatisticRepository nationalStatisticRepository;
 
     // Endpoint for adding student counts (Grade 10,11,12,13)
@@ -344,7 +347,14 @@ public class SchoolController {
     @PostMapping("/{schoolId}/term-test-marks")
     @PreAuthorize("hasRole('SECTION_HEAD') or hasRole('PRINCIPAL') or hasRole('TEACHER') or hasRole('PROVINCIAL_DIRECTOR') or hasRole('ZONAL_DIRECTOR') or hasRole('DIVISIONAL_DIRECTOR') or hasRole('ADMIN')")
     public ResponseEntity<?> addTermTestMark(@PathVariable Long schoolId, @RequestBody TermTestMark mark) {
-        // mark.setStudent() needs to be set properly. Assuming it's passed in the payload for now.
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = (auth != null) ? auth.getName() : null;
+        User authUser = (currentUsername != null) ? userRepository.findByUsername(currentUsername).orElse(null) : null;
+        if (authUser != null && authUser.getRole() == ERole.ROLE_TEACHER && !Boolean.TRUE.equals(authUser.getIsSectionHead())) {
+            if (mark.getSubject() == null || authUser.getSubjects() == null || !authUser.getSubjects().contains(mark.getSubject())) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body("Permission Denied: You can only record marks for your assigned subject.");
+            }
+        }
         termTestMarkRepository.save(mark);
         return ResponseEntity.ok("Term Test Mark added successfully!");
     }
@@ -353,7 +363,14 @@ public class SchoolController {
     @PostMapping("/{schoolId}/unit-test-marks")
     @PreAuthorize("hasRole('SECTION_HEAD') or hasRole('PRINCIPAL') or hasRole('TEACHER') or hasRole('PROVINCIAL_DIRECTOR') or hasRole('ZONAL_DIRECTOR') or hasRole('DIVISIONAL_DIRECTOR') or hasRole('ADMIN')")
     public ResponseEntity<?> addUnitTestMark(@PathVariable Long schoolId, @RequestBody UnitTestMark mark) {
-        // mark.setStudent() needs to be set properly.
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = (auth != null) ? auth.getName() : null;
+        User authUser = (currentUsername != null) ? userRepository.findByUsername(currentUsername).orElse(null) : null;
+        if (authUser != null && authUser.getRole() == ERole.ROLE_TEACHER && !Boolean.TRUE.equals(authUser.getIsSectionHead())) {
+            if (mark.getSubject() == null || authUser.getSubjects() == null || !authUser.getSubjects().contains(mark.getSubject())) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body("Permission Denied: You can only record marks for your assigned subject.");
+            }
+        }
         unitTestMarkRepository.save(mark);
         return ResponseEntity.ok("Unit Test Mark added successfully!");
     }
@@ -392,6 +409,27 @@ public class SchoolController {
     public ResponseEntity<?> bulkUploadResults(@PathVariable Long schoolId, @RequestBody com.commers.ncp_com_web.payload.request.BulkUploadPayload payload) {
         School school = schoolRepository.findById(schoolId)
                 .orElseThrow(() -> new RuntimeException("Error: School is not found."));
+
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = (auth != null) ? auth.getName() : null;
+        User authUser = (currentUsername != null) ? userRepository.findByUsername(currentUsername).orElse(null) : null;
+
+        boolean isRegularTeacher = (authUser != null 
+                && authUser.getRole() == ERole.ROLE_TEACHER 
+                && !Boolean.TRUE.equals(authUser.getIsSectionHead()));
+
+        Set<Long> allowedSubjectIds = new HashSet<>();
+        if (isRegularTeacher && authUser.getSubjects() != null) {
+            for (Subject s : authUser.getSubjects()) {
+                allowedSubjectIds.add(s.getId());
+            }
+        }
+
+        // Regular teachers are strictly prohibited from uploading official school A/L National Exam Results
+        if (isRegularTeacher && "AL_RESULTS".equalsIgnoreCase(payload.getType())) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body("Permission Denied: Only Section Heads, Principals, or Education Directors can upload official G.C.E. A/L National Results.");
+        }
         
         Subject acc = subjectRepository.findFirstByNameContainingIgnoreCase("Account").orElse(null);
         Subject eco = subjectRepository.findFirstByNameContainingIgnoreCase("Econom").orElse(null);
@@ -487,15 +525,31 @@ public class SchoolController {
                 try { if (row.getIslandRank() != null && !row.getIslandRank().isEmpty()) summary.setIslandRank(Integer.parseInt(row.getIslandRank())); } catch (Exception e) {}
                 studentAlSummaryRepository.save(summary);
             } else if ("TERM_TEST".equals(payload.getType())) {
-                saveTermResult(student, payload.getYear(), payload.getTermOrUnit(), acc, row.getAcc());
-                saveTermResult(student, payload.getYear(), payload.getTermOrUnit(), eco, row.getEco());
-                saveTermResult(student, payload.getYear(), payload.getTermOrUnit(), bs, row.getBs());
-                saveTermResult(student, payload.getYear(), payload.getTermOrUnit(), it, row.getIt());
+                if (!isRegularTeacher || (acc != null && allowedSubjectIds.contains(acc.getId()))) {
+                    saveTermResult(student, payload.getYear(), payload.getTermOrUnit(), acc, row.getAcc());
+                }
+                if (!isRegularTeacher || (eco != null && allowedSubjectIds.contains(eco.getId()))) {
+                    saveTermResult(student, payload.getYear(), payload.getTermOrUnit(), eco, row.getEco());
+                }
+                if (!isRegularTeacher || (bs != null && allowedSubjectIds.contains(bs.getId()))) {
+                    saveTermResult(student, payload.getYear(), payload.getTermOrUnit(), bs, row.getBs());
+                }
+                if (!isRegularTeacher || (it != null && allowedSubjectIds.contains(it.getId()))) {
+                    saveTermResult(student, payload.getYear(), payload.getTermOrUnit(), it, row.getIt());
+                }
             } else if ("UNIT_TEST".equals(payload.getType())) {
-                saveUnitResult(student, payload.getYear(), payload.getTermOrUnit(), acc, row.getAcc());
-                saveUnitResult(student, payload.getYear(), payload.getTermOrUnit(), eco, row.getEco());
-                saveUnitResult(student, payload.getYear(), payload.getTermOrUnit(), bs, row.getBs());
-                saveUnitResult(student, payload.getYear(), payload.getTermOrUnit(), it, row.getIt());
+                if (!isRegularTeacher || (acc != null && allowedSubjectIds.contains(acc.getId()))) {
+                    saveUnitResult(student, payload.getYear(), payload.getTermOrUnit(), acc, row.getAcc());
+                }
+                if (!isRegularTeacher || (eco != null && allowedSubjectIds.contains(eco.getId()))) {
+                    saveUnitResult(student, payload.getYear(), payload.getTermOrUnit(), eco, row.getEco());
+                }
+                if (!isRegularTeacher || (bs != null && allowedSubjectIds.contains(bs.getId()))) {
+                    saveUnitResult(student, payload.getYear(), payload.getTermOrUnit(), bs, row.getBs());
+                }
+                if (!isRegularTeacher || (it != null && allowedSubjectIds.contains(it.getId()))) {
+                    saveUnitResult(student, payload.getYear(), payload.getTermOrUnit(), it, row.getIt());
+                }
             }
         }
         

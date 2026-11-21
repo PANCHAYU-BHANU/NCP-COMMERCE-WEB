@@ -63,6 +63,8 @@ public class PublicController {
     private UserRepository userRepository;
     @Autowired
     private com.commers.ncp_com_web.repository.UnitTestDefinitionRepository unitTestDefinitionRepository;
+    @Autowired
+    private HomepageSettingRepository homepageSettingRepository;
 
     private int getLatestNationalResultYear() {
         Integer maxNatYear = alNationalResultRepository.findMaxYear();
@@ -1300,6 +1302,27 @@ public class PublicController {
         return ResponseEntity.ok(newsRepository.findAll());
     }
 
+    @GetMapping("/homepage-settings")
+    public ResponseEntity<?> getHomepageSettings() {
+        List<HomepageSetting> list = homepageSettingRepository.findAll();
+        if (!list.isEmpty()) {
+            return ResponseEntity.ok(list.get(0));
+        }
+        // Return default setting if none configured in database yet
+        HomepageSetting def = new HomepageSetting();
+        def.setDirectorName("Dr. Ananda Gunasekara");
+        def.setDirectorRole("Provincial Director of Education — North Central Province");
+        def.setDirectorTitle("Empowering Next-Generation Commerce Leaders");
+        def.setDirectorQuote("Commerce education is the lifeblood of our nation's socioeconomic progress. In the North Central Province, across Anuradhapura and Polonnaruwa, we are dedicated to providing modern financial literacy, accounting rigor, and entrepreneurial skills to equip every student for university excellence and global enterprise.");
+        def.setDirectorQuoteSi("වාණිජ හා ව්‍යාපාර අධ්‍යාපනය රටක ආර්ථික සංවර්ධනයේ ජීවනාලියයි. උතුරු මැද පළාතේ අනුරාධපුර හා පොළොන්නරුව දිස්ත්‍රික්කවල පාසල් දරුවන්ට නවීන මූල්‍ය සාක්ෂරතාව, ගිණුම්කරණ විශිෂ්ටත්වය හා ව්‍යවසායකත්ව කුසලතා ලබා දෙමින්, ඔවුන් ජාතික හා ජාත්‍යන්තර මට්ටමට ඔසවා තැබීම අපගේ ඒකායන අරමුණයි.");
+        def.setDirectorPhoto("/director.jpg");
+        def.setVision("To be the leading province in Sri Lanka for Commerce & Management education, producing ethical, innovative, and financially astute citizens.");
+        def.setVisionSi("වාණිජ හා ව්‍යාපාර අධ්‍යයනයෙන් දිවයිනේ විශිෂ්ටතම පළාත බවට පත්වෙමින්, සදාචාර සම්පන්න, නව්‍යතා සපිරි සහ මූල්‍ය ඥානයෙන් පිරිපුන් පුරවැසියන් බිහිකිරීම.");
+        def.setMission("Delivering world-class commercial pedagogy, modern technological integration, continuous teacher empowerment, and student-centered entrepreneurship across all 11 educational zones.");
+        def.setMissionSi("කලාප 11 පුරා ගුණාත්මක වාණිජ ඉගැන්වීම් ක්‍රමවේද, නවීන තාක්ෂණය, අඛණ්ඩ ගුරු සංවර්ධනය සහ ප්‍රායෝගික ව්‍යවසායකත්ව අවස්ථා සලසමින් සිසුන් සවිබල ගැන්වීම.");
+        return ResponseEntity.ok(def);
+    }
+
     @GetMapping("/schools/{id}")
     public ResponseEntity<?> getSchoolProfile(@PathVariable Long id) {
         School school = schoolRepository.findById(id).orElse(null);
@@ -1482,6 +1505,7 @@ public class PublicController {
             boolean isAl = "al".equalsIgnoreCase(examType);
             row.put("examType", isAl ? "al" : examType.toLowerCase());
             row.put("examYear", year);
+            row.put("termOrUnit", termOrUnit);
 
             Double acc = null, bs = null, eco = null, ict = null;
             String accGrade = null, bsGrade = null, ecoGrade = null, ictGrade = null;
@@ -1491,27 +1515,71 @@ public class PublicController {
                 List<TermTestMark> marks = (year != null)
                     ? termTestMarkRepository.findByStudentIdAndYear(s.getId(), year)
                     : termTestMarkRepository.findByStudentId(s.getId());
-                for (TermTestMark m : marks) {
-                    if (m.getSubject() != null) {
-                        String sName = m.getSubject().getName().toLowerCase();
-                        if (sName.contains("account")) acc = m.getMarks();
-                        else if (sName.contains("business")) bs = m.getMarks();
-                        else if (sName.contains("economic")) eco = m.getMarks();
-                        else if (sName.contains("information") || sName.contains("ict")) ict = m.getMarks();
+                
+                if (termOrUnit != null) {
+                    marks = marks.stream().filter(m -> termOrUnit.equals(m.getTerm())).collect(Collectors.toList());
+                    for (TermTestMark m : marks) {
+                        if (m.getSubject() != null && m.getMarks() != null) {
+                            String sName = m.getSubject().getName().toLowerCase();
+                            if (sName.contains("account")) acc = m.getMarks();
+                            else if (sName.contains("business")) bs = m.getMarks();
+                            else if (sName.contains("economic")) eco = m.getMarks();
+                            else if (sName.contains("information") || sName.contains("ict")) ict = m.getMarks();
+                        }
                     }
+                } else {
+                    java.util.Map<String, java.util.List<Double>> subjMap = new java.util.HashMap<>();
+                    for (TermTestMark m : marks) {
+                        if (m.getSubject() != null && m.getMarks() != null) {
+                            String sName = m.getSubject().getName().toLowerCase();
+                            String key = sName.contains("account") ? "acc"
+                                       : sName.contains("business") ? "bs"
+                                       : sName.contains("economic") ? "eco"
+                                       : (sName.contains("information") || sName.contains("ict")) ? "ict" : null;
+                            if (key != null) {
+                                subjMap.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(m.getMarks());
+                            }
+                        }
+                    }
+                    if (subjMap.containsKey("acc")) acc = Math.round(subjMap.get("acc").stream().mapToDouble(Double::doubleValue).average().orElse(0.0) * 10.0) / 10.0;
+                    if (subjMap.containsKey("bs")) bs = Math.round(subjMap.get("bs").stream().mapToDouble(Double::doubleValue).average().orElse(0.0) * 10.0) / 10.0;
+                    if (subjMap.containsKey("eco")) eco = Math.round(subjMap.get("eco").stream().mapToDouble(Double::doubleValue).average().orElse(0.0) * 10.0) / 10.0;
+                    if (subjMap.containsKey("ict")) ict = Math.round(subjMap.get("ict").stream().mapToDouble(Double::doubleValue).average().orElse(0.0) * 10.0) / 10.0;
                 }
             } else if ("unit".equalsIgnoreCase(examType)) {
                 List<UnitTestMark> marks = (year != null)
                     ? unitTestMarkRepository.findByStudentIdAndYear(s.getId(), year)
                     : unitTestMarkRepository.findByStudentId(s.getId());
-                for (UnitTestMark m : marks) {
-                    if (m.getSubject() != null) {
-                        String sName = m.getSubject().getName().toLowerCase();
-                        if (sName.contains("account")) acc = m.getMarks();
-                        else if (sName.contains("business")) bs = m.getMarks();
-                        else if (sName.contains("economic")) eco = m.getMarks();
-                        else if (sName.contains("information") || sName.contains("ict")) ict = m.getMarks();
+                
+                if (termOrUnit != null) {
+                    marks = marks.stream().filter(m -> termOrUnit.equals(m.getUnitNumber())).collect(Collectors.toList());
+                    for (UnitTestMark m : marks) {
+                        if (m.getSubject() != null && m.getMarks() != null) {
+                            String sName = m.getSubject().getName().toLowerCase();
+                            if (sName.contains("account")) acc = m.getMarks();
+                            else if (sName.contains("business")) bs = m.getMarks();
+                            else if (sName.contains("economic")) eco = m.getMarks();
+                            else if (sName.contains("information") || sName.contains("ict")) ict = m.getMarks();
+                        }
                     }
+                } else {
+                    java.util.Map<String, java.util.List<Double>> subjMap = new java.util.HashMap<>();
+                    for (UnitTestMark m : marks) {
+                        if (m.getSubject() != null && m.getMarks() != null) {
+                            String sName = m.getSubject().getName().toLowerCase();
+                            String key = sName.contains("account") ? "acc"
+                                       : sName.contains("business") ? "bs"
+                                       : sName.contains("economic") ? "eco"
+                                       : (sName.contains("information") || sName.contains("ict")) ? "ict" : null;
+                            if (key != null) {
+                                subjMap.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(m.getMarks());
+                            }
+                        }
+                    }
+                    if (subjMap.containsKey("acc")) acc = Math.round(subjMap.get("acc").stream().mapToDouble(Double::doubleValue).average().orElse(0.0) * 10.0) / 10.0;
+                    if (subjMap.containsKey("bs")) bs = Math.round(subjMap.get("bs").stream().mapToDouble(Double::doubleValue).average().orElse(0.0) * 10.0) / 10.0;
+                    if (subjMap.containsKey("eco")) eco = Math.round(subjMap.get("eco").stream().mapToDouble(Double::doubleValue).average().orElse(0.0) * 10.0) / 10.0;
+                    if (subjMap.containsKey("ict")) ict = Math.round(subjMap.get("ict").stream().mapToDouble(Double::doubleValue).average().orElse(0.0) * 10.0) / 10.0;
                 }
             } else {
                 // A/L National Results: Grades + Z-Score

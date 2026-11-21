@@ -23,6 +23,8 @@ public class JwtResponse {
     private String provinceName;
     private String location;
     private String examLevel;
+    private Boolean isSectionHead;
+    private List<String> subjects;
     private String profilePic;
     private Boolean isProfileComplete;
 
@@ -92,6 +94,12 @@ public class JwtResponse {
 
     public String getProfilePic() { return profilePic; }
     public void setProfilePic(String profilePic) { this.profilePic = profilePic; }
+
+    public Boolean getIsSectionHead() { return isSectionHead; }
+    public void setIsSectionHead(Boolean isSectionHead) { this.isSectionHead = isSectionHead; }
+
+    public List<String> getSubjects() { return subjects; }
+    public void setSubjects(List<String> subjects) { this.subjects = subjects; }
 
     public Boolean getIsProfileComplete() { return isProfileComplete; }
     public void setIsProfileComplete(Boolean isProfileComplete) { this.isProfileComplete = isProfileComplete; }
